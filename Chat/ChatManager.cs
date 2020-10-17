@@ -4,17 +4,12 @@ using ChatCore;
 using ChatCore.Interfaces;
 using ChatCore.Logging;
 using ChatCore.Services;
-using ChatCore.Services.Twitch;
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
-using ChatCore.Config;
 using BeatSaberMarkupLanguage;
 
 namespace EnhancedStreamChat.Chat

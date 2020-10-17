@@ -1,18 +1,12 @@
 ﻿using EnhancedStreamChat.Graphics;
-using EnhancedStreamChat.Utilities;
 using ChatCore.Interfaces;
 using ChatCore.Models;
 using ChatCore.Models.Twitch;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TMPro;
-using UnityEngine;
-using BeatSaberMarkupLanguage.Animations;
-using System.Collections;
 
 namespace EnhancedStreamChat.Chat
 {
