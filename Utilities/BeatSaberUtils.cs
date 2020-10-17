@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace EnhancedStreamChat.Utilities
 {
@@ -21,7 +22,7 @@ namespace EnhancedStreamChat.Utilities
                     _noGlow = Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault();
                     if (_noGlow != null)
                     {
-                        _noGlow = Material.Instantiate(_noGlow);
+                        _noGlow = Object.Instantiate(_noGlow);
                     }
                 }
                 return _noGlow;

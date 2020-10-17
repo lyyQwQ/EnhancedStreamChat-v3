@@ -33,7 +33,7 @@ namespace EnhancedStreamChat.Utilities
             this.FirstAlloc = FirstAlloc;
             this.OnAlloc = OnAlloc;
             this.OnFree = OnFree;
-            this._freeObjects = new Queue<T>();
+            _freeObjects = new Queue<T>();
 
             while (initialCount-- > 0)
             {

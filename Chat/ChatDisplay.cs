@@ -152,7 +152,7 @@ namespace EnhancedStreamChat.Chat
                 renderer.material = _chatMoverMaterial;
                 _chatScreen.transform.SetParent(_rootGameObject.transform);
                 _chatScreen.ScreenRotation = Quaternion.Euler(ChatRotation);
-                _bg = _chatScreen.gameObject.GetComponent<UnityEngine.UI.Image>();
+                _bg = _chatScreen.gameObject.GetComponent<Image>();
                 _bg.material = Instantiate(BeatSaberUtils.UINoGlowMaterial);
                 _bg.color = BackgroundColor;
                 AddToVRPointer();

@@ -26,9 +26,9 @@ namespace EnhancedStreamChat.Utilities
             base.Enqueue(obj);
             lock (_object)
             {
-                while (base.Count > Size)
+                while (Count > Size)
                 {
-                    if(base.TryDequeue(out var outObj))
+                    if(TryDequeue(out var outObj))
                     {
                         OnFree?.Invoke(outObj);
                     }
