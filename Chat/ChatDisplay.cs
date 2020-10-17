@@ -35,7 +35,7 @@ namespace EnhancedStreamChat.Chat
             SetupScreens();
             (transform as RectTransform).pivot = new Vector2(0.5f, 0f);
             TextPool = new ObjectPool<EnhancedTextMeshProUGUIWithBackground>(25,
-                Constructor: () =>
+                constructor: () =>
                 {
                     var go = new GameObject();
                     DontDestroyOnLoad(go);
@@ -50,7 +50,7 @@ namespace EnhancedStreamChat.Chat
                     UpdateMessage(msg);
                     return msg;
                 },
-                OnFree: (msg) =>
+                onFree: (msg) =>
                 {
                     try
                     {

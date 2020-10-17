@@ -17,7 +17,7 @@ namespace EnhancedStreamChat.Graphics
         public event Action OnLatePreRenderRebuildComplete;
 
         private static ObjectPool<EnhancedImage> _imagePool = new ObjectPool<EnhancedImage>(50,
-            Constructor: () =>
+            constructor: () =>
             {
                 var img = new GameObject().AddComponent<EnhancedImage>();
                 DontDestroyOnLoad(img.gameObject);
@@ -30,7 +30,7 @@ namespace EnhancedStreamChat.Graphics
                 img.gameObject.SetActive(false);
                 return img;
             },
-            OnFree: (img) =>
+            onFree: img =>
             {
                 try
                 {

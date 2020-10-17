@@ -2,51 +2,27 @@
 using System.Linq;
 using TMPro;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace EnhancedStreamChat.Utilities
 {
-    public static class BeatSaberUtils
-    {
-        private static Material _noGlow;
-        public static Material UINoGlowMaterial
-        {
-            get
-            {
-                if (_noGlow == null)
-                {
-                    _noGlow = Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault();
-                    if (_noGlow != null)
-                    {
-                        _noGlow = Object.Instantiate(_noGlow);
-                    }
-                }
-                return _noGlow;
-            }
-        }
+	public static class BeatSaberUtils
+	{
+		private static Material? _noGlow;
+		public static Material? UINoGlowMaterial => _noGlow ??= Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault();
 
-        private static Shader _tmpNoGlowFontShader;
-        public static Shader TMPNoGlowFontShader
-        {
-            get
-            {
-                if(_tmpNoGlowFontShader == null)
-                {
-                    _tmpNoGlowFontShader = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().Last(f2 => f2.name == "Teko-Medium SDF No Glow")?.material?.shader;
-                }
-                return _tmpNoGlowFontShader;
-            }
-        }
+		private static Shader? _tmpNoGlowFontShader;
+		public static Shader? TMPNoGlowFontShader => _tmpNoGlowFontShader ??= Resources.FindObjectsOfTypeAll<TMP_FontAsset>().Last(f2 => f2.name == "Teko-Medium SDF No Glow")?.material?.shader;
 
-        // DaNike to the rescue 
-        public static bool TryGetTMPFontByFamily(string family, out TMP_FontAsset font)
-        {
-            if(FontManager.TryGetTMPFontByFamily(family, out font))
-            {
-                font.material.shader = TMPNoGlowFontShader;
-                return true;
-            }
-            return false;
-        }
-    }
+		// DaNike to the rescue 
+		public static bool TryGetTMPFontByFamily(string family, out TMP_FontAsset font)
+		{
+			if (FontManager.TryGetTMPFontByFamily(family, out font))
+			{
+				font.material.shader = TMPNoGlowFontShader;
+				return true;
+			}
+
+			return false;
+		}
+	}
 }
