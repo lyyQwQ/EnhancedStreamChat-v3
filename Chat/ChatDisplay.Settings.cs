@@ -273,7 +273,7 @@ namespace EnhancedStreamChat.Chat
         [UIAction("launch-github")]
         private void LaunchGitHub()
         {
-            Process.Start("https://github.com/brian91292/EnhancedStreamChat-v3");
+            Process.Start("https://github.com/Auros/EnhancedStreamChat-v3");
         }
 
         [UIAction("on-settings-clicked")]
