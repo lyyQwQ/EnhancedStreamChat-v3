@@ -143,7 +143,7 @@ namespace EnhancedStreamChat.Chat
                 _chatScreen = FloatingScreen.CreateFloatingScreen(new Vector2(ChatWidth, ChatHeight), true, ChatPosition, Quaternion.identity);
                 var canvas = _chatScreen.GetComponent<Canvas>();
                 canvas.sortingOrder = 3;
-                _chatScreen.SetRootViewController(this, true);
+                _chatScreen.SetRootViewController(this, AnimationType.None);
                 _rootGameObject = new GameObject();
                 DontDestroyOnLoad(_rootGameObject);
                 _chatMoverMaterial = Instantiate(BeatSaberUtils.UINoGlowMaterial);

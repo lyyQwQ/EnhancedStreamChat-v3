@@ -209,8 +209,8 @@ namespace EnhancedStreamChat.Chat
                 Finally?.Invoke(null);
                 return;
             }
-            int spriteWidth = rect.width, spriteHeight = rect.height;
-            Sprite sprite = Sprite.Create(tex, new Rect(rect.x, tex.height - rect.y - spriteHeight, spriteWidth, spriteHeight), new Vector2(0, 0));
+            int spriteWidth = rect.Width, spriteHeight = rect.Height;
+            Sprite sprite = Sprite.Create(tex, new Rect(rect.X, tex.height - rect.Y - spriteHeight, spriteWidth, spriteHeight), new Vector2(0, 0));
             sprite.texture.wrapMode = TextureWrapMode.Clamp;
             EnhancedImageInfo ret = null;
             if (sprite != null)
