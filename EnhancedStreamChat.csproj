@@ -5,6 +5,7 @@
         <OutputType>Library</OutputType>
         <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
+        <NoWarn>1591</NoWarn>
         <AssemblyName>EnhancedStreamChat</AssemblyName>
         <RootNamespace>EnhancedStreamChat</RootNamespace>
         <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
