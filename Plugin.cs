@@ -4,6 +4,7 @@ using IPALogger = IPA.Logging.Logger;
 using EnhancedStreamChat.Chat;
 using IPA.Loader;
 using System.Reflection;
+using BS_Utils.Utilities;
 
 namespace EnhancedStreamChat
 {
@@ -29,7 +30,7 @@ namespace EnhancedStreamChat
         [OnEnable]
         public void OnEnable()
         {
-            BS_Utils.Utilities.BSEvents.lateMenuSceneLoadedFresh += (x) =>
+            BSEvents.lateMenuSceneLoadedFresh += (x) =>
             {
                 try
                 {
