@@ -142,7 +142,6 @@ namespace EnhancedStreamChat.Chat
             if (_chatScreen == null)
             {
                 _chatScreen = FloatingScreen.CreateFloatingScreen(new Vector2(ChatWidth, ChatHeight), true, ChatPosition, Quaternion.identity);
-                _chatScreen.GetComponent<CurvedCanvasSettings>().SetRadius(0f);
                 var canvas = _chatScreen.GetComponent<Canvas>();
                 canvas.sortingOrder = 3;
                 _chatScreen.SetRootViewController(this, AnimationType.None);
@@ -154,17 +153,6 @@ namespace EnhancedStreamChat.Chat
                 renderer.material = _chatMoverMaterial;
                 _chatScreen.transform.SetParent(_rootGameObject.transform);
                 _chatScreen.ScreenRotation = Quaternion.Euler(ChatRotation);
-                // "fix" for BSML FloatingScreen not having an image
-                var bg = new GameObject("bg");
-                bg.transform.SetParent(_chatScreen.transform, false);
-                _bg = bg.gameObject.AddComponent<ImageView>();
-                _bg.transform.localScale = _chatScreen.ScreenSize;
-                _bg.raycastTarget = false;
-                _bg.sprite = Resources.FindObjectsOfTypeAll<Sprite>().First(x => x.name == "MainScreenMask");
-                _bg.type = Image.Type.Sliced;
-                _bg.preserveAspect = true;
-                _bg.material = Instantiate(BeatSaberUtils.UINoGlowMaterial);
-                _bg.color = BackgroundColor;
                 AddToVRPointer();
             }
         }
