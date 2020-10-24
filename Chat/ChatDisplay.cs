@@ -5,6 +5,7 @@ using BS_Utils.Utilities;
 using ChatCore.Interfaces;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
+using HMUI;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -77,7 +78,7 @@ namespace EnhancedStreamChat.Chat
             BSEvents.gameSceneActive += BSEvents_gameSceneActive;
             _waitForEndOfFrame = new WaitForEndOfFrame();
             _waitUntilMessagePositionsNeedUpdate = new WaitUntil(() => _updateMessagePositions == true);
-            StartCoroutine(UpdateMessagePositions());
+            SharedCoroutineStarter.instance.StartCoroutine(UpdateMessagePositions());
         }
 
         // TODO: eventually figure out a way to make this more modular incase we want to create multiple instances of ChatDisplay
@@ -135,12 +136,13 @@ namespace EnhancedStreamChat.Chat
         private FloatingScreen _chatScreen;
         private GameObject _rootGameObject;
         private Material _chatMoverMaterial;
-        private Image _bg;
+        private ImageView _bg;
         private void SetupScreens()
         {
             if (_chatScreen == null)
             {
                 _chatScreen = FloatingScreen.CreateFloatingScreen(new Vector2(ChatWidth, ChatHeight), true, ChatPosition, Quaternion.identity);
+                _chatScreen.GetComponent<CurvedCanvasSettings>().SetRadius(0f);
                 var canvas = _chatScreen.GetComponent<Canvas>();
                 canvas.sortingOrder = 3;
                 _chatScreen.SetRootViewController(this, AnimationType.None);
@@ -152,7 +154,15 @@ namespace EnhancedStreamChat.Chat
                 renderer.material = _chatMoverMaterial;
                 _chatScreen.transform.SetParent(_rootGameObject.transform);
                 _chatScreen.ScreenRotation = Quaternion.Euler(ChatRotation);
-                _bg = _chatScreen.gameObject.GetComponent<Image>();
+                // "fix" for BSML FloatingScreen not having an image
+                var bg = new GameObject("bg");
+                bg.transform.SetParent(_chatScreen.transform, false);
+                _bg = bg.gameObject.AddComponent<ImageView>();
+                _bg.transform.localScale = _chatScreen.ScreenSize;
+                _bg.raycastTarget = false;
+                _bg.sprite = Resources.FindObjectsOfTypeAll<Sprite>().First(x => x.name == "MainScreenMask");
+                _bg.type = Image.Type.Sliced;
+                _bg.preserveAspect = true;
                 _bg.material = Instantiate(BeatSaberUtils.UINoGlowMaterial);
                 _bg.color = BackgroundColor;
                 AddToVRPointer();

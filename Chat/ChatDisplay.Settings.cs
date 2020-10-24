@@ -213,7 +213,11 @@ namespace EnhancedStreamChat.Chat
         [UIValue("allow-movement")]
         public bool AllowMovement
         {
-            get => _chatConfig.AllowMovement;
+            get
+            {
+                _chatScreen.ShowHandle = _chatConfig.AllowMovement;
+                return _chatConfig.AllowMovement; 
+            }
             set
             {
                 _chatConfig.AllowMovement = value;

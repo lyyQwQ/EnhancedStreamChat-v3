@@ -89,6 +89,7 @@ namespace EnhancedStreamChat.Chat
                 MainThreadInvoker.ClearQueue();
             }
             _chatDisplay = BeatSaberUI.CreateViewController<ChatDisplay>();
+            _chatDisplay.gameObject.SetActive(true);
         }
 
         private ConcurrentQueue<Action> _actionQueue = new ConcurrentQueue<Action>();
