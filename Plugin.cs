@@ -30,17 +30,14 @@ namespace EnhancedStreamChat
         [OnEnable]
         public void OnEnable()
         {
-            BSEvents.lateMenuSceneLoadedFresh += (x) =>
+            try
             {
-                try
-                {
-                    ChatManager.instance.enabled = true;
-                }
-                catch(Exception ex)
-                {
-                    Logger.log.Error(ex);
-                }
-            };
+                ChatManager.instance.enabled = true;
+            }
+            catch (Exception ex)
+            {
+                Logger.log.Error(ex);
+            }
         }
 
         [OnDisable]
