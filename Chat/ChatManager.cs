@@ -36,7 +36,7 @@ namespace EnhancedStreamChat.Chat
             _svcs.OnChannelResourceDataCached += QueueOrSendOnChannelResourceDataCached;
             ChatImageProvider.TouchInstance();
             Task.Run(HandleOverflowMessageQueue);
-            BSEvents.menuSceneLoadedFresh += BSEvents_menuSceneLoadedFresh;
+            BSEvents.lateMenuSceneLoadedFresh += BSEvents_menuSceneLoadedFresh;
         }
 
         private void _sc_OnLogReceived(CustomLogLevel level, string category, string log)
@@ -63,7 +63,7 @@ namespace EnhancedStreamChat.Chat
                 _svcs.OnChatCleared -= QueueOrSendOnClearChat;
                 _svcs.OnMessageCleared -= QueueOrSendOnClearMessage;
                 _svcs.OnChannelResourceDataCached -= QueueOrSendOnChannelResourceDataCached;
-                BSEvents.menuSceneLoadedFresh -= BSEvents_menuSceneLoadedFresh;
+                BSEvents.lateMenuSceneLoadedFresh -= BSEvents_menuSceneLoadedFresh;
             }
             if (_sc != null)
             {
@@ -80,7 +80,7 @@ namespace EnhancedStreamChat.Chat
         }
 
         ChatDisplay _chatDisplay;
-        private void BSEvents_menuSceneLoadedFresh()
+        private void BSEvents_menuSceneLoadedFresh(ScenesTransitionSetupDataSO scenesTransitionSetupDataSo)
         {
             if (_chatDisplay != null)
             {
