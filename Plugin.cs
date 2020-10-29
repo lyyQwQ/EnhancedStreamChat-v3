@@ -4,7 +4,6 @@ using IPALogger = IPA.Logging.Logger;
 using EnhancedStreamChat.Chat;
 using IPA.Loader;
 using System.Reflection;
-using BS_Utils.Utilities;
 
 namespace EnhancedStreamChat
 {
