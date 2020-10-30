@@ -141,18 +141,28 @@ namespace EnhancedStreamChat.Chat
         {
             if (_chatScreen == null)
             {
-                _chatScreen = FloatingScreen.CreateFloatingScreen(new Vector2(ChatWidth, ChatHeight), true, ChatPosition, Quaternion.identity);
+                _chatScreen = FloatingScreen.CreateFloatingScreen(new Vector2(ChatWidth, ChatHeight), true, ChatPosition, Quaternion.identity, 0f,  true);
+                
                 var canvas = _chatScreen.GetComponent<Canvas>();
                 canvas.sortingOrder = 3;
+
                 _chatScreen.SetRootViewController(this, AnimationType.None);
                 _rootGameObject = new GameObject();
                 DontDestroyOnLoad(_rootGameObject);
-                _chatMoverMaterial = Instantiate(BeatSaberUtils.UINoGlowMaterial);
+
+                /*_chatMoverMaterial = Instantiate(BeatSaberUtils.UINoGlowMaterial);
                 _chatMoverMaterial.color = Color.clear;
+
                 var renderer = _chatScreen.handle.gameObject.GetComponent<Renderer>();
-                renderer.material = _chatMoverMaterial;
+                renderer.material.mainTexture = _chatMoverMaterial.mainTexture;*/
+                
                 _chatScreen.transform.SetParent(_rootGameObject.transform);
                 _chatScreen.ScreenRotation = Quaternion.Euler(ChatRotation);
+
+                _bg = _chatScreen.GetComponentInChildren<ImageView>();
+                _bg.material.mainTexture = BeatSaberUtils.UINoGlowMaterial.mainTexture;
+                _bg.color = BackgroundColor;
+                
                 AddToVRPointer();
             }
         }
@@ -274,9 +284,9 @@ namespace EnhancedStreamChat.Chat
                 ChatPosition = _chatConfig.Menu_ChatPosition;
                 ChatRotation = _chatConfig.Menu_ChatRotation;
             }
-            _chatScreen.handle.transform.localScale = new Vector2(ChatWidth, ChatHeight);
-            _chatScreen.handle.transform.localPosition = Vector3.zero;
-            _chatScreen.handle.transform.localRotation = Quaternion.identity;
+            // _chatScreen.handle.transform.localScale = new Vector3(ChatWidth, ChatHeight, 0.01f);
+            // _chatScreen.handle.transform.localPosition = Vector3.zero;
+            // _chatScreen.handle.transform.localRotation = Quaternion.identity;
             AllowMovement = _chatConfig.AllowMovement;
             UpdateMessages();
         }

@@ -3,8 +3,8 @@ using BeatSaberMarkupLanguage.Components.Settings;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
 using System.Diagnostics;
+using HMUI;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace EnhancedStreamChat.Chat
 {
@@ -101,7 +101,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.BackgroundColor = value;
-                _chatScreen.gameObject.GetComponent<Image>().material.color = value;
+                _chatScreen.GetComponentInChildren<ImageView>().material.color = value;
                 NotifyPropertyChanged();
             }
         }
