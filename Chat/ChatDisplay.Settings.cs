@@ -5,6 +5,7 @@ using BeatSaberMarkupLanguage.ViewControllers;
 using System.Diagnostics;
 using HMUI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace EnhancedStreamChat.Chat
 {
@@ -14,6 +15,9 @@ namespace EnhancedStreamChat.Chat
         [UIAction("#post-parse")]
         private void PostParse()
         {
+            // TODO: Enable once message offset issue is fixed
+            //_chatContainer.AddComponent<RectMask2D>();
+            
             // bg
             _backgroundColorSetting.editButton.onClick.AddListener(HideSettings);
             _backgroundColorSetting.modalColorPicker.cancelEvent += ShowSettings;
@@ -39,6 +43,12 @@ namespace EnhancedStreamChat.Chat
         [UIParams]
         internal BSMLParserParams parserParams;
 
+        [UIObject("settings-icon")]
+        internal GameObject settingsIconGameObject;
+
+        [UIObject("settings-modal")]
+        internal GameObject settingsModalGameObject;
+
         [UIComponent("background-color-setting")]
         ColorSetting _backgroundColorSetting;
 
@@ -54,7 +64,7 @@ namespace EnhancedStreamChat.Chat
         [UIComponent("text-color-setting")]
         ColorSetting _textColorSetting;
 
-        [UIObject("ChatContainer")]
+        [UIObject("chat-container")]
         GameObject _chatContainer;
 
         private Color _accentColor;
@@ -301,6 +311,7 @@ namespace EnhancedStreamChat.Chat
         private void ShowSettings()
         {
             parserParams.EmitEvent("show-settings");
+            settingsModalGameObject.transform.Translate(Vector3.back * 6, Space.Self);
         }
     }
 }
