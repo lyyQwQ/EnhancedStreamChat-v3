@@ -1,6 +1,7 @@
-﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:schemaLocation='https://monkeymanboy.github.io/BSML-Docs/ https://raw.githubusercontent.com/monkeymanboy/BSML-Docs/gh-pages/BSMLSchema.xsd'>
-  <clickable-image src='EnhancedStreamChat.Resources.Settings.png' click-event='show-settings' ignore-layout='true' anchor-min-x='0.96' anchor-max-x='0.96' anchor-min-y='0.04' anchor-max-y='0.04' size-delta-x='7' preserve-aspect='true' default-color='#FFFFFF11' highlight-color='#FFFFFFFF'></clickable-image>
-  <modal show-event='show-settings' hide-event='hide-settings' move-to-center="true" click-off-closes="true" size-delta-x='~settings-width' size-delta-y='100'>
+﻿<stack xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://raw.githubusercontent.com/monkeymanboy/BSML-Docs/gh-pages/BSMLSchema.xsd'>
+  <vertical id="chat-container" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" preferred-width="~chat-width" preferred-height="~chat-height" child-align="LowerLeft"  background="round-rect-panel" bg-color="red"  />  
+  <clickable-image id="settings-icon" src='EnhancedStreamChat.Resources.Settings.png' click-event='show-settings' ignore-layout='true' anchor-min-x='0.96' anchor-max-x='0.96' anchor-min-y='0.04' anchor-max-y='0.04' size-delta-x='7' preserve-aspect='true' default-color='#FFFFFF11' highlight-color='#FFFFFFFF'></clickable-image>
+  <modal id="settings-modal" show-event='show-settings' hide-event='hide-settings' move-to-center="true" click-off-closes="true" size-delta-x='~settings-width' size-delta-y='100'>
     <vertical child-control-height='false' child-expand-height='false' pad-top='6'>
       <!--<horizontal bg='panel-top' pad-left='15' pad-right='15' horizontal-fit='PreferredSize'>
           <text text='Enhanced Stream Chat v3' align='Center' font-size='8'/>
@@ -53,4 +54,4 @@
       </tab>
     </vertical>
   </modal>
-</bg>
+</stack>
