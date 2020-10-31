@@ -46,7 +46,7 @@ namespace EnhancedStreamChat.Chat
                     msg.SubText.enableWordWrapping = true;
                     msg.SubText.FontInfo = _chatFont;
                     (msg.transform as RectTransform).pivot = new Vector2(0.5f, 0);
-                    msg.transform.SetParent(transform, false);
+                    msg.transform.SetParent(_chatContainer.transform, false);
                     msg.gameObject.SetActive(false);
                     UpdateMessage(msg);
                     return msg;
