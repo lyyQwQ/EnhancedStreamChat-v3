@@ -139,6 +139,7 @@ namespace EnhancedStreamChat.Chat
         private GameObject _rootGameObject;
         private Material _chatMoverMaterial;
         private ImageView _bg;
+
         private void SetupScreens()
         {
             if (_chatScreen == null)
@@ -161,13 +162,14 @@ namespace EnhancedStreamChat.Chat
                 _chatScreen.SetRootViewController(this, AnimationType.None);
                 _rootGameObject = new GameObject();
                 DontDestroyOnLoad(_rootGameObject);
-
-                /*_chatMoverMaterial = Instantiate(BeatSaberUtils.UINoGlowMaterial);
+                
+                _chatMoverMaterial = Instantiate(BeatSaberUtils.UINoGlowMaterial);
                 _chatMoverMaterial.color = Color.clear;
 
                 var renderer = _chatScreen.handle.gameObject.GetComponent<Renderer>();
-                renderer.material.mainTexture = _chatMoverMaterial.mainTexture;*/
-                
+                renderer.material = _chatMoverMaterial;
+                renderer.material.mainTexture = _chatMoverMaterial.mainTexture;
+
                 _chatScreen.transform.SetParent(_rootGameObject.transform);
                 _chatScreen.ScreenRotation = Quaternion.Euler(ChatRotation);
 
@@ -176,6 +178,7 @@ namespace EnhancedStreamChat.Chat
                 _bg.color = BackgroundColor;
                 
                 AddToVRPointer();
+                UpdateChatUI();
             }
         }
 
@@ -279,6 +282,8 @@ namespace EnhancedStreamChat.Chat
 
         private void UpdateChatUI()
         {
+            Logger.log.Info("Updating Chat UI");
+
             ChatWidth = _chatConfig.ChatWidth;
             ChatHeight = _chatConfig.ChatHeight;
             FontSize = _chatConfig.FontSize;
@@ -298,13 +303,12 @@ namespace EnhancedStreamChat.Chat
                 ChatPosition = _chatConfig.Menu_ChatPosition;
                 ChatRotation = _chatConfig.Menu_ChatRotation;
             }
-
             var chatContainerTransform = _chatContainer.GetComponent<RectMask2D>().rectTransform!;
             chatContainerTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
 
-            // _chatScreen.handle.transform.localScale = new Vector3(ChatWidth, ChatHeight, 0.01f);
-            // _chatScreen.handle.transform.localPosition = Vector3.zero;
-            // _chatScreen.handle.transform.localRotation = Quaternion.identity;
+             _chatScreen.handle.transform.localScale = new Vector3(ChatWidth, ChatHeight * 0.9f, 0.01f);
+             _chatScreen.handle.transform.localPosition = Vector3.zero;
+             _chatScreen.handle.transform.localRotation = Quaternion.identity;
 
             AllowMovement = _chatConfig.AllowMovement;
             UpdateMessages();

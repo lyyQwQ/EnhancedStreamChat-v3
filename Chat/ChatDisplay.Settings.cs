@@ -35,6 +35,10 @@ namespace EnhancedStreamChat.Chat
             _textColorSetting.editButton.onClick.AddListener(HideSettings);
             _textColorSetting.modalColorPicker.cancelEvent += ShowSettings;
             _textColorSetting.CurrentColor = _chatConfig.TextColor;
+
+            // Move interactables in front of the screen
+            settingsModalGameObject.transform.localPosition = new Vector3(settingsModalGameObject.transform.localPosition.x, settingsModalGameObject.transform.localPosition.y, -2f);
+            settingsIconGameObject.transform.localPosition = new Vector3(settingsIconGameObject.transform.localPosition.x, settingsIconGameObject.transform.localPosition.y, -2f);
         }
 
         [UIParams]
