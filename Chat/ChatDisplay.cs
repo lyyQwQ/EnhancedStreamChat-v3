@@ -14,6 +14,7 @@ using System.Linq;
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using VRUIControls;
 using Color = UnityEngine.Color;
 using Image = UnityEngine.UI.Image;
@@ -134,6 +135,7 @@ namespace EnhancedStreamChat.Chat
         }
 
         private FloatingScreen _chatScreen;
+        private GameObject _chatContainer;
         private GameObject _rootGameObject;
         private Material _chatMoverMaterial;
         private ImageView _bg;
@@ -141,7 +143,17 @@ namespace EnhancedStreamChat.Chat
         {
             if (_chatScreen == null)
             {
-                _chatScreen = FloatingScreen.CreateFloatingScreen(new Vector2(ChatWidth, ChatHeight), true, ChatPosition, Quaternion.identity, 0f,  true);
+                var screenSize = new Vector2(ChatWidth, ChatHeight);
+                _chatScreen = FloatingScreen.CreateFloatingScreen(screenSize, true, ChatPosition, Quaternion.identity, 0f,  true);
+                var rectMask2D = _chatScreen.GetComponent<RectMask2D>();
+                if (rectMask2D)
+                {
+                    Destroy(rectMask2D);
+                }
+                
+                _chatContainer = new GameObject("chatContainer");
+                _chatContainer.transform.SetParent(_chatScreen.transform, false);
+                _chatContainer.AddComponent<RectMask2D>().rectTransform.sizeDelta = screenSize;
                 
                 var canvas = _chatScreen.GetComponent<Canvas>();
                 canvas.sortingOrder = 3;
@@ -231,7 +243,9 @@ namespace EnhancedStreamChat.Chat
             {
                 yield return _waitUntilMessagePositionsNeedUpdate;
                 yield return _waitForEndOfFrame;
-                float msgPos = ReverseChatOrder ? ChatHeight : 0;
+                // TODO: Remove later on
+                //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
+                float msgPos = ChatHeight / (ReverseChatOrder ?  2f : -2f);
                 foreach (var chatMsg in _messages.AsEnumerable().Reverse())
                 {
                     var msgHeight = (chatMsg.transform as RectTransform).sizeDelta.y;
@@ -284,9 +298,14 @@ namespace EnhancedStreamChat.Chat
                 ChatPosition = _chatConfig.Menu_ChatPosition;
                 ChatRotation = _chatConfig.Menu_ChatRotation;
             }
+
+            var chatContainerTransform = _chatContainer.GetComponent<RectMask2D>().rectTransform!;
+            chatContainerTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
+
             // _chatScreen.handle.transform.localScale = new Vector3(ChatWidth, ChatHeight, 0.01f);
             // _chatScreen.handle.transform.localPosition = Vector3.zero;
             // _chatScreen.handle.transform.localRotation = Quaternion.identity;
+
             AllowMovement = _chatConfig.AllowMovement;
             UpdateMessages();
         }

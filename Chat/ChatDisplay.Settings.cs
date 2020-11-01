@@ -15,9 +15,6 @@ namespace EnhancedStreamChat.Chat
         [UIAction("#post-parse")]
         private void PostParse()
         {
-            // TODO: Enable once message offset issue is fixed
-            //_chatContainer.AddComponent<RectMask2D>();
-            
             // bg
             _backgroundColorSetting.editButton.onClick.AddListener(HideSettings);
             _backgroundColorSetting.modalColorPicker.cancelEvent += ShowSettings;
@@ -63,9 +60,6 @@ namespace EnhancedStreamChat.Chat
 
         [UIComponent("text-color-setting")]
         ColorSetting _textColorSetting;
-
-        [UIObject("chat-container")]
-        GameObject _chatContainer;
 
         private Color _accentColor;
         [UIValue("accent-color")]
@@ -160,6 +154,7 @@ namespace EnhancedStreamChat.Chat
             {
                 _chatConfig.ChatWidth = value;
                 _chatScreen.ScreenSize = new Vector2(ChatWidth, ChatHeight);
+                _chatContainer.GetComponent<RectMask2D>().rectTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
                 UpdateMessages();
                 NotifyPropertyChanged();
             }
@@ -173,6 +168,7 @@ namespace EnhancedStreamChat.Chat
             {
                 _chatConfig.ChatHeight = value;
                 _chatScreen.ScreenSize = new Vector2(ChatWidth, ChatHeight);
+                _chatContainer.GetComponent<RectMask2D>().rectTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
                 UpdateMessages();
                 NotifyPropertyChanged();
             }
@@ -311,7 +307,6 @@ namespace EnhancedStreamChat.Chat
         private void ShowSettings()
         {
             parserParams.EmitEvent("show-settings");
-            settingsModalGameObject.transform.Translate(Vector3.back * 6, Space.Self);
         }
     }
 }
