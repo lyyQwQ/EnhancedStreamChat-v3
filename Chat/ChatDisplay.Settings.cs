@@ -281,13 +281,13 @@ namespace EnhancedStreamChat.Chat
         [UIAction("launch-kofi")]
         private void LaunchKofi()
         {
-            Process.Start("https://ko-fi.com/brian91292");
+            Application.OpenURL("https://ko-fi.com/brian91292");
         }
 
         [UIAction("launch-github")]
         private void LaunchGitHub()
         {
-            Process.Start("https://github.com/Auros/EnhancedStreamChat-v3");
+            Application.OpenURL("https://github.com/Auros/EnhancedStreamChat-v3");
         }
 
         [UIAction("on-settings-clicked")]

@@ -282,8 +282,6 @@ namespace EnhancedStreamChat.Chat
 
         private void UpdateChatUI()
         {
-            Logger.log.Info("Updating Chat UI");
-
             ChatWidth = _chatConfig.ChatWidth;
             ChatHeight = _chatConfig.ChatHeight;
             FontSize = _chatConfig.FontSize;
