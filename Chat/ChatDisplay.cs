@@ -218,9 +218,12 @@ namespace EnhancedStreamChat.Chat
 
         private void AddToVRPointer()
         {
-            _chatScreen.screenMover.OnRelease -= floatingScreen_OnRelease;
-            _chatScreen.screenMover.OnRelease += floatingScreen_OnRelease;
-            _chatScreen.screenMover.transform.SetAsFirstSibling();
+            if (_chatScreen.screenMover)
+            {
+                _chatScreen.screenMover.OnRelease -= floatingScreen_OnRelease;
+                _chatScreen.screenMover.OnRelease += floatingScreen_OnRelease;
+                _chatScreen.screenMover.transform.SetAsFirstSibling();
+            }
         }
 
         private bool _updateMessagePositions = false;
