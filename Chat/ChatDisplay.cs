@@ -218,23 +218,9 @@ namespace EnhancedStreamChat.Chat
 
         private void AddToVRPointer()
         {
-            VRPointer pointer = null;
-            if (_isInGame)
-            {
-                pointer = Resources.FindObjectsOfTypeAll<VRPointer>().Last();
-            }
-            else
-            {
-                pointer = Resources.FindObjectsOfTypeAll<VRPointer>().First();
-            }
-            if (_chatScreen.screenMover != null)
-            {
-                DestroyImmediate(_chatScreen.screenMover);
-                _chatScreen.screenMover = pointer.gameObject.AddComponent<FloatingScreenMoverPointer>();
-                _chatScreen.screenMover.Init(_chatScreen);
-                _chatScreen.screenMover.OnRelease += floatingScreen_OnRelease;
-                _chatScreen.screenMover.transform.SetAsFirstSibling();
-            }
+            _chatScreen.screenMover.OnRelease -= floatingScreen_OnRelease;
+            _chatScreen.screenMover.OnRelease += floatingScreen_OnRelease;
+            _chatScreen.screenMover.transform.SetAsFirstSibling();
         }
 
         private bool _updateMessagePositions = false;
