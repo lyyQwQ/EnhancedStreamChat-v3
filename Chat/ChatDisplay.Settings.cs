@@ -2,12 +2,8 @@
 using BeatSaberMarkupLanguage.Components.Settings;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using HMUI;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -39,10 +35,20 @@ namespace EnhancedStreamChat.Chat
             _textColorSetting.editButton.onClick.AddListener(HideSettings);
             _textColorSetting.modalColorPicker.cancelEvent += ShowSettings;
             _textColorSetting.CurrentColor = _chatConfig.TextColor;
+
+            // Move interactables in front of the screen
+            settingsModalGameObject.transform.localPosition = new Vector3(settingsModalGameObject.transform.localPosition.x, settingsModalGameObject.transform.localPosition.y, -2f);
+            settingsIconGameObject.transform.localPosition = new Vector3(settingsIconGameObject.transform.localPosition.x, settingsIconGameObject.transform.localPosition.y, -2f);
         }
 
         [UIParams]
         internal BSMLParserParams parserParams;
+
+        [UIObject("settings-icon")]
+        internal GameObject settingsIconGameObject;
+
+        [UIObject("settings-modal")]
+        internal GameObject settingsModalGameObject;
 
         [UIComponent("background-color-setting")]
         ColorSetting _backgroundColorSetting;
@@ -58,9 +64,6 @@ namespace EnhancedStreamChat.Chat
 
         [UIComponent("text-color-setting")]
         ColorSetting _textColorSetting;
-
-        [UIObject("ChatContainer")]
-        GameObject _chatContainer;
 
         private Color _accentColor;
         [UIValue("accent-color")]
@@ -106,7 +109,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.BackgroundColor = value;
-                _chatScreen.gameObject.GetComponent<Image>().material.color = value;
+                _chatScreen.GetComponentInChildren<ImageView>().material.color = value;
                 NotifyPropertyChanged();
             }
         }
@@ -155,6 +158,7 @@ namespace EnhancedStreamChat.Chat
             {
                 _chatConfig.ChatWidth = value;
                 _chatScreen.ScreenSize = new Vector2(ChatWidth, ChatHeight);
+                _chatContainer.GetComponent<RectMask2D>().rectTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
                 UpdateMessages();
                 NotifyPropertyChanged();
             }
@@ -168,6 +172,7 @@ namespace EnhancedStreamChat.Chat
             {
                 _chatConfig.ChatHeight = value;
                 _chatScreen.ScreenSize = new Vector2(ChatWidth, ChatHeight);
+                _chatContainer.GetComponent<RectMask2D>().rectTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
                 UpdateMessages();
                 NotifyPropertyChanged();
             }
@@ -179,14 +184,16 @@ namespace EnhancedStreamChat.Chat
             get => _isInGame ? _chatConfig.Song_ChatPosition : _chatConfig.Menu_ChatPosition;
             set
             {
-                if (_isInGame)
+                if (_isInGame || SyncOrientation)
                 {
                     _chatConfig.Song_ChatPosition = value;
                 }
-                else
+
+                if (!_isInGame || SyncOrientation)
                 {
                     _chatConfig.Menu_ChatPosition = value;
                 }
+
                 _chatScreen.ScreenPosition = value;
                 NotifyPropertyChanged();
             }
@@ -198,14 +205,16 @@ namespace EnhancedStreamChat.Chat
             get => _isInGame ? _chatConfig.Song_ChatRotation : _chatConfig.Menu_ChatRotation;
             set
             {
-                if (_isInGame)
+                if (_isInGame || SyncOrientation)
                 {
                     _chatConfig.Song_ChatRotation = value;
                 }
-                else
+
+                if (!_isInGame || SyncOrientation)
                 {
                     _chatConfig.Menu_ChatRotation = value;
                 }
+
                 _chatScreen.ScreenRotation = Quaternion.Euler(value);
                 NotifyPropertyChanged();
             }
@@ -219,6 +228,24 @@ namespace EnhancedStreamChat.Chat
             {
                 _chatConfig.AllowMovement = value;
                 _chatScreen.ShowHandle = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        [UIValue("sync-orientation")]
+        public bool SyncOrientation
+        {
+            get => _chatConfig.SyncOrientation;
+            set
+            {
+                _chatConfig.SyncOrientation = value;
+
+                if (value)
+                {
+                    ChatPosition = ChatPosition;
+                    ChatRotation = ChatRotation;
+                }
+
                 NotifyPropertyChanged();
             }
         }
@@ -250,13 +277,13 @@ namespace EnhancedStreamChat.Chat
         [UIAction("launch-kofi")]
         private void LaunchKofi()
         {
-            Process.Start("https://ko-fi.com/brian91292");
+            Application.OpenURL("https://ko-fi.com/brian91292");
         }
 
         [UIAction("launch-github")]
         private void LaunchGitHub()
         {
-            Process.Start("https://github.com/brian91292/EnhancedStreamChat-v3");
+            Application.OpenURL("https://github.com/Auros/EnhancedStreamChat-v3");
         }
 
         [UIAction("on-settings-clicked")]

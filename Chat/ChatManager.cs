@@ -4,17 +4,12 @@ using ChatCore;
 using ChatCore.Interfaces;
 using ChatCore.Logging;
 using ChatCore.Services;
-using ChatCore.Services.Twitch;
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
-using ChatCore.Config;
 using BeatSaberMarkupLanguage;
 
 namespace EnhancedStreamChat.Chat
@@ -41,7 +36,7 @@ namespace EnhancedStreamChat.Chat
             _svcs.OnChannelResourceDataCached += QueueOrSendOnChannelResourceDataCached;
             ChatImageProvider.TouchInstance();
             Task.Run(HandleOverflowMessageQueue);
-            BSEvents.menuSceneLoadedFresh += BSEvents_menuSceneLoadedFresh;
+            BSEvents.lateMenuSceneLoadedFresh += BSEvents_menuSceneLoadedFresh;
         }
 
         private void _sc_OnLogReceived(CustomLogLevel level, string category, string log)
@@ -68,7 +63,7 @@ namespace EnhancedStreamChat.Chat
                 _svcs.OnChatCleared -= QueueOrSendOnClearChat;
                 _svcs.OnMessageCleared -= QueueOrSendOnClearMessage;
                 _svcs.OnChannelResourceDataCached -= QueueOrSendOnChannelResourceDataCached;
-                BSEvents.menuSceneLoadedFresh -= BSEvents_menuSceneLoadedFresh;
+                BSEvents.lateMenuSceneLoadedFresh -= BSEvents_menuSceneLoadedFresh;
             }
             if (_sc != null)
             {
@@ -85,7 +80,7 @@ namespace EnhancedStreamChat.Chat
         }
 
         ChatDisplay _chatDisplay;
-        private void BSEvents_menuSceneLoadedFresh()
+        private void BSEvents_menuSceneLoadedFresh(ScenesTransitionSetupDataSO scenesTransitionSetupDataSo)
         {
             if (_chatDisplay != null)
             {
@@ -94,6 +89,7 @@ namespace EnhancedStreamChat.Chat
                 MainThreadInvoker.ClearQueue();
             }
             _chatDisplay = BeatSaberUI.CreateViewController<ChatDisplay>();
+            _chatDisplay.gameObject.SetActive(true);
         }
 
         private ConcurrentQueue<Action> _actionQueue = new ConcurrentQueue<Action>();
