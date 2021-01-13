@@ -93,11 +93,18 @@
         <EmbeddedResource Include="Resources\PizzaDog.jpg" />
     </ItemGroup>
 
-    <Target Name="CopyToPlugins" AfterTargets="AfterBuild">
+    <ItemGroup>
+      <PackageReference Include="BeatSaberModdingTools.Tasks" Version="1.3.2">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+    <!--<Target Name="CopyToPlugins" AfterTargets="AfterBuild">
         <Message Text="Copying $(OutDir)EnhancedStreamChat.dll to Plugins folder" Importance="high" />
         <Copy SourceFiles="$(OutDir)EnhancedStreamChat.dll" DestinationFiles="$(BeatSaberDir)\Plugins\EnhancedStreamChat.dll" />
         <Message Text="Copying $(OutDir)EnhancedStreamChat.pdb to Plugins folder" Importance="high" />
         <Copy SourceFiles="$(OutDir)EnhancedStreamChat.pdb" DestinationFiles="$(BeatSaberDir)\Plugins\EnhancedStreamChat.pdb" />
-    </Target>
+    </Target>-->
 
 </Project>
