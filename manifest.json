@@ -3,7 +3,7 @@
   "id": "EnhancedStreamChat",
   "name": "Enhanced Stream Chat",
   "author": "brian91292",
-  "version": "3.0.1-rc6",
+  "version": "3.0.2-rc6",
   "description": "Enhanced Stream Chat is a rich text chat integration mod, with full unicode, emote, and emoji support.",
   "gameVersion": "1.13.0",
   "dependsOn": {
@@ -13,7 +13,7 @@
     "ChatCore": "^2.0.0"
   },
   "links": {
-    "project-home": "https://github.com/Auros/EnhancedStreamChat-v3",
+    "project-home": "https://github.com/denpadokei/EnhancedStreamChat-v3",
     "donate": "https://ko-fi.com/brian91292"
   }
 }

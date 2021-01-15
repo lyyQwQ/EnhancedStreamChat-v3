@@ -10,10 +10,10 @@
         <RootNamespace>EnhancedStreamChat</RootNamespace>
         <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
         <ModVersion>3.0.0</ModVersion>
-        <AssemblyVersion>3.0.1</AssemblyVersion>
-        <FileVersion>3.0.1</FileVersion>
+        <AssemblyVersion>3.0.2</AssemblyVersion>
+        <FileVersion>3.0.2</FileVersion>
         <InformationalVersion>$(ModVersion)</InformationalVersion>
-        <Version>3.0.1</Version>
+        <Version>3.0.2-rc6</Version>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
