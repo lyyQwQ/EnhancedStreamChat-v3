@@ -73,7 +73,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.AccentColor = value;
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }
@@ -85,7 +85,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.HighlightColor = value;
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }
@@ -97,7 +97,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.PingColor = value;
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }
@@ -121,7 +121,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.TextColor = value;
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }
@@ -133,7 +133,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.FontSize = value;
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }
@@ -159,7 +159,7 @@ namespace EnhancedStreamChat.Chat
                 _chatConfig.ChatWidth = value;
                 _chatScreen.ScreenSize = new Vector2(ChatWidth, ChatHeight);
                 _chatContainer.GetComponent<RectMask2D>().rectTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }
@@ -173,7 +173,7 @@ namespace EnhancedStreamChat.Chat
                 _chatConfig.ChatHeight = value;
                 _chatScreen.ScreenSize = new Vector2(ChatWidth, ChatHeight);
                 _chatContainer.GetComponent<RectMask2D>().rectTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }
@@ -257,7 +257,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 _chatConfig.ReverseChatOrder = value;
-                UpdateMessages();
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
                 NotifyPropertyChanged();
             }
         }

@@ -10,6 +10,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using TMPro;
@@ -55,6 +56,7 @@ namespace EnhancedStreamChat.Chat
                 {
                     try
                     {
+                        msg.gameObject.SetActive(false);
                         msg.HighlightEnabled = false;
                         msg.AccentEnabled = false;
                         msg.SubTextEnabled = false;
@@ -63,7 +65,6 @@ namespace EnhancedStreamChat.Chat
                         msg.SubText.text = "";
                         msg.SubText.ChatMessage = null;
                         msg.OnLatePreRenderRebuildComplete -= OnRenderRebuildComplete;
-                        msg.gameObject.SetActive(false);
                         msg.Text.ClearImages();
                         msg.SubText.ClearImages();
                     }
@@ -79,7 +80,7 @@ namespace EnhancedStreamChat.Chat
             BSEvents.gameSceneActive += BSEvents_gameSceneActive;
             _waitForEndOfFrame = new WaitForEndOfFrame();
             _waitUntilMessagePositionsNeedUpdate = new WaitUntil(() => _updateMessagePositions == true);
-            SharedCoroutineStarter.instance.StartCoroutine(UpdateMessagePositions());
+            HMMainThreadDispatcher.instance.Enqueue(UpdateMessagePositions());
         }
 
         // TODO: eventually figure out a way to make this more modular incase we want to create multiple instances of ChatDisplay
@@ -237,6 +238,8 @@ namespace EnhancedStreamChat.Chat
                 yield return _waitForEndOfFrame;
                 // TODO: Remove later on
                 //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
+                var stopWatch = new Stopwatch();
+                stopWatch.Start();
                 float msgPos = ChatHeight / (ReverseChatOrder ?  2f : -2f);
                 foreach (var chatMsg in _messages.AsEnumerable().Reverse())
                 {
@@ -250,8 +253,11 @@ namespace EnhancedStreamChat.Chat
                     {
                         msgPos += msgHeight;
                     }
+                    yield return null;
                 }
                 _updateMessagePositions = false;
+                stopWatch.Stop();
+                Logger.log.Debug($"Update message position : {stopWatch.ElapsedMilliseconds} ms");
             }
         }
 
@@ -264,7 +270,7 @@ namespace EnhancedStreamChat.Chat
         {
             _messages.Enqueue(newMsg);
             UpdateMessage(newMsg);
-            ClearOldMessages();
+            HMMainThreadDispatcher.instance.Enqueue(ClearOldMessages());
             newMsg.OnLatePreRenderRebuildComplete += OnRenderRebuildComplete;
             newMsg.gameObject.SetActive(true);
         }
@@ -298,19 +304,26 @@ namespace EnhancedStreamChat.Chat
              _chatScreen.handle.transform.localRotation = Quaternion.identity;
 
             AllowMovement = _chatConfig.AllowMovement;
-            UpdateMessages();
+            HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
         }
 
-        private void UpdateMessages()
+        private IEnumerator UpdateMessages()
         {
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
             foreach (var msg in _messages) {
                 UpdateMessage(msg, true);
+                yield return null;
             }
             _updateMessagePositions = true;
+            stopWatch.Stop();
+            Logger.log.Debug($"Update messages : {stopWatch.ElapsedMilliseconds} ms");
         }
 
         private void UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
         {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             (msg.transform as RectTransform).sizeDelta = new Vector2(ChatWidth, (msg.transform as RectTransform).sizeDelta.y);
             msg.Text.font = _chatFont.Font;
             msg.Text.overflowMode = TextOverflowModes.Overflow;
@@ -342,15 +355,21 @@ namespace EnhancedStreamChat.Chat
                     msg.SubText.SetAllDirty();
                 }
             }
+            stopwatch.Stop();
+            Logger.log.Debug($"Update message : {stopwatch.ElapsedMilliseconds} ms");
         }
-
-        private void ClearOldMessages()
+        private IEnumerator ClearOldMessages()
         {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             while (_messages.TryPeek(out var msg) && ReverseChatOrder ? msg.transform.localPosition.y < 0 - (msg.transform as RectTransform).sizeDelta.y : msg.transform.localPosition.y >= ChatConfig.instance.ChatHeight)
             {
                 _messages.TryDequeue(out msg);
                 TextPool.Free(msg);
+                yield return null;
             }
+            stopwatch.Stop();
+            Logger.log.Debug($"Clear old messages : {stopwatch.ElapsedMilliseconds}ms");
         }
 
         private string BuildClearedMessage(EnhancedTextMeshProUGUI msg)
@@ -441,7 +460,7 @@ namespace EnhancedStreamChat.Chat
                     {
                         if (emote.Value.IsAnimated)
                         {
-                            StartCoroutine(ChatImageProvider.instance.PrecacheAnimatedImage(emote.Value.Uri, emote.Key, 110));
+                            HMMainThreadDispatcher.instance.Enqueue(ChatImageProvider.instance.PrecacheAnimatedImage(emote.Value.Uri, emote.Key, 110));
                             count++;
                         }
                     }
@@ -458,18 +477,18 @@ namespace EnhancedStreamChat.Chat
         public async void OnTextMessageReceived(IChatMessage msg)
         {
             string parsedMessage = await ChatMessageBuilder.BuildMessage(msg, _chatFont, _isInGame);
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
             MainThreadInvoker.Invoke(() =>
             {
-                if (_lastMessage != null && !msg.IsSystemMessage && _lastMessage.Text.ChatMessage.Id == msg.Id)
-                {
+                if (_lastMessage != null && !msg.IsSystemMessage && _lastMessage.Text.ChatMessage.Id == msg.Id) {
                     // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
                     _lastMessage.SubText.text = parsedMessage;
                     _lastMessage.SubText.ChatMessage = msg;
                     _lastMessage.SubTextEnabled = true;
                     UpdateMessage(_lastMessage);
                 }
-                else
-                {
+                else {
                     var newMsg = TextPool.Alloc();
                     newMsg.Text.ChatMessage = msg;
                     newMsg.Text.text = parsedMessage;
@@ -477,6 +496,8 @@ namespace EnhancedStreamChat.Chat
                     _lastMessage = newMsg;
                 }
             });
+            stopWatch.Stop();
+            Logger.log.Debug($"On text recieved : {stopWatch.ElapsedMilliseconds} ms");
         }
 
         private void CreateChatFont()
