@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using UnityEngine;
 
 namespace EnhancedStreamChat.Utilities
@@ -10,62 +10,31 @@ namespace EnhancedStreamChat.Utilities
 	/// <typeparam name="T"></typeparam>
 	public class ObjectPool<T> : IDisposable where T : Component
 	{
-		private readonly Queue<T> _freeObjects;
+		private readonly ConcurrentBag<T> _freeObjects;
 		private readonly Action<T>? _firstAlloc;
 		private readonly Action<T>? _onAlloc;
 		private readonly Action<T>? _onFree;
 		private readonly Func<T>? _constructor;
-		private readonly object _lock = new object();
+        private bool disposedValue;
 
-		/// <summary>
-		/// ObjectPool constructor function, used to setup the initial pool size and callbacks.
-		/// </summary>
-		/// <param name="initialCount">The number of components of type T to allocate right away.</param>
-		/// <param name="constructor">The constructor function used to create new objects in the pool.</param>
-		/// <param name="firstAlloc">The callback function you want to occur only the first time when a new component of type T is allocated.</param>
-		/// <param name="onAlloc">The callback function to be called everytime ObjectPool.Alloc() is called.</param>
-		/// <param name="onFree">The callback function to be called everytime ObjectPool.Free() is called</param>
-		public ObjectPool(int initialCount = 0, Func<T>? constructor = null, Action<T>? firstAlloc = null, Action<T>? onAlloc = null, Action<T>? onFree = null)
+        /// <summary>
+        /// ObjectPool constructor function, used to setup the initial pool size and callbacks.
+        /// </summary>
+        /// <param name="initialCount">The number of components of type T to allocate right away.</param>
+        /// <param name="constructor">The constructor function used to create new objects in the pool.</param>
+        /// <param name="firstAlloc">The callback function you want to occur only the first time when a new component of type T is allocated.</param>
+        /// <param name="onAlloc">The callback function to be called everytime ObjectPool.Alloc() is called.</param>
+        /// <param name="onFree">The callback function to be called everytime ObjectPool.Free() is called</param>
+        public ObjectPool(int initialCount = 0, Func<T>? constructor = null, Action<T>? firstAlloc = null, Action<T>? onAlloc = null, Action<T>? onFree = null)
 		{
 			_constructor = constructor;
 			_firstAlloc = firstAlloc;
 			_onAlloc = onAlloc;
 			_onFree = onFree;
-			_freeObjects = new Queue<T>(initialCount);
+			_freeObjects = new ConcurrentBag<T>();
 
-			while (initialCount-- > 0)
-			{
-				_freeObjects.Enqueue(InternalAlloc());
-			}
-		}
-
-		~ObjectPool()
-		{
-			Dispose();
-		}
-
-		public void Dispose()
-		{
-			Dispose(false);
-		}
-
-		public void Dispose(bool immediate)
-		{
-			lock (_lock)
-			{
-				foreach (T obj in _freeObjects)
-				{
-					if (immediate)
-					{
-						UnityEngine.Object.DestroyImmediate(obj.gameObject);
-					}
-					else
-					{
-						UnityEngine.Object.Destroy(obj.gameObject);
-					}
-				}
-
-				_freeObjects.Clear();
+            for (int i = 0; i < initialCount; i++) {
+				_freeObjects.Add(InternalAlloc());
 			}
 		}
 
@@ -83,22 +52,12 @@ namespace EnhancedStreamChat.Utilities
 		/// <returns></returns>
 		public T Alloc()
 		{
-			lock (_lock)
-			{
-				var obj = _freeObjects.Count switch
-				{
-					> 0 => _freeObjects.Dequeue(),
-					_ => null
-				};
-
-				if (!obj || obj == null)
-				{
-					obj = InternalAlloc();
-				}
-
-				_onAlloc?.Invoke(obj);
-				return obj;
+			if (!_freeObjects.TryTake(out var obj) && !obj) {
+				obj = InternalAlloc();
+				Logger.log.Debug($"InternalAlloc() in Alloc! : {obj}");
 			}
+			_onAlloc?.Invoke(obj);
+			return obj;
 		}
 
 		/// <summary>
@@ -107,12 +66,40 @@ namespace EnhancedStreamChat.Utilities
 		/// <param name="obj"></param>
 		public void Free(T obj)
 		{
-			lock (_lock)
-			{
-				if (obj == null) return;
-				_freeObjects.Enqueue(obj);
-				_onFree?.Invoke(obj);
-			}
+			if (obj == null) return;
+			_onFree?.Invoke(obj);
+			_freeObjects.Add(obj);
 		}
-	}
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue) {
+                if (disposing) {
+                    // TODO: マネージド状態を破棄します (マネージド オブジェクト)
+                    while (_freeObjects.TryTake(out var obj)) {
+						UnityEngine.Object.Destroy(obj.gameObject);
+					}
+					_freeObjects.Clear();
+				}
+
+                // TODO: アンマネージド リソース (アンマネージド オブジェクト) を解放し、ファイナライザーをオーバーライドします
+                // TODO: 大きなフィールドを null に設定します
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: 'Dispose(bool disposing)' にアンマネージド リソースを解放するコードが含まれる場合にのみ、ファイナライザーをオーバーライドします
+        // ~ObjectPool()
+        // {
+        //     // このコードを変更しないでください。クリーンアップ コードを 'Dispose(bool disposing)' メソッドに記述します
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // このコードを変更しないでください。クリーンアップ コードを 'Dispose(bool disposing)' メソッドに記述します
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
 }

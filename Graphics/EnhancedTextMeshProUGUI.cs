@@ -16,26 +16,26 @@ namespace EnhancedStreamChat.Graphics
         private static object _lock = new object();
         public event Action OnLatePreRenderRebuildComplete;
 
-        private static ObjectPool<EnhancedImage> _imagePool = new ObjectPool<EnhancedImage>(50,
+        private static ObjectPool<EnhancedImage> _imagePool = new ObjectPool<EnhancedImage>(64,
             constructor: () =>
             {
                 var img = new GameObject().AddComponent<EnhancedImage>();
                 DontDestroyOnLoad(img.gameObject);
+                img.gameObject.SetActive(false);
                 img.color = Color.white;
                 img.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                 img.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 img.rectTransform.pivot = new Vector2(0, 0);
                 img.animStateUpdater = img.gameObject.AddComponent<AnimationStateUpdater>();
                 img.animStateUpdater.image = img;
-                img.gameObject.SetActive(false);
                 return img;
             },
             onFree: img =>
             {
                 try
                 {
-                    img.animStateUpdater.controllerData = null;
                     img.gameObject.SetActive(false);
+                    img.animStateUpdater.controllerData = null;
                     img.rectTransform.SetParent(null);
                     img.sprite = null;
                 }
