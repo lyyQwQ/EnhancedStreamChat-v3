@@ -63,6 +63,7 @@
       <OldZips Include="$(DestinationDirectory)$(AssemblyName)*.zip"/>
     </ItemGroup>
     <Copy SourceFiles="$(OutDir)EnhancedStreamChat.dll" DestinationFiles="$(ArtifactDestination)\Plugins\$(AssemblyName).dll" />
+    <Copy SourceFiles="$(OutDir)FontAssets\mplus-1m-medium sdf.assets" DestinationFiles="$(ArtifactDestination)\UserData\FontAssets\mplus-1m-medium sdf.assets" />
     <Message Text="PluginVersion: $(PluginVersion), AssemblyVersion: $(AssemblyVersion), GameVersion: $(GameVersion)" Importance="high" />
     <Delete Files="@(OldZips)" TreatErrorsAsWarnings="true" ContinueOnError="true" />
     <ZipDir SourceDirectory="$(ArtifactDestination)" DestinationFile="$(DestinationDirectory)$(ArtifactName).zip" />

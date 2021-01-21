@@ -114,18 +114,8 @@ namespace EnhancedStreamChat.Chat
                         }
                         badges.Push(badgeInfo);
                     }
-                    StringBuilder sb = null;
-#if DEBUG
-                    sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
-#else
-
-                    if (isInGame) {
-                        sb = new StringBuilder(100 < msg.Message.Length ? $"{msg.Message.Substring(0, 99)}..." : msg.Message); // Replace all instances of < with a zero-width non-breaking character
-                    }
-                    else {
-                        sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
-                    }
-#endif
+                    
+                    var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
                     foreach (var emote in msg.Emotes) {
                         if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace)) {
                             Logger.log.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");

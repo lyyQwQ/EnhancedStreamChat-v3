@@ -9,11 +9,11 @@
         <AssemblyName>EnhancedStreamChat</AssemblyName>
         <RootNamespace>EnhancedStreamChat</RootNamespace>
         <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
-        <ModVersion>3.1.0</ModVersion>
-        <AssemblyVersion>3.1.0</AssemblyVersion>
-        <FileVersion>3.1.0</FileVersion>
+        <ModVersion>3.2.0</ModVersion>
+        <AssemblyVersion>3.2.0</AssemblyVersion>
+        <FileVersion>3.2.0</FileVersion>
         <InformationalVersion>$(ModVersion)</InformationalVersion>
-        <Version>3.1.0-rc6</Version>
+        <Version>3.2.0-rc6</Version>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -102,6 +102,12 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="FontAssets\mplus-1m-medium sdf.assets">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
     <!--<Target Name="CopyToPlugins" AfterTargets="AfterBuild">
