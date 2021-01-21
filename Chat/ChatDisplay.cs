@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
@@ -29,11 +30,14 @@ namespace EnhancedStreamChat.Chat
         private EnhancedFontInfo _chatFont;
         private static readonly string FontPath = Path.Combine(Environment.CurrentDirectory, "UserData", "ESC");
         private static readonly string FontAssetPath = Path.Combine(Environment.CurrentDirectory, "UserData", "FontAssets");
-
-        private volatile bool _isInGame = false;
+        private volatile bool _isInGame;
+        private bool _isInitialized = false;
 
         private void Awake()
         {
+            _waitWhileUnInitialize = new WaitWhile(() => !this._isInitialized);
+            _waitForEndOfFrame = new WaitForEndOfFrame();
+            _waitUntilMessagePositionsNeedUpdate = new WaitUntil(() => _updateMessagePositions == true);
             HMMainThreadDispatcher.instance.Enqueue(this.Initialize());
         }
 
@@ -101,8 +105,7 @@ namespace EnhancedStreamChat.Chat
         {
             DontDestroyOnLoad(gameObject);
             _chatConfig = ChatConfig.instance;
-            _waitForEndOfFrame = new WaitForEndOfFrame();
-            _waitUntilMessagePositionsNeedUpdate = new WaitUntil(() => _updateMessagePositions == true);
+            
             HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont());
             yield return new WaitWhile(() => _chatFont == null);
             SetupScreens();
@@ -148,7 +151,13 @@ namespace EnhancedStreamChat.Chat
             ChatConfig.instance.OnConfigChanged += Instance_OnConfigChanged;
             BSEvents.menuSceneActive += BSEvents_menuSceneActive;
             BSEvents.gameSceneActive += BSEvents_gameSceneActive;
-        }
+
+            while (_backupMessageQueue.TryDequeue(out var msg)) {
+                OnTextMessageReceived(msg);
+            }
+
+            this._isInitialized = true;
+    }
 
         private void SetupScreens()
         {
@@ -233,11 +242,13 @@ namespace EnhancedStreamChat.Chat
 
         private volatile bool _updateMessagePositions = false;
         private WaitUntil _waitUntilMessagePositionsNeedUpdate;
+        private WaitWhile _waitWhileUnInitialize;
         private WaitForEndOfFrame _waitForEndOfFrame;
 
 
         private IEnumerator UpdateMessagePositions()
         {
+            yield return _waitWhileUnInitialize;
             yield return _waitForEndOfFrame;
             // TODO: Remove later on
             //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
@@ -304,6 +315,8 @@ namespace EnhancedStreamChat.Chat
 
         private IEnumerator UpdateMessages()
         {
+            yield return _waitWhileUnInitialize;
+
             foreach (var msg in _messages.ToArray()) {
                 yield return _waitForEndOfFrame;
                 UpdateMessage(msg, true);
@@ -311,8 +324,12 @@ namespace EnhancedStreamChat.Chat
             _updateMessagePositions = true;
         }
 
-        private void UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
+        private async Task UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
         {
+            while (_chatFont == null || !_chatFont.Font) {
+                await Task.Delay(500);
+            }
+
             (msg.transform as RectTransform).sizeDelta = new Vector2(ChatWidth, (msg.transform as RectTransform).sizeDelta.y);
             msg.Text.font = _chatFont.Font;
             msg.Text.overflowMode = TextOverflowModes.Overflow;
@@ -443,11 +460,13 @@ namespace EnhancedStreamChat.Chat
         public async void OnTextMessageReceived(IChatMessage msg)
         {
             string parsedMessage = await ChatMessageBuilder.BuildMessage(msg, _chatFont, _isInGame);
-            this.CreateMessage(msg, parsedMessage);
+            HMMainThreadDispatcher.instance.Enqueue(this.CreateMessage(msg, parsedMessage));
         }
 
-        private void CreateMessage(IChatMessage msg, string parsedMessage)
+        private IEnumerator CreateMessage(IChatMessage msg, string parsedMessage)
         {
+            yield return _waitWhileUnInitialize;
+
             if (_lastMessage != null && !msg.IsSystemMessage && _lastMessage.Text.ChatMessage.Id == msg.Id) {
                 // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
                 _lastMessage.SubText.text = parsedMessage;
@@ -544,9 +563,6 @@ namespace EnhancedStreamChat.Chat
                 }
             }
 
-            while (_backupMessageQueue.TryDequeue(out var msg)) {
-                OnTextMessageReceived(msg);
-            }
         }
     }
 }

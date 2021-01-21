@@ -9,11 +9,11 @@
         <AssemblyName>EnhancedStreamChat</AssemblyName>
         <RootNamespace>EnhancedStreamChat</RootNamespace>
         <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
-        <ModVersion>3.2.0</ModVersion>
-        <AssemblyVersion>3.2.0</AssemblyVersion>
-        <FileVersion>3.2.0</FileVersion>
+        <ModVersion>3.2.1</ModVersion>
+        <AssemblyVersion>3.2.1</AssemblyVersion>
+        <FileVersion>3.2.1</FileVersion>
         <InformationalVersion>$(ModVersion)</InformationalVersion>
-        <Version>3.2.0-rc6</Version>
+        <Version>3.2.1-rc6</Version>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
