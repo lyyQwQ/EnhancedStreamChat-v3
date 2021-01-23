@@ -10,6 +10,8 @@ namespace EnhancedStreamChat.Graphics
         public EnhancedTextMeshProUGUI Text { get; internal set; }
         public EnhancedTextMeshProUGUI SubText { get; internal set; }
 
+        public DateTime ReceivedDate { get; internal set; }
+
         public event Action OnLatePreRenderRebuildComplete;
 
         private Image _highlight, _accent;

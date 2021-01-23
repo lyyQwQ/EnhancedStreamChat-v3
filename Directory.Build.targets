@@ -20,11 +20,11 @@
   <!--Runs a build task to get info about the project used by later targets.-->
   <Target Name="GetProjectInfo" AfterTargets="CheckBSMTInstalled" DependsOnTargets="CheckBSMTInstalled" Condition="'$(BSMTTaskAssembly)' != ''">
     <Message Text="Using AssemblyVersion defined in project instead of 'Properties\AssemblyInfo.cs'" Importance="high" Condition="'$(AssemblyVersion)' != ''" />
-    <!--<GetManifestInfo KnownAssemblyVersion="$(AssemblyVersion)" ErrorOnMismatch="$(ErrorOnMismatchedVersions)">
+    <GetManifestInfo KnownAssemblyVersion="$(AssemblyVersion)" ErrorOnMismatch="">
       <Output TaskParameter="PluginVersion" PropertyName="PluginVersion" />
       <Output TaskParameter="GameVersion" PropertyName="GameVersion" />
-      <Output TaskParameter="AssemblyVersion" PropertyName="AssemblyVersion" />
-    </GetManifestInfo>-->
+      <Output TaskParameter="PluginVersion" PropertyName="AssemblyVersion" />
+    </GetManifestInfo>
     <GetCommitInfo ProjectDir="$(ProjectDir)">
       <Output TaskParameter="CommitHash" PropertyName="CommitHash" />
       <Output TaskParameter="Branch" PropertyName="Branch" />
@@ -63,7 +63,7 @@
       <OldZips Include="$(DestinationDirectory)$(AssemblyName)*.zip"/>
     </ItemGroup>
     <Copy SourceFiles="$(OutDir)EnhancedStreamChat.dll" DestinationFiles="$(ArtifactDestination)\Plugins\$(AssemblyName).dll" />
-    <Copy SourceFiles="$(OutDir)FontAssets\mplus-1m-medium sdf.assets" DestinationFiles="$(ArtifactDestination)\UserData\FontAssets\mplus-1m-medium sdf.assets" />
+    <Copy SourceFiles="$(OutDir)FontAssets\mplus-1m-medium sdf.assets" DestinationFiles="$(ArtifactDestination)\UserData\FontAssets\Main\mplus-1m-medium sdf.assets" />
     <Message Text="PluginVersion: $(PluginVersion), AssemblyVersion: $(AssemblyVersion), GameVersion: $(GameVersion)" Importance="high" />
     <Delete Files="@(OldZips)" TreatErrorsAsWarnings="true" ContinueOnError="true" />
     <ZipDir SourceDirectory="$(ArtifactDestination)" DestinationFile="$(DestinationDirectory)$(ArtifactName).zip" />

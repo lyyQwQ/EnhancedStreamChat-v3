@@ -27,22 +27,17 @@ namespace EnhancedStreamChat.Chat
         public ObjectPool<EnhancedTextMeshProUGUIWithBackground> TextPool { get; internal set; }
         private ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground> _messages = new ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground>();
         private ChatConfig _chatConfig;
-        private EnhancedFontInfo _chatFont;
-        private static readonly string FontPath = Path.Combine(Environment.CurrentDirectory, "UserData", "ESC");
-        private static readonly string FontAssetPath = Path.Combine(Environment.CurrentDirectory, "UserData", "FontAssets");
+        
         private volatile bool _isInGame;
-        private bool _isInitialized = false;
 
         private void Awake()
         {
-            _waitWhileUnInitialize = new WaitWhile(() => !this._isInitialized);
             _waitForEndOfFrame = new WaitForEndOfFrame();
-            _waitUntilMessagePositionsNeedUpdate = new WaitUntil(() => _updateMessagePositions == true);
             HMMainThreadDispatcher.instance.Enqueue(this.Initialize());
         }
 
         // TODO: eventually figure out a way to make this more modular incase we want to create multiple instances of ChatDisplay
-        private static ConcurrentQueue<IChatMessage> _backupMessageQueue = new ConcurrentQueue<IChatMessage>();
+        private static ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>> _backupMessageQueue = new ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>>();
         protected override void OnDestroy()
         {
             base.OnDestroy();
@@ -53,10 +48,10 @@ namespace EnhancedStreamChat.Chat
             while (_messages.TryDequeue(out var msg)) {
                 msg.OnLatePreRenderRebuildComplete -= OnRenderRebuildComplete;
                 if (msg.Text.ChatMessage != null) {
-                    _backupMessageQueue.Enqueue(msg.Text.ChatMessage);
+                    _backupMessageQueue.Enqueue(new KeyValuePair<DateTime, IChatMessage>(msg.ReceivedDate, msg.Text.ChatMessage));
                 }
                 if (msg.SubText.ChatMessage != null) {
-                    _backupMessageQueue.Enqueue(msg.SubText.ChatMessage);
+                    _backupMessageQueue.Enqueue(new KeyValuePair<DateTime, IChatMessage>(msg.ReceivedDate, msg.SubText.ChatMessage));
                 }
                 Destroy(msg);
             }
@@ -69,10 +64,6 @@ namespace EnhancedStreamChat.Chat
             if (_chatScreen != null) {
                 Destroy(_chatScreen);
                 _chatScreen = null;
-            }
-            if (_chatFont != null) {
-                Destroy(_chatFont.Font);
-                _chatFont = null;
             }
             if (_chatMoverMaterial != null) {
                 Destroy(_chatMoverMaterial);
@@ -105,10 +96,14 @@ namespace EnhancedStreamChat.Chat
         {
             DontDestroyOnLoad(gameObject);
             _chatConfig = ChatConfig.instance;
-            
-            HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont());
-            yield return new WaitWhile(() => _chatFont == null);
+            yield return new WaitWhile(() => !ESCFontManager.instance.IsInitialized);
             SetupScreens();
+            foreach (var msg in _messages.ToArray()) {
+                msg.Text.SetAllDirty();
+                if (msg.SubTextEnabled) {
+                    msg.SubText.SetAllDirty();
+                }
+            }
             (transform as RectTransform).pivot = new Vector2(0.5f, 0f);
             TextPool = new ObjectPool<EnhancedTextMeshProUGUIWithBackground>(64,
                 constructor: () =>
@@ -118,14 +113,12 @@ namespace EnhancedStreamChat.Chat
                     var msg = go.AddComponent<EnhancedTextMeshProUGUIWithBackground>();
                     msg.gameObject.SetActive(true);
                     msg.Text.enableWordWrapping = true;
-                    msg.Text.FontInfo = _chatFont;
                     msg.Text.autoSizeTextContainer = false;
                     msg.SubText.enableWordWrapping = true;
-                    msg.SubText.FontInfo = _chatFont;
                     msg.SubText.autoSizeTextContainer = false;
                     (msg.transform as RectTransform).pivot = new Vector2(0.5f, 0);
                     msg.transform.SetParent(_chatContainer.transform, false);
-                    UpdateMessage(msg);
+                    HMMainThreadDispatcher.instance.Enqueue(UpdateMessage(msg));
                     return msg;
                 },
                 onFree: (msg) =>
@@ -152,11 +145,11 @@ namespace EnhancedStreamChat.Chat
             BSEvents.menuSceneActive += BSEvents_menuSceneActive;
             BSEvents.gameSceneActive += BSEvents_gameSceneActive;
 
-            while (_backupMessageQueue.TryDequeue(out var msg)) {
-                OnTextMessageReceived(msg);
-            }
+            yield return new WaitWhile(() => _chatScreen == null);
 
-            this._isInitialized = true;
+            while (_backupMessageQueue.TryDequeue(out var msg)) {
+                OnTextMessageReceived(msg.Value, msg.Key);
+            }
     }
 
         private void SetupScreens()
@@ -241,19 +234,16 @@ namespace EnhancedStreamChat.Chat
         }
 
         private volatile bool _updateMessagePositions = false;
-        private WaitUntil _waitUntilMessagePositionsNeedUpdate;
-        private WaitWhile _waitWhileUnInitialize;
         private WaitForEndOfFrame _waitForEndOfFrame;
 
 
         private IEnumerator UpdateMessagePositions()
         {
-            yield return _waitWhileUnInitialize;
             yield return _waitForEndOfFrame;
             // TODO: Remove later on
             //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
             float? msgPos = ChatHeight / (ReverseChatOrder ? 2f : -2f);
-            foreach (var chatMsg in _messages.ToArray().Reverse()) {
+            foreach (var chatMsg in _messages.OrderBy(x => x.ReceivedDate).ToArray().Reverse()) {
                 if (chatMsg == null) {
                     continue;
                 }
@@ -278,7 +268,7 @@ namespace EnhancedStreamChat.Chat
         {
             newMsg.OnLatePreRenderRebuildComplete -= OnRenderRebuildComplete;
             newMsg.OnLatePreRenderRebuildComplete += OnRenderRebuildComplete;
-            UpdateMessage(newMsg);
+            HMMainThreadDispatcher.instance.Enqueue(UpdateMessage(newMsg));
             _messages.Enqueue(newMsg);
             HMMainThreadDispatcher.instance.Enqueue(ClearOldMessages());
         }
@@ -310,35 +300,31 @@ namespace EnhancedStreamChat.Chat
             _chatScreen.handle.transform.localRotation = Quaternion.identity;
 
             AllowMovement = _chatConfig.AllowMovement;
-            HMMainThreadDispatcher.instance.Enqueue(UpdateMessages());
+            UpdateMessages();
         }
 
-        private IEnumerator UpdateMessages()
+        private void UpdateMessages()
         {
-            yield return _waitWhileUnInitialize;
-
             foreach (var msg in _messages.ToArray()) {
-                yield return _waitForEndOfFrame;
-                UpdateMessage(msg, true);
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessage(msg, true));
             }
             _updateMessagePositions = true;
         }
 
-        private async Task UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
+        private IEnumerator UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
         {
-            while (_chatFont == null || !_chatFont.Font) {
-                await Task.Delay(500);
-            }
-
+            yield return _waitForEndOfFrame;
             (msg.transform as RectTransform).sizeDelta = new Vector2(ChatWidth, (msg.transform as RectTransform).sizeDelta.y);
-            msg.Text.font = _chatFont.Font;
+            msg.Text.font = ESCFontManager.instance.MainFont;
+            msg.Text.font.fallbackFontAssetTable = ESCFontManager.instance.FallBackFonts;
             msg.Text.overflowMode = TextOverflowModes.Overflow;
             msg.Text.alignment = TextAlignmentOptions.BottomLeft;
             msg.Text.color = TextColor;
             msg.Text.fontSize = FontSize;
             msg.Text.lineSpacing = 1.5f;
 
-            msg.SubText.font = _chatFont.Font;
+            msg.SubText.font = ESCFontManager.instance.MainFont;
+            msg.SubText.font.fallbackFontAssetTable = ESCFontManager.instance.FallBackFonts;
             msg.SubText.overflowMode = TextOverflowModes.Overflow;
             msg.SubText.alignment = TextAlignmentOptions.BottomLeft;
             msg.SubText.color = TextColor;
@@ -351,13 +337,14 @@ namespace EnhancedStreamChat.Chat
                 msg.HighlightEnabled = msg.Text.ChatMessage.IsHighlighted || msg.Text.ChatMessage.IsPing;
                 msg.AccentEnabled = !msg.Text.ChatMessage.IsPing && (msg.HighlightEnabled || msg.SubText.ChatMessage != null);
             }
-
+            yield return _waitForEndOfFrame;
             if (setAllDirty) {
                 msg.Text.SetAllDirty();
                 if (msg.SubTextEnabled) {
                     msg.SubText.SetAllDirty();
                 }
             }
+            yield return null;
         }
         private IEnumerator ClearOldMessages()
         {
@@ -457,112 +444,34 @@ namespace EnhancedStreamChat.Chat
         }
 
         EnhancedTextMeshProUGUIWithBackground _lastMessage;
-        public async void OnTextMessageReceived(IChatMessage msg)
+        public void OnTextMessageReceived(IChatMessage msg)
         {
-            string parsedMessage = await ChatMessageBuilder.BuildMessage(msg, _chatFont, _isInGame);
-            HMMainThreadDispatcher.instance.Enqueue(this.CreateMessage(msg, parsedMessage));
+            this.OnTextMessageReceived(msg, DateTime.Now);
+        }
+        public async void OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
+        {
+            string parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, _isInGame);
+            this.CreateMessage(msg, dateTime, parsedMessage);
         }
 
-        private IEnumerator CreateMessage(IChatMessage msg, string parsedMessage)
+        private void CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
         {
-            yield return _waitWhileUnInitialize;
-
             if (_lastMessage != null && !msg.IsSystemMessage && _lastMessage.Text.ChatMessage.Id == msg.Id) {
                 // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
                 _lastMessage.SubText.text = parsedMessage;
                 _lastMessage.SubText.ChatMessage = msg;
                 _lastMessage.SubTextEnabled = true;
-                UpdateMessage(_lastMessage);
+                HMMainThreadDispatcher.instance.Enqueue(UpdateMessage(_lastMessage));
             }
             else {
                 var newMsg = TextPool.Alloc();
                 newMsg.gameObject.SetActive(true);
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
+                newMsg.ReceivedDate = date;
                 AddMessage(newMsg);
                 _lastMessage = newMsg;
             }
-        }
-
-        private IEnumerator CreateChatFont()
-        {
-            if (_chatFont != null) {
-                yield break;
-            }
-
-            if (!Directory.Exists(FontPath)) {
-                Directory.CreateDirectory(FontPath);
-            }
-            if (!Directory.Exists(FontAssetPath)) {
-                Directory.CreateDirectory(FontAssetPath);
-            }
-            var fontName = _chatConfig.SystemFontName;
-            TMP_FontAsset? asset = null;
-            AssetBundle? bundle = null;
-            foreach (var filename in Directory.EnumerateFiles(FontAssetPath, "*.assets", SearchOption.TopDirectoryOnly)) {
-                using (var fs = File.OpenRead(filename)) {
-                    var request = AssetBundle.LoadFromStreamAsync(fs);
-                    yield return request;
-                    bundle = request.assetBundle;
-                }
-                if (bundle != null) {
-                    break;
-                }
-            }
-            
-            if (bundle != null) {
-                foreach (var bundleItem in bundle.GetAllAssetNames()) {
-                    asset = bundle.LoadAsset<TMP_FontAsset>(Path.GetFileNameWithoutExtension(bundleItem));
-                    if (asset != null) {
-                        asset.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
-                        _chatFont = new EnhancedFontInfo(asset);
-                        bundle.Unload(false);
-                        break;
-                    }
-                }
-            }
-            if (_chatFont == null) {
-                foreach (var fontFile in Directory.EnumerateFiles(FontPath, "*", SearchOption.TopDirectoryOnly)) {
-                    try {
-                        var font = new Font(fontFile);
-                        font.RequestCharactersInTexture(JPAll.JPText);
-                        font.name = Path.GetFileNameWithoutExtension(fontFile);
-                        if (font.name.ToLower() == fontName.ToLower()) {
-                            asset = TMP_FontAsset.CreateFontAsset(font, 90, 6, GlyphRenderMode.SDFAA, 8192, 8192);
-                            asset.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
-                            asset.ReadFontAssetDefinition();
-
-                            _chatFont = new EnhancedFontInfo(asset);
-                            break;
-                        }
-                    }
-                    catch (Exception e) {
-                        Logger.log.Error(e);
-                    }
-                }
-            }
-            if (_chatFont == null) {
-                if (FontManager.TryGetTMPFontByFamily(fontName, out asset)) {
-                    asset.ReadFontAssetDefinition();
-                    asset.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
-                    _chatFont = new EnhancedFontInfo(asset);
-                }
-                else {
-                    Logger.log.Error($"Could not find font {fontName}! Falling back to Segoe UI");
-                    fontName = "Segoe UI";
-                    FontManager.TryGetTMPFontByFamily(fontName, out asset);
-                    asset.ReadFontAssetDefinition();
-                    asset.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
-                    _chatFont = new EnhancedFontInfo(asset);
-                }
-            }
-            foreach (var msg in _messages.ToArray()) {
-                msg.Text.SetAllDirty();
-                if (msg.SubTextEnabled) {
-                    msg.SubText.SetAllDirty();
-                }
-            }
-
         }
     }
 }

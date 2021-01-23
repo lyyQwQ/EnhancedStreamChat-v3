@@ -6,14 +6,14 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using EnhancedStreamChat.Chat;
 
 namespace EnhancedStreamChat.Graphics
 {
     public class EnhancedTextMeshProUGUI : TextMeshProUGUI
     {
         public IChatMessage ChatMessage { get; set; } = null;
-        public EnhancedFontInfo FontInfo { get; set; } = null;
-        private static object _lock = new object();
+        public EnhancedFontInfo FontInfo { get; private set; }
         public event Action OnLatePreRenderRebuildComplete;
 
         private static ObjectPool<EnhancedImage> _imagePool = new ObjectPool<EnhancedImage>(64,
@@ -45,6 +45,12 @@ namespace EnhancedStreamChat.Graphics
                 }
             }
         );
+
+        protected override void Awake()
+        {
+            base.Awake();
+            this.FontInfo = ESCFontManager.instance.FontInfo;
+        }
 
         public void ClearImages()
         {

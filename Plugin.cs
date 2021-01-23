@@ -17,6 +17,8 @@ namespace EnhancedStreamChat
 
         private static PluginMetadata _meta;
 
+        private ESCFontManager FontManager { get; set; }
+
         [Init]
         public void Init(IPALogger logger, PluginMetadata meta)
         {
@@ -27,6 +29,12 @@ namespace EnhancedStreamChat
             var config = ChatConfig.instance;
             Font.textureRebuilt += this.Font_textureRebuilt;
         }
+        [OnStart]
+        public void OnStart()
+        {
+            this.FontManager = new GameObject().AddComponent<ESCFontManager>();
+        }
+
 
         private void Font_textureRebuilt(Font obj)
         {
@@ -56,6 +64,7 @@ namespace EnhancedStreamChat
         public void OnExit()
         {
             Font.textureRebuilt -= Font_textureRebuilt;
+            GameObject.Destroy(FontManager);
         }
     }
 }

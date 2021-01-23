@@ -1,30 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net48</TargetFramework>
-        <OutputType>Library</OutputType>
-        <LangVersion>9</LangVersion>
-        <Nullable>enable</Nullable>
-        <NoWarn>1591</NoWarn>
-        <AssemblyName>EnhancedStreamChat</AssemblyName>
-        <RootNamespace>EnhancedStreamChat</RootNamespace>
-        <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
-        <ModVersion>3.2.1</ModVersion>
-        <AssemblyVersion>3.2.1</AssemblyVersion>
-        <FileVersion>3.2.1</FileVersion>
-        <InformationalVersion>$(ModVersion)</InformationalVersion>
-        <Version>3.2.1-rc6</Version>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <LangVersion>9</LangVersion>
+    <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>1591</NoWarn>
+    <AssemblyName>EnhancedStreamChat</AssemblyName>
+    <RootNamespace>EnhancedStreamChat</RootNamespace>
+    <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
+    <!--<ModVersion>3.2.1</ModVersion>
+    <AssemblyVersion>3.2.1</AssemblyVersion>
+    <FileVersion>3.2.1</FileVersion>
+    <InformationalVersion>$(ModVersion)</InformationalVersion>-->
+    <Version>3.3.0-rc6</Version>
+  </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-        <DebugType>full</DebugType>
-        <DocumentationFile>$(OutDir)\EnhancedStreamChat.xml</DocumentationFile>
-    </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugType>full</DebugType>
+    <DocumentationFile>$(OutDir)\EnhancedStreamChat.xml</DocumentationFile>
+  </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-        <DebugType>pdbonly</DebugType>
-    </PropertyGroup>
-
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugType>pdbonly</DebugType>
+  </PropertyGroup>
     <ItemGroup>
         <Reference Include="BSML">
             <HintPath>$(BeatSaberDir)\Plugins\BSML.dll</HintPath>
@@ -54,7 +54,7 @@
             <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Unity.TextMeshPro.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.AssetBundleModule">
-          <HintPath>D:\Oculus\Software\hyperbolic-magnetism-beat-saber\Beat Saber_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+          <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.CoreModule">
@@ -103,7 +103,6 @@
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
     </ItemGroup>
-
     <ItemGroup>
       <None Update="FontAssets\mplus-1m-medium sdf.assets">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
