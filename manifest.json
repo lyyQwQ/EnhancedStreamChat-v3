@@ -3,7 +3,7 @@
   "id": "EnhancedStreamChat",
   "name": "Enhanced Stream Chat",
   "author": "brian91292",
-  "version": "3.3.0-rc6",
+  "version": "3.3.1-rc6",
   "description": "Enhanced Stream Chat is a rich text chat integration mod, with full unicode, emote, and emoji support.",
   "gameVersion": "1.13.2",
   "dependsOn": {

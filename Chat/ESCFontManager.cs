@@ -143,23 +143,32 @@ namespace EnhancedStreamChat.Chat
                     MainFont = asset;
                 }
             }
-            if (MainFont != null) {
-                _fallbackFonts.Clear();
-                foreach (var fallbackFontPath in Directory.EnumerateFiles(FallBackFontPath, "*.assets")) {
-                    using (var fs = File.OpenRead(fallbackFontPath)) {
-                        bundle = AssetBundle.LoadFromStream(fs);
-                    }
-                    if (bundle == null) {
-                        continue;
-                    }
-                    foreach (var bundleItem in bundle.GetAllAssetNames()) {
-                        asset = bundle.LoadAsset<TMP_FontAsset>(Path.GetFileNameWithoutExtension(bundleItem));
-                        if (asset != null) {
-                            _fallbackFonts.Add(asset);
-                        }
-                    }
-                    bundle.Unload(false);
+            _fallbackFonts.Clear();
+            foreach (var fallbackFontPath in Directory.EnumerateFiles(FallBackFontPath, "*.assets")) {
+                using (var fs = File.OpenRead(fallbackFontPath)) {
+                    bundle = AssetBundle.LoadFromStream(fs);
                 }
+                if (bundle == null) {
+                    continue;
+                }
+                foreach (var bundleItem in bundle.GetAllAssetNames()) {
+                    asset = bundle.LoadAsset<TMP_FontAsset>(Path.GetFileNameWithoutExtension(bundleItem));
+                    if (asset != null) {
+                        _fallbackFonts.Add(asset);
+                    }
+                }
+                bundle.Unload(false);
+            }
+            foreach (var osFontPath in Font.GetPathsToOSFonts()) {
+                if (Path.GetFileNameWithoutExtension(osFontPath).ToLower() != "meiryo") {
+                    continue;
+                }
+                var meiryo = new Font(osFontPath);
+                meiryo.name = Path.GetFileNameWithoutExtension(osFontPath);
+                asset = TMP_FontAsset.CreateFontAsset(meiryo);
+                _fallbackFonts.Add(asset);
+            }
+            if (MainFont != null) {
                 this.FontInfo = new EnhancedFontInfo(MainFont);
             }
             this.IsInitialized = true;
