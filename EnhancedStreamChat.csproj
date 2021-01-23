@@ -13,8 +13,8 @@
     <!--<ModVersion>3.2.1</ModVersion>
     <AssemblyVersion>3.2.1</AssemblyVersion>
     <FileVersion>3.2.1</FileVersion>
-    <InformationalVersion>$(ModVersion)</InformationalVersion>-->
-    <Version>3.3.0-rc6</Version>
+    <InformationalVersion>$(ModVersion)</InformationalVersion>
+    <Version>3.3.0-rc6</Version>-->
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
