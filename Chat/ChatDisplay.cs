@@ -1,4 +1,5 @@
 ﻿using BeatSaberMarkupLanguage;
+using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.FloatingScreen;
 using BeatSaberMarkupLanguage.ViewControllers;
 using BS_Utils.Utilities;
@@ -22,6 +23,7 @@ using Color = UnityEngine.Color;
 
 namespace EnhancedStreamChat.Chat
 {
+    [HotReload]
     public partial class ChatDisplay : BSMLAutomaticViewController
     {
         public ObjectPool<EnhancedTextMeshProUGUIWithBackground> TextPool { get; internal set; }
