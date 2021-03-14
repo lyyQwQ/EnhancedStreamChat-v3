@@ -11,7 +11,17 @@ namespace EnhancedStreamChat.Utilities
 		public static Material? UINoGlowMaterial => _noGlow ??= Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault();
 
 		private static Shader? _tmpNoGlowFontShader;
-		public static Shader? TMPNoGlowFontShader => BeatSaberUI.MainTextFont.material.shader;
+		public static Shader? TMPNoGlowFontShader
+        {
+			get
+            {
+				if (_tmpNoGlowFontShader == null)
+                {
+					_tmpNoGlowFontShader = Object.Instantiate(BeatSaberUI.MainTextFont.material.shader);
+				}
+				return _tmpNoGlowFontShader;
+            }
+        }
 
 		// DaNike to the rescue 
 		public static bool TryGetTMPFontByFamily(string family, out TMP_FontAsset font)
