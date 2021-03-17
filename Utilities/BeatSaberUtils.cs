@@ -8,7 +8,7 @@ namespace EnhancedStreamChat.Utilities
     public static class BeatSaberUtils
 	{
 		private static Material? _noGlow;
-		public static Material? UINoGlowMaterial => _noGlow ??= Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault();
+		public static Material? UINoGlowMaterial => _noGlow ??= new Material(Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault());
 
 		private static Shader? _tmpNoGlowFontShader;
 		public static Shader? TMPNoGlowFontShader
@@ -17,7 +17,7 @@ namespace EnhancedStreamChat.Utilities
             {
 				if (_tmpNoGlowFontShader == null)
                 {
-					_tmpNoGlowFontShader = Object.Instantiate(BeatSaberUI.MainTextFont.material.shader);
+					_tmpNoGlowFontShader = BeatSaberUI.MainTextFont.material.shader;
 				}
 				return _tmpNoGlowFontShader;
             }
