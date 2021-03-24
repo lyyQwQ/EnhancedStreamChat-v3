@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net48</TargetFramework>
         <OutputType>Library</OutputType>
-        <LangVersion>9</LangVersion>
+        <LangVersion>8</LangVersion>
         <Nullable>enable</Nullable>
         <NoWarn>1591</NoWarn>
         <AssemblyName>EnhancedStreamChat</AssemblyName>
@@ -82,21 +82,21 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="EnhancedStreamChat.csproj.user"/>
+        <None Include="EnhancedStreamChat.csproj.user" />
     </ItemGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="manifest.json"/>
-        <EmbeddedResource Include="Chat\ChatDisplay.bsml"/>
-        <EmbeddedResource Include="Resources\Settings.png"/>
-        <EmbeddedResource Include="Resources\PizzaDog.jpg"/>
+        <EmbeddedResource Include="manifest.json" />
+        <EmbeddedResource Include="Chat\ChatDisplay.bsml" />
+        <EmbeddedResource Include="Resources\Settings.png" />
+        <EmbeddedResource Include="Resources\PizzaDog.jpg" />
     </ItemGroup>
 
     <Target Name="CopyToPlugins" AfterTargets="AfterBuild">
-        <Message Text="Copying $(OutDir)EnhancedStreamChat.dll to Plugins folder" Importance="high"/>
-        <Copy SourceFiles="$(OutDir)EnhancedStreamChat.dll" DestinationFiles="$(BeatSaberDir)\Plugins\EnhancedStreamChat.dll"/>
-        <Message Text="Copying $(OutDir)EnhancedStreamChat.pdb to Plugins folder" Importance="high"/>
-        <Copy SourceFiles="$(OutDir)EnhancedStreamChat.pdb" DestinationFiles="$(BeatSaberDir)\Plugins\EnhancedStreamChat.pdb"/>
+        <Message Text="Copying $(OutDir)EnhancedStreamChat.dll to Plugins folder" Importance="high" />
+        <Copy SourceFiles="$(OutDir)EnhancedStreamChat.dll" DestinationFiles="$(BeatSaberDir)\Plugins\EnhancedStreamChat.dll" />
+        <Message Text="Copying $(OutDir)EnhancedStreamChat.pdb to Plugins folder" Importance="high" />
+        <Copy SourceFiles="$(OutDir)EnhancedStreamChat.pdb" DestinationFiles="$(BeatSaberDir)\Plugins\EnhancedStreamChat.pdb" />
     </Target>
 
 </Project>

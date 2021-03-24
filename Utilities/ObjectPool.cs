@@ -85,11 +85,11 @@ namespace EnhancedStreamChat.Utilities
 		{
 			lock (_lock)
 			{
-				var obj = _freeObjects.Count switch
+				T? obj = null;
+				if (_freeObjects.Count > 0)
 				{
-					> 0 => _freeObjects.Dequeue(),
-					_ => null
-				};
+					obj = _freeObjects.Dequeue();
+				}
 
 				if (!obj || obj == null)
 				{
