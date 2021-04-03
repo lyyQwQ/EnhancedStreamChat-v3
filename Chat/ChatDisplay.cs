@@ -5,6 +5,7 @@ using BS_Utils.Utilities;
 using ChatCore.Interfaces;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
+using HMUI;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -13,6 +14,7 @@ using System.Linq;
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using VRUIControls;
 using Color = UnityEngine.Color;
 using Image = UnityEngine.UI.Image;
@@ -35,7 +37,7 @@ namespace EnhancedStreamChat.Chat
             SetupScreens();
             (transform as RectTransform).pivot = new Vector2(0.5f, 0f);
             TextPool = new ObjectPool<EnhancedTextMeshProUGUIWithBackground>(25,
-                Constructor: () =>
+                constructor: () =>
                 {
                     var go = new GameObject();
                     DontDestroyOnLoad(go);
@@ -45,12 +47,12 @@ namespace EnhancedStreamChat.Chat
                     msg.SubText.enableWordWrapping = true;
                     msg.SubText.FontInfo = _chatFont;
                     (msg.transform as RectTransform).pivot = new Vector2(0.5f, 0);
-                    msg.transform.SetParent(transform, false);
+                    msg.transform.SetParent(_chatContainer.transform, false);
                     msg.gameObject.SetActive(false);
                     UpdateMessage(msg);
                     return msg;
                 },
-                OnFree: (msg) =>
+                onFree: (msg) =>
                 {
                     try
                     {
@@ -77,7 +79,7 @@ namespace EnhancedStreamChat.Chat
             BSEvents.gameSceneActive += BSEvents_gameSceneActive;
             _waitForEndOfFrame = new WaitForEndOfFrame();
             _waitUntilMessagePositionsNeedUpdate = new WaitUntil(() => _updateMessagePositions == true);
-            StartCoroutine(UpdateMessagePositions());
+            SharedCoroutineStarter.instance.StartCoroutine(UpdateMessagePositions());
         }
 
         // TODO: eventually figure out a way to make this more modular incase we want to create multiple instances of ChatDisplay
@@ -133,29 +135,51 @@ namespace EnhancedStreamChat.Chat
         }
 
         private FloatingScreen _chatScreen;
+        private GameObject _chatContainer;
         private GameObject _rootGameObject;
         private Material _chatMoverMaterial;
-        private Image _bg;
+        private ImageView _bg;
+
         private void SetupScreens()
         {
             if (_chatScreen == null)
             {
-                _chatScreen = FloatingScreen.CreateFloatingScreen(new Vector2(ChatWidth, ChatHeight), true, ChatPosition, Quaternion.identity);
+                var screenSize = new Vector2(ChatWidth, ChatHeight);
+                _chatScreen = FloatingScreen.CreateFloatingScreen(screenSize, true, ChatPosition, Quaternion.identity, 0f,  true);
+                var rectMask2D = _chatScreen.GetComponent<RectMask2D>();
+                if (rectMask2D)
+                {
+                    Destroy(rectMask2D);
+                }
+                
+                _chatContainer = new GameObject("chatContainer");
+                _chatContainer.transform.SetParent(_chatScreen.transform, false);
+                _chatContainer.AddComponent<RectMask2D>().rectTransform.sizeDelta = screenSize;
+                
                 var canvas = _chatScreen.GetComponent<Canvas>();
                 canvas.sortingOrder = 3;
-                _chatScreen.SetRootViewController(this, true);
+
+                _chatScreen.SetRootViewController(this, AnimationType.None);
                 _rootGameObject = new GameObject();
                 DontDestroyOnLoad(_rootGameObject);
+                
                 _chatMoverMaterial = Instantiate(BeatSaberUtils.UINoGlowMaterial);
                 _chatMoverMaterial.color = Color.clear;
+
                 var renderer = _chatScreen.handle.gameObject.GetComponent<Renderer>();
                 renderer.material = _chatMoverMaterial;
+                renderer.material.mainTexture = _chatMoverMaterial.mainTexture;
+
                 _chatScreen.transform.SetParent(_rootGameObject.transform);
                 _chatScreen.ScreenRotation = Quaternion.Euler(ChatRotation);
-                _bg = _chatScreen.gameObject.GetComponent<UnityEngine.UI.Image>();
-                _bg.material = Instantiate(BeatSaberUtils.UINoGlowMaterial);
+
+                _bg = _chatScreen.GetComponentInChildren<ImageView>();
+                _bg.material = Instantiate(_bg.material);
+                _bg.material.mainTexture = BeatSaberUtils.UINoGlowMaterial.mainTexture;
                 _bg.color = BackgroundColor;
+                
                 AddToVRPointer();
+                UpdateChatUI();
             }
         }
 
@@ -195,20 +219,9 @@ namespace EnhancedStreamChat.Chat
 
         private void AddToVRPointer()
         {
-            VRPointer pointer = null;
-            if (_isInGame)
+            if (_chatScreen.screenMover)
             {
-                pointer = Resources.FindObjectsOfTypeAll<VRPointer>().Last();
-            }
-            else
-            {
-                pointer = Resources.FindObjectsOfTypeAll<VRPointer>().First();
-            }
-            if (_chatScreen.screenMover != null)
-            {
-                DestroyImmediate(_chatScreen.screenMover);
-                _chatScreen.screenMover = pointer.gameObject.AddComponent<FloatingScreenMoverPointer>();
-                _chatScreen.screenMover.Init(_chatScreen);
+                _chatScreen.screenMover.OnRelease -= floatingScreen_OnRelease;
                 _chatScreen.screenMover.OnRelease += floatingScreen_OnRelease;
                 _chatScreen.screenMover.transform.SetAsFirstSibling();
             }
@@ -223,7 +236,9 @@ namespace EnhancedStreamChat.Chat
             {
                 yield return _waitUntilMessagePositionsNeedUpdate;
                 yield return _waitForEndOfFrame;
-                float msgPos = ReverseChatOrder ? ChatHeight : 0;
+                // TODO: Remove later on
+                //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
+                float msgPos = ChatHeight / (ReverseChatOrder ?  2f : -2f);
                 foreach (var chatMsg in _messages.AsEnumerable().Reverse())
                 {
                     var msgHeight = (chatMsg.transform as RectTransform).sizeDelta.y;
@@ -276,9 +291,13 @@ namespace EnhancedStreamChat.Chat
                 ChatPosition = _chatConfig.Menu_ChatPosition;
                 ChatRotation = _chatConfig.Menu_ChatRotation;
             }
-            _chatScreen.handle.transform.localScale = new Vector2(ChatWidth, ChatHeight);
-            _chatScreen.handle.transform.localPosition = Vector3.zero;
-            _chatScreen.handle.transform.localRotation = Quaternion.identity;
+            var chatContainerTransform = _chatContainer.GetComponent<RectMask2D>().rectTransform!;
+            chatContainerTransform.sizeDelta = new Vector2(ChatWidth, ChatHeight);
+
+             _chatScreen.handle.transform.localScale = new Vector3(ChatWidth, ChatHeight * 0.9f, 0.01f);
+             _chatScreen.handle.transform.localPosition = Vector3.zero;
+             _chatScreen.handle.transform.localRotation = Quaternion.identity;
+
             AllowMovement = _chatConfig.AllowMovement;
             UpdateMessages();
         }
