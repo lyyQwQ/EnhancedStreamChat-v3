@@ -1,12 +1,5 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using IPA;
-using IPA.Config;
-using IPA.Config.Stores;
-using UnityEngine.SceneManagement;
-using UnityEngine;
 using IPALogger = IPA.Logging.Logger;
 using EnhancedStreamChat.Chat;
 using IPA.Loader;
@@ -40,7 +33,7 @@ namespace EnhancedStreamChat
             {
                 ChatManager.instance.enabled = true;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.log.Error(ex);
             }
