@@ -1,10 +1,10 @@
-﻿using System;
+﻿using EnhancedStreamChat.Chat;
 using IPA;
-using IPALogger = IPA.Logging.Logger;
-using EnhancedStreamChat.Chat;
 using IPA.Loader;
+using System;
 using System.Reflection;
 using UnityEngine;
+using IPALogger = IPA.Logging.Logger;
 
 namespace EnhancedStreamChat
 {
@@ -16,9 +16,6 @@ namespace EnhancedStreamChat
         internal static string Version => _meta.Version.ToString() ?? Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         private static PluginMetadata _meta;
-
-        private ESCFontManager FontManager { get; set; }
-
         [Init]
         public void Init(IPALogger logger, PluginMetadata meta)
         {
@@ -30,41 +27,29 @@ namespace EnhancedStreamChat
             Font.textureRebuilt += this.Font_textureRebuilt;
         }
         [OnStart]
-        public void OnStart()
-        {
-            this.FontManager = new GameObject().AddComponent<ESCFontManager>();
-        }
+        public void OnStart() => ESCFontManager.TouchInstance();
 
 
-        private void Font_textureRebuilt(Font obj)
-        {
-            Logger.log.Debug($"FontTexture({obj.name}) width: {obj.material.mainTexture.width}, height: {obj.material.mainTexture.height}");
-        }
+        private void Font_textureRebuilt(Font obj) => Logger.log.Debug($"FontTexture({obj.name}) width: {obj.material.mainTexture.width}, height: {obj.material.mainTexture.height}");
 
         [OnEnable]
         public void OnEnable()
         {
-            try
-            {
+            try {
                 ChatManager.instance.enabled = true;
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 Logger.log.Error(ex);
             }
         }
 
         [OnDisable]
-        public void OnDisable()
-        {
-            ChatManager.instance.enabled = false;
-        }
+        public void OnDisable() => ChatManager.instance.enabled = false;
 
         [OnExit]
         public void OnExit()
         {
-            Font.textureRebuilt -= Font_textureRebuilt;
-            GameObject.Destroy(FontManager);
+            Font.textureRebuilt -= this.Font_textureRebuilt;
         }
     }
 }

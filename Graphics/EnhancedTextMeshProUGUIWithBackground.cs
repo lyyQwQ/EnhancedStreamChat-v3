@@ -1,6 +1,5 @@
 ﻿using EnhancedStreamChat.Utilities;
 using System;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,142 +18,108 @@ namespace EnhancedStreamChat.Graphics
         private VerticalLayoutGroup _verticalLayoutGroup;
         public Vector2 Size
         {
-            get
-            {
-                return (transform as RectTransform).sizeDelta;
-            }
-            set
-            {
-                (transform as RectTransform).sizeDelta = value;
-            }
+            get => (this.transform as RectTransform).sizeDelta;
+            set => (this.transform as RectTransform).sizeDelta = value;
         }
 
         public Color AccentColor
         {
-            get
-            {
-                return _accent.color;
-            }
-            set
-            {
-                _accent.color = value;
-            }
+            get => this._accent.color;
+            set => this._accent.color = value;
         }
 
         public Color HighlightColor
         {
-            get
-            {
-                return _highlight.color;
-            }
-            set
-            {
-                _highlight.color = value;
-            }
+            get => this._highlight.color;
+            set => this._highlight.color = value;
         }
 
         public bool HighlightEnabled
         {
-            get
-            {
-                return _highlight.enabled;
-            }
+            get => this._highlight.enabled;
             set
             {
-                _highlight.enabled = value;
-                if (value)
-                {
-                    _verticalLayoutGroup.padding = new RectOffset(5, 5, 2, 2);
+                this._highlight.enabled = value;
+                if (value) {
+                    this._verticalLayoutGroup.padding = new RectOffset(5, 5, 2, 2);
                 }
-                else
-                {
-                    _verticalLayoutGroup.padding = new RectOffset(5, 5, 1, 1);
+                else {
+                    this._verticalLayoutGroup.padding = new RectOffset(5, 5, 1, 1);
                 }
             }
         }
 
         public bool AccentEnabled
         {
-            get
-            {
-                return _accent.enabled;
-            }
-            set
-            {
-                _accent.enabled = value;
-            }
+            get => this._accent.enabled;
+            set => this._accent.enabled = value;
         }
 
         public bool SubTextEnabled
         {
-            get
-            {
-                return SubText.enabled;
-            }
+            get => this.SubText.enabled;
             set
             {
-                SubText.enabled = value;
-                if(value)
-                {
-                    SubText.rectTransform.SetParent(gameObject.transform, false);
+                this.SubText.enabled = value;
+                if (value) {
+                    this.SubText.rectTransform.SetParent(this.gameObject.transform, false);
                 }
-                else
-                {
-                    SubText.rectTransform.SetParent(null, false);
+                else {
+                    this.SubText.rectTransform.SetParent(null, false);
                 }
             }
         }
 
         private void Awake()
         {
-            _highlight = gameObject.AddComponent<Image>();
-            _highlight.material = BeatSaberUtils.UINoGlowMaterial;
-            Text = new GameObject().AddComponent<EnhancedTextMeshProUGUI>();
-            DontDestroyOnLoad(Text.gameObject);
-            Text.OnLatePreRenderRebuildComplete += Text_OnLatePreRenderRebuildComplete;
+            this._highlight = this.gameObject.AddComponent<Image>();
+            this._highlight.material = BeatSaberUtils.UINoGlowMaterial;
+            this.Text = new GameObject().AddComponent<EnhancedTextMeshProUGUI>();
+            DontDestroyOnLoad(this.Text.gameObject);
+            this.Text.OnLatePreRenderRebuildComplete += this.Text_OnLatePreRenderRebuildComplete;
 
-            SubText = new GameObject().AddComponent<EnhancedTextMeshProUGUI>();
-            DontDestroyOnLoad(SubText.gameObject);
-            SubText.OnLatePreRenderRebuildComplete += Text_OnLatePreRenderRebuildComplete;
+            this.SubText = new GameObject().AddComponent<EnhancedTextMeshProUGUI>();
+            DontDestroyOnLoad(this.SubText.gameObject);
+            this.SubText.OnLatePreRenderRebuildComplete += this.Text_OnLatePreRenderRebuildComplete;
 
-            _accent = new GameObject().AddComponent<Image>();
-            DontDestroyOnLoad(_accent.gameObject);
-            _accent.material = BeatSaberUtils.UINoGlowMaterial;
-            _accent.color = Color.yellow;
+            this._accent = new GameObject().AddComponent<Image>();
+            DontDestroyOnLoad(this._accent.gameObject);
+            this._accent.material = BeatSaberUtils.UINoGlowMaterial;
+            this._accent.color = Color.yellow;
 
-            _verticalLayoutGroup = gameObject.AddComponent<VerticalLayoutGroup>();
-            _verticalLayoutGroup.childAlignment = TextAnchor.MiddleLeft;
-            _verticalLayoutGroup.spacing = 1;
+            this._verticalLayoutGroup = this.gameObject.AddComponent<VerticalLayoutGroup>();
+            this._verticalLayoutGroup.childAlignment = TextAnchor.MiddleLeft;
+            this._verticalLayoutGroup.spacing = 1;
 
-            var highlightFitter = _accent.gameObject.AddComponent<LayoutElement>();
+            var highlightFitter = this._accent.gameObject.AddComponent<LayoutElement>();
             highlightFitter.ignoreLayout = true;
-            var textFitter = Text.gameObject.AddComponent<ContentSizeFitter>();
+            var textFitter = this.Text.gameObject.AddComponent<ContentSizeFitter>();
             textFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            var backgroundFitter = gameObject.AddComponent<ContentSizeFitter>();
+            var backgroundFitter = this.gameObject.AddComponent<ContentSizeFitter>();
             backgroundFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            SubTextEnabled = false;
-            HighlightEnabled = false;
-            AccentEnabled = false;
-            _accent.gameObject.transform.SetParent(gameObject.transform, false);
-            (_accent.gameObject.transform as RectTransform).anchorMin = new Vector2(0, 0.5f);
-            (_accent.gameObject.transform as RectTransform).anchorMax = new Vector2(0, 0.5f);
-            (_accent.gameObject.transform as RectTransform).sizeDelta = new Vector2(1, 10);
-            (_accent.gameObject.transform as RectTransform).pivot = new Vector2(0, 0.5f);
+            this.SubTextEnabled = false;
+            this.HighlightEnabled = false;
+            this.AccentEnabled = false;
+            this._accent.gameObject.transform.SetParent(this.gameObject.transform, false);
+            (this._accent.gameObject.transform as RectTransform).anchorMin = new Vector2(0, 0.5f);
+            (this._accent.gameObject.transform as RectTransform).anchorMax = new Vector2(0, 0.5f);
+            (this._accent.gameObject.transform as RectTransform).sizeDelta = new Vector2(1, 10);
+            (this._accent.gameObject.transform as RectTransform).pivot = new Vector2(0, 0.5f);
             //var highlightLayoutGroup =_highlight.gameObject.AddComponent<VerticalLayoutGroup>();
 
-            Text.rectTransform.SetParent(gameObject.transform, false);
+            this.Text.rectTransform.SetParent(this.gameObject.transform, false);
         }
 
         private void OnDestroy()
         {
-            Text.OnLatePreRenderRebuildComplete -= Text_OnLatePreRenderRebuildComplete;
-            SubText.OnLatePreRenderRebuildComplete -= Text_OnLatePreRenderRebuildComplete;
+            this.Text.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
+            this.SubText.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
         }
 
         private void Text_OnLatePreRenderRebuildComplete()
         {
-            (_accent.gameObject.transform as RectTransform).sizeDelta = new Vector2(1, (transform as RectTransform).sizeDelta.y);
+            (this._accent.gameObject.transform as RectTransform).sizeDelta = new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
             OnLatePreRenderRebuildComplete?.Invoke();
         }
     }

@@ -5,19 +5,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
 
 namespace EnhancedStreamChat.Chat
 {
-    public class ESCFontManager : MonoBehaviour
+    public class ESCFontManager : PersistentSingleton<ESCFontManager>
     {
-        public static ESCFontManager instance;
-
         private static readonly string FontPath = Path.Combine(Environment.CurrentDirectory, "UserData", "ESC");
         private static readonly string FontAssetPath = Path.Combine(Environment.CurrentDirectory, "UserData", "FontAssets");
         private static readonly string MainFontPath = Path.Combine(FontAssetPath, "Main");
@@ -27,15 +22,16 @@ namespace EnhancedStreamChat.Chat
 
         private TMP_FontAsset _mainFont = null;
 
-        public TMP_FontAsset MainFont {
+        public TMP_FontAsset MainFont
+        {
             get
             {
-                if (_mainFont?.material.shader != BeatSaberUtils.TMPNoGlowFontShader) {
-                    _mainFont.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
+                if (this._mainFont?.material.shader != BeatSaberUtils.TMPNoGlowFontShader) {
+                    this._mainFont.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
                 }
-                return _mainFont;
+                return this._mainFont;
             }
-            private set { _mainFont = value; }
+            private set => this._mainFont = value;
         }
 
         private List<TMP_FontAsset> _fallbackFonts = new List<TMP_FontAsset>();
@@ -43,37 +39,28 @@ namespace EnhancedStreamChat.Chat
         {
             get
             {
-                foreach (var font in _fallbackFonts) {
+                foreach (var font in this._fallbackFonts) {
                     if (font.material.shader != BeatSaberUtils.TMPNoGlowFontShader) {
                         font.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
                     }
                 }
-                return _fallbackFonts;
+                return this._fallbackFonts;
             }
-            private set { _fallbackFonts = value; }
+            private set => this._fallbackFonts = value;
         }
         public EnhancedFontInfo FontInfo { get; private set; } = null;
 
         private void Awake()
         {
-            DontDestroyOnLoad(this.gameObject);
-            instance = this;
-            HMMainThreadDispatcher.instance.Enqueue(CreateChatFont());
+            HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont());
         }
-
-        private void OnDestroy()
-        {
-            Destroy(this.gameObject);
-            instance = null;
-        }
-
         public IEnumerator CreateChatFont()
         {
             this.IsInitialized = false;
-            if (MainFont != null) {
-                Destroy(MainFont);
+            if (this.MainFont != null) {
+                Destroy(this.MainFont);
             }
-            foreach (var font in FallBackFonts) {
+            foreach (var font in this.FallBackFonts) {
                 if (font != null) {
                     Destroy(font);
                 }
@@ -104,13 +91,13 @@ namespace EnhancedStreamChat.Chat
                 foreach (var bundleItem in bundle.GetAllAssetNames()) {
                     asset = bundle.LoadAsset<TMP_FontAsset>(Path.GetFileNameWithoutExtension(bundleItem));
                     if (asset != null) {
-                        MainFont = asset;
+                        this.MainFont = asset;
                         bundle.Unload(false);
                         break;
                     }
                 }
             }
-            if (MainFont == null) {
+            if (this.MainFont == null) {
                 foreach (var fontFile in Directory.EnumerateFiles(FontPath, "*", SearchOption.TopDirectoryOnly)) {
                     try {
                         var font = new Font(fontFile);
@@ -119,7 +106,7 @@ namespace EnhancedStreamChat.Chat
                         if (font.name.ToLower() == fontName.ToLower()) {
                             asset = TMP_FontAsset.CreateFontAsset(font, 90, 6, GlyphRenderMode.SDFAA, 8192, 8192);
                             asset.ReadFontAssetDefinition();
-                            MainFont = asset;
+                            this.MainFont = asset;
                             break;
                         }
                     }
@@ -128,22 +115,22 @@ namespace EnhancedStreamChat.Chat
                     }
                 }
             }
-            if (MainFont == null) {
+            if (this.MainFont == null) {
                 yield return new WaitWhile(() => !FontManager.IsInitialized);
                 if (FontManager.TryGetTMPFontByFamily(fontName, out asset)) {
                     asset.ReadFontAssetDefinition();
                     asset.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
-                    MainFont = asset;
+                    this.MainFont = asset;
                 }
                 else {
                     Logger.log.Error($"Could not find font {fontName}! Falling back to Segoe UI");
                     fontName = "Segoe UI";
                     FontManager.TryGetTMPFontByFamily(fontName, out asset);
                     asset.ReadFontAssetDefinition();
-                    MainFont = asset;
+                    this.MainFont = asset;
                 }
             }
-            _fallbackFonts.Clear();
+            this._fallbackFonts.Clear();
             foreach (var fallbackFontPath in Directory.EnumerateFiles(FallBackFontPath, "*.assets")) {
                 using (var fs = File.OpenRead(fallbackFontPath)) {
                     bundle = AssetBundle.LoadFromStream(fs);
@@ -154,7 +141,7 @@ namespace EnhancedStreamChat.Chat
                 foreach (var bundleItem in bundle.GetAllAssetNames()) {
                     asset = bundle.LoadAsset<TMP_FontAsset>(Path.GetFileNameWithoutExtension(bundleItem));
                     if (asset != null) {
-                        _fallbackFonts.Add(asset);
+                        this._fallbackFonts.Add(asset);
                     }
                 }
                 bundle.Unload(false);
@@ -166,10 +153,10 @@ namespace EnhancedStreamChat.Chat
                 var meiryo = new Font(osFontPath);
                 meiryo.name = Path.GetFileNameWithoutExtension(osFontPath);
                 asset = TMP_FontAsset.CreateFontAsset(meiryo);
-                _fallbackFonts.Add(asset);
+                this._fallbackFonts.Add(asset);
             }
-            if (MainFont != null) {
-                this.FontInfo = new EnhancedFontInfo(MainFont);
+            if (this.MainFont != null) {
+                this.FontInfo = new EnhancedFontInfo(this.MainFont);
             }
             this.IsInitialized = true;
         }
