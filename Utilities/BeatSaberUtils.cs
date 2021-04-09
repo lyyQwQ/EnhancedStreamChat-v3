@@ -10,8 +10,18 @@ namespace EnhancedStreamChat.Utilities
         private static Material? _noGlow;
         public static Material? UINoGlowMaterial => _noGlow ??= Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault();
 
-        private static Shader? _tmpNoGlowFontShader;
-        public static Shader? TMPNoGlowFontShader => _tmpNoGlowFontShader ??= Resources.FindObjectsOfTypeAll<TMP_FontAsset>().LastOrDefault(f2 => f2.name == "Teko-Medium SDF Numbers Monospaced Curved")?.material?.shader;
+		private static Shader? _tmpNoGlowFontShader;
+		public static Shader? TMPNoGlowFontShader
+        {
+			get
+            {
+				if (_tmpNoGlowFontShader == null)
+                {
+					_tmpNoGlowFontShader = BeatSaberUI.MainTextFont.material.shader;
+				}
+				return _tmpNoGlowFontShader;
+            }
+        }
 
         // DaNike to the rescue 
         public static bool TryGetTMPFontByFamily(string family, out TMP_FontAsset font)

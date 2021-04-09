@@ -184,6 +184,7 @@ namespace EnhancedStreamChat.Chat
 
                 this.AddToVRPointer();
                 this.UpdateChatUI();
+                UpdateChatUI();
             }
         }
 

@@ -12,8 +12,8 @@ namespace EnhancedStreamChat.Utilities
                 var ratioY = (double)maxHeight / height;
                 var ratio = Math.Min(ratioX, ratioY);
 
-                var newWidth = (int)(width * ratio);
-                var newHeight = (int)(height * ratio);
+				var newWidth = (int) (width * ratio);
+				var newHeight = (int) (height * ratio);
 
                 return new Vector2(newWidth, newHeight);
             }

@@ -3,13 +3,13 @@ using System.Collections.Concurrent;
 
 namespace EnhancedStreamChat.Utilities
 {
-    public class FixedSizedQueue<T> : ConcurrentQueue<T>
-    {
-        private readonly object _object = new object();
+	public class FixedSizedQueue<T> : ConcurrentQueue<T>
+	{
+		private readonly object _object = new object();
 
         public int Size { get; }
 
-        private event Action<T> OnFree;
+		private event Action<T> OnFree;
 
         public FixedSizedQueue(int size, Action<T> onFree)
         {
