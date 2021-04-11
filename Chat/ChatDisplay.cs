@@ -34,7 +34,7 @@ namespace EnhancedStreamChat.Chat
         {
             this._waitForEndOfFrame = new WaitForEndOfFrame();
             HMMainThreadDispatcher.instance.Enqueue(this.Initialize());
-            VRPinterOnEnablePatch.OnEnabled += this.PointerOnEnabled;
+            VRPointerOnEnablePatch.OnEnabled += this.PointerOnEnabled;
         }
 
         private void PointerOnEnabled(VRPointer obj)
@@ -61,7 +61,7 @@ namespace EnhancedStreamChat.Chat
             ChatConfig.instance.OnConfigChanged -= this.Instance_OnConfigChanged;
             BSEvents.menuSceneActive -= this.BSEvents_menuSceneActive;
             BSEvents.gameSceneActive -= this.BSEvents_gameSceneActive;
-            VRPinterOnEnablePatch.OnEnabled -= this.PointerOnEnabled;
+            VRPointerOnEnablePatch.OnEnabled -= this.PointerOnEnabled;
             this.StopAllCoroutines();
             while (this._messages.TryDequeue(out var msg)) {
                 msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
