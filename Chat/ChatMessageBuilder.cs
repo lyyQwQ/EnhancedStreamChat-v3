@@ -124,7 +124,7 @@ namespace EnhancedStreamChat.Chat
                                                                                                                                                                                                                                                               emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
                                                                                                                                          }
                                                                                                                                          catch (Exception ex) {
-                                                                                                                                             Logger.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})");
+                                                                                                                                             Logger.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})\r\n{ex}");
                                                                                                                                          }
                                                                                                                                      }
 

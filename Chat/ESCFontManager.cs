@@ -66,7 +66,7 @@ namespace EnhancedStreamChat.Chat
                     Destroy(font);
                 }
             }
-            
+
             if (!Directory.Exists(FontPath)) {
                 Directory.CreateDirectory(FontPath);
             }

@@ -9,7 +9,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace EnhancedStreamChat.Chat
@@ -34,7 +33,7 @@ namespace EnhancedStreamChat.Chat
             _ = this.HandleOverflowMessageQueue();
             BSEvents.lateMenuSceneLoadedFresh += this.BSEvents_menuSceneLoadedFresh;
         }
-        
+
 
         private void Update()
         {

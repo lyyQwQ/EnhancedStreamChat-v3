@@ -1,4 +1,5 @@
 ﻿using EnhancedStreamChat.Chat;
+using HarmonyLib;
 using IPA;
 using IPA.Loader;
 using System;
@@ -11,20 +12,23 @@ namespace EnhancedStreamChat
     [Plugin(RuntimeOptions.DynamicInit)]
     public class Plugin
     {
-        internal static Plugin instance { get; private set; }
+        internal static Plugin Instance { get; private set; }
         internal static string Name => "EnhancedStreamChat";
         internal static string Version => _meta.Version.ToString() ?? Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
+        public const string HARMONY_ID = "EnhancedStreamChat.denpadokei.com.github";
+        private Harmony harmony;
         private static PluginMetadata _meta;
         [Init]
         public void Init(IPALogger logger, PluginMetadata meta)
         {
-            instance = this;
+            Instance = this;
             _meta = meta;
             Logger.Log = logger;
             Logger.Log.Debug("Logger initialized.");
             var config = ChatConfig.instance;
             Font.textureRebuilt += this.Font_textureRebuilt;
+            this.harmony = new Harmony(HARMONY_ID);
         }
         [OnStart]
         public void OnStart()
@@ -39,6 +43,7 @@ namespace EnhancedStreamChat
         [OnEnable]
         public void OnEnable()
         {
+            this.harmony.PatchAll(Assembly.GetExecutingAssembly());
             try {
                 ChatManager.instance.enabled = true;
             }
@@ -48,7 +53,11 @@ namespace EnhancedStreamChat
         }
 
         [OnDisable]
-        public void OnDisable() => ChatManager.instance.enabled = false;
+        public void OnDisable()
+        {
+            this.harmony.UnpatchAll(HARMONY_ID);
+            ChatManager.instance.enabled = false;
+        }
 
         [OnExit]
         public void OnExit() => Font.textureRebuilt -= this.Font_textureRebuilt;

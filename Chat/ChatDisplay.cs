@@ -4,6 +4,7 @@ using BeatSaberMarkupLanguage.ViewControllers;
 using BS_Utils.Utilities;
 using ChatCore.Interfaces;
 using EnhancedStreamChat.Graphics;
+using EnhancedStreamChat.HarmonyPatches;
 using EnhancedStreamChat.Utilities;
 using HMUI;
 using System;
@@ -33,6 +34,23 @@ namespace EnhancedStreamChat.Chat
         {
             this._waitForEndOfFrame = new WaitForEndOfFrame();
             HMMainThreadDispatcher.instance.Enqueue(this.Initialize());
+            VRPinterOnEnablePatch.OnEnabled += this.PointerOnEnabled;
+        }
+
+        private void PointerOnEnabled(VRPointer obj)
+        {
+            try {
+                var mover = this._chatScreen.gameObject.GetComponent<FloatingScreenMoverPointer>();
+                if (!mover) {
+                    mover = this._chatScreen.gameObject.AddComponent<FloatingScreenMoverPointer>();
+                    Destroy(this._chatScreen.screenMover);
+                }
+                this._chatScreen.screenMover = mover;
+                this._chatScreen.screenMover.Init(this._chatScreen, obj);
+            }
+            catch (Exception e) {
+                Logger.Error(e);
+            }
         }
 
         // TODO: eventually figure out a way to make this more modular incase we want to create multiple instances of ChatDisplay
@@ -43,6 +61,7 @@ namespace EnhancedStreamChat.Chat
             ChatConfig.instance.OnConfigChanged -= this.Instance_OnConfigChanged;
             BSEvents.menuSceneActive -= this.BSEvents_menuSceneActive;
             BSEvents.gameSceneActive -= this.BSEvents_gameSceneActive;
+            VRPinterOnEnablePatch.OnEnabled -= this.PointerOnEnabled;
             this.StopAllCoroutines();
             while (this._messages.TryDequeue(out var msg)) {
                 msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
@@ -83,8 +102,6 @@ namespace EnhancedStreamChat.Chat
         private void OnApplicationQuit() => this._applicationQuitting = true;
 
         private FloatingScreen _chatScreen;
-        private VRPointer _inMenuPointer;
-        private VRPointer _inGamePointer;
         private GameObject _chatContainer;
         private GameObject _rootGameObject;
         private Material _chatMoverMaterial;
@@ -148,9 +165,6 @@ namespace EnhancedStreamChat.Chat
             while (_backupMessageQueue.TryDequeue(out var msg)) {
                 this.OnTextMessageReceived(msg.Value, msg.Key);
             }
-
-            this._inMenuPointer = Resources.FindObjectsOfTypeAll<VRPointer>().FirstOrDefault();
-            this._inGamePointer = Resources.FindObjectsOfTypeAll<VRPointer>().LastOrDefault();
         }
 
         private void SetupScreens()
@@ -198,10 +212,7 @@ namespace EnhancedStreamChat.Chat
 
         private void Instance_OnConfigChanged(ChatConfig obj) => this.UpdateChatUI();
 
-        private void OnHandleReleased(object sender, FloatingScreenHandleEventArgs e)
-        {
-            this.FloatingScreenOnRelease(e.Position, e.Rotation);
-        }
+        private void OnHandleReleased(object sender, FloatingScreenHandleEventArgs e) => this.FloatingScreenOnRelease(e.Position, e.Rotation);
 
         private void FloatingScreenOnRelease(in Vector3 pos, in Quaternion rot)
         {
@@ -219,25 +230,21 @@ namespace EnhancedStreamChat.Chat
         private void BSEvents_gameSceneActive()
         {
             this._isInGame = true;
-            this.AddToVRPointer();
-            this.UpdateChatUI();
             foreach (var canvas in this._chatScreen.GetComponentsInChildren<Canvas>(true)) {
                 canvas.sortingOrder = 0;
             }
-            this._chatScreen.screenMover.SetField("_vrPointer", this._inGamePointer);
-            this._chatScreen.screenMover.Init(this._chatScreen);
+            this.AddToVRPointer();
+            this.UpdateChatUI();
         }
 
         private void BSEvents_menuSceneActive()
         {
             this._isInGame = false;
-            this.AddToVRPointer();
-            this.UpdateChatUI();
             foreach (var canvas in this._chatScreen.GetComponentsInChildren<Canvas>(true)) {
                 canvas.sortingOrder = 3;
             }
-            this._chatScreen.screenMover.SetField("_vrPointer", this._inMenuPointer);
-            this._chatScreen.screenMover.Init(this._chatScreen);
+            this.AddToVRPointer();
+            this.UpdateChatUI();
         }
 
         private void AddToVRPointer()
