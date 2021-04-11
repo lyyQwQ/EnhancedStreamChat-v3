@@ -1,4 +1,5 @@
 ﻿using EnhancedStreamChat.Utilities;
+using HMUI;
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,7 +15,8 @@ namespace EnhancedStreamChat.Graphics
 
         public event Action OnLatePreRenderRebuildComplete;
 
-        private Image _highlight, _accent;
+        private ImageView _highlight;
+        private ImageView _accent;
         private VerticalLayoutGroup _verticalLayoutGroup;
         public Vector2 Size
         {
@@ -72,7 +74,8 @@ namespace EnhancedStreamChat.Graphics
 
         private void Awake()
         {
-            this._highlight = this.gameObject.AddComponent<Image>();
+            this._highlight = this.gameObject.AddComponent<ImageView>();
+            this._highlight.raycastTarget = false;
             this._highlight.material = BeatSaberUtils.UINoGlowMaterial;
             this.Text = new GameObject().AddComponent<EnhancedTextMeshProUGUI>();
             DontDestroyOnLoad(this.Text.gameObject);
@@ -82,7 +85,8 @@ namespace EnhancedStreamChat.Graphics
             DontDestroyOnLoad(this.SubText.gameObject);
             this.SubText.OnLatePreRenderRebuildComplete += this.Text_OnLatePreRenderRebuildComplete;
 
-            this._accent = new GameObject().AddComponent<Image>();
+            this._accent = new GameObject().AddComponent<ImageView>();
+            this._accent.raycastTarget = false;
             DontDestroyOnLoad(this._accent.gameObject);
             this._accent.material = BeatSaberUtils.UINoGlowMaterial;
             this._accent.color = Color.yellow;

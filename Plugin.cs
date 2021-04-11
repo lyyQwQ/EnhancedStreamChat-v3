@@ -21,16 +21,20 @@ namespace EnhancedStreamChat
         {
             instance = this;
             _meta = meta;
-            Logger.log = logger;
-            Logger.log.Debug("Logger initialized.");
+            Logger.Log = logger;
+            Logger.Log.Debug("Logger initialized.");
             var config = ChatConfig.instance;
             Font.textureRebuilt += this.Font_textureRebuilt;
         }
         [OnStart]
-        public void OnStart() => ESCFontManager.TouchInstance();
+        public void OnStart()
+        {
+            ChatManager.TouchInstance();
+            ESCFontManager.TouchInstance();
+        }
 
 
-        private void Font_textureRebuilt(Font obj) => Logger.log.Debug($"FontTexture({obj.name}) width: {obj.material.mainTexture.width}, height: {obj.material.mainTexture.height}");
+        private void Font_textureRebuilt(Font obj) => Logger.Log.Debug($"FontTexture({obj.name}) width: {obj.material.mainTexture.width}, height: {obj.material.mainTexture.height}");
 
         [OnEnable]
         public void OnEnable()
@@ -39,7 +43,7 @@ namespace EnhancedStreamChat
                 ChatManager.instance.enabled = true;
             }
             catch (Exception ex) {
-                Logger.log.Error(ex);
+                Logger.Error(ex);
             }
         }
 
@@ -47,9 +51,6 @@ namespace EnhancedStreamChat
         public void OnDisable() => ChatManager.instance.enabled = false;
 
         [OnExit]
-        public void OnExit()
-        {
-            Font.textureRebuilt -= this.Font_textureRebuilt;
-        }
+        public void OnExit() => Font.textureRebuilt -= this.Font_textureRebuilt;
     }
 }

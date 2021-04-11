@@ -35,7 +35,7 @@ namespace EnhancedStreamChat.Chat
                             {
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
-                                        Logger.log.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
+                                        Logger.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
                                     }
                                 }
                                 tcs.SetResult(info);
@@ -46,7 +46,7 @@ namespace EnhancedStreamChat.Chat
                             {
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
-                                        Logger.log.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
+                                        Logger.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
                                     }
                                 }
                                 tcs.SetResult(info);
@@ -72,7 +72,7 @@ namespace EnhancedStreamChat.Chat
                     {
                         if (info != null) {
                             if (!font.TryRegisterImageInfo(info, out var character)) {
-                                Logger.log.Warn($"Failed to register badge \"{badge.Id}\" in font {font.Font.name}.");
+                                Logger.Warn($"Failed to register badge \"{badge.Id}\" in font {font.Font.name}.");
                             }
                         }
                         tcs.SetResult(info);
@@ -89,14 +89,14 @@ namespace EnhancedStreamChat.Chat
                                                                                                                              {
                                                                                                                                  try {
                                                                                                                                      if (!PrepareImages(msg, font)) {
-                                                                                                                                         Logger.log.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
+                                                                                                                                         Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
                                                                                                                                          //return msg.Message;
                                                                                                                                      }
 
                                                                                                                                      var badges = new ConcurrentStack<EnhancedImageInfo>();
                                                                                                                                      foreach (var badge in msg.Sender.Badges) {
                                                                                                                                          if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo)) {
-                                                                                                                                             Logger.log.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
+                                                                                                                                             Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
                                                                                                                                              continue;
                                                                                                                                          }
                                                                                                                                          badges.Push(badgeInfo);
@@ -105,12 +105,12 @@ namespace EnhancedStreamChat.Chat
                                                                                                                                      var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
                                                                                                                                      foreach (var emote in msg.Emotes) {
                                                                                                                                          if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace)) {
-                                                                                                                                             Logger.log.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
+                                                                                                                                             Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
                                                                                                                                              continue;
                                                                                                                                          }
-                                                                                                                                         //Logger.log.Info($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
+                                                                                                                                         //Logger.Info($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
                                                                                                                                          if (!font.TryGetCharacter(replace.ImageId, out var character)) {
-                                                                                                                                             Logger.log.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
+                                                                                                                                             Logger.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
                                                                                                                                              continue;
                                                                                                                                          }
 
@@ -124,7 +124,7 @@ namespace EnhancedStreamChat.Chat
                                                                                                                                                                                                                                                               emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
                                                                                                                                          }
                                                                                                                                          catch (Exception ex) {
-                                                                                                                                             Logger.log.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})");
+                                                                                                                                             Logger.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})");
                                                                                                                                          }
                                                                                                                                      }
 
@@ -157,7 +157,7 @@ namespace EnhancedStreamChat.Chat
                                                                                                                                      return sb.ToString();
                                                                                                                                  }
                                                                                                                                  catch (Exception ex) {
-                                                                                                                                     Logger.log.Error($"An exception occurred in ChatMessageBuilder while parsing msg with {msg.Emotes.Length} emotes. Msg: \"{msg.Message}\". {ex.ToString()}");
+                                                                                                                                     Logger.Error($"An exception occurred in ChatMessageBuilder while parsing msg with {msg.Emotes.Length} emotes. Msg: \"{msg.Message}\". {ex.ToString()}");
                                                                                                                                  }
                                                                                                                                  return msg.Message;
                                                                                                                              });

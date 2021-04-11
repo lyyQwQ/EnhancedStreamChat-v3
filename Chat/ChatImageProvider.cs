@@ -39,13 +39,13 @@ namespace EnhancedStreamChat.Chat
         public IEnumerator DownloadContent(string uri, Action<byte[]> Finally, bool isRetry = false)
         {
             if (string.IsNullOrEmpty(uri)) {
-                Logger.log.Error($"URI is null or empty in request for resource {uri}. Aborting!");
+                Logger.Error($"URI is null or empty in request for resource {uri}. Aborting!");
                 Finally?.Invoke(null);
                 yield break;
             }
 
             if (!isRetry && this._activeDownloads.TryGetValue(uri, out var activeDownload)) {
-                Logger.log.Info($"Request already active for {uri}");
+                Logger.Info($"Request already active for {uri}");
                 activeDownload.Finally -= Finally;
                 activeDownload.Finally += Finally;
                 yield return new WaitUntil(() => activeDownload.IsCompleted);
@@ -63,7 +63,7 @@ namespace EnhancedStreamChat.Chat
                 yield return wr.SendWebRequest();
                 if (wr.isHttpError) {
                     // Failed to download due to http error, don't retry
-                    Logger.log.Error($"An http error occurred during request to {uri}. Aborting! {wr.error}");
+                    Logger.Error($"An http error occurred during request to {uri}. Aborting! {wr.error}");
                     activeDownload.Finally?.Invoke(new byte[0]);
                     this._activeDownloads.TryRemove(uri, out var d1);
                     yield break;
@@ -71,7 +71,7 @@ namespace EnhancedStreamChat.Chat
 
                 if (wr.isNetworkError) {
                     if (!isRetry) {
-                        Logger.log.Error($"A network error occurred during request to {uri}. Retrying in 3 seconds... {wr.error}");
+                        Logger.Error($"A network error occurred during request to {uri}. Retrying in 3 seconds... {wr.error}");
                         yield return new WaitForSeconds(3);
                         this.StartCoroutine(this.DownloadContent(uri, Finally, true));
                         yield break;
@@ -142,7 +142,7 @@ namespace EnhancedStreamChat.Chat
                     spriteHeight = sprite.texture.height;
                 }
                 catch (Exception ex) {
-                    Logger.log.Error(ex);
+                    Logger.Error(ex);
                     sprite = null;
                 }
             }

@@ -54,7 +54,7 @@ namespace EnhancedStreamChat.Utilities
         {
             if (!this._freeObjects.TryPop(out var obj) && !obj) {
                 obj = this.InternalAlloc();
-                Logger.log.Debug($"InternalAlloc() in Alloc! : {obj}");
+                Logger.Debug($"InternalAlloc() in Alloc! : {obj}");
             }
             this._onAlloc?.Invoke(obj);
             return obj;
@@ -66,7 +66,10 @@ namespace EnhancedStreamChat.Utilities
         /// <param name="obj"></param>
         public void Free(T obj)
         {
-            if (obj == null) return;
+            if (!obj) {
+                Logger.Warn($"{nameof(obj)} is Destroyed.");
+                return;
+            }
             this._onFree?.Invoke(obj);
             this._freeObjects.Push(obj);
         }

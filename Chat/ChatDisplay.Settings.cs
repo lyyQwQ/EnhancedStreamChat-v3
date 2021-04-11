@@ -2,12 +2,7 @@
 using BeatSaberMarkupLanguage.Components.Settings;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using HMUI;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -274,12 +269,12 @@ namespace EnhancedStreamChat.Chat
         private void LaunchGitHub() => Application.OpenURL("https://github.com/Auros/EnhancedStreamChat-v3");
 
         [UIAction("on-settings-clicked")]
-        private void OnSettingsClick() => Logger.log.Info("Settings clicked!");
+        private void OnSettingsClick() => Logger.Info("Settings clicked!");
 
         [UIAction("#hide-settings")]
         private void OnHideSettings()
         {
-            Logger.log.Info("Saving settings!");
+            Logger.Info("Saving settings!");
             this._chatConfig.Save();
         }
 

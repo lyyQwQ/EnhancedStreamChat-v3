@@ -22,6 +22,7 @@ namespace EnhancedStreamChat.Graphics
                 var img = new GameObject().AddComponent<EnhancedImage>();
                 DontDestroyOnLoad(img.gameObject);
                 img.gameObject.SetActive(false);
+                img.raycastTarget = false;
                 img.color = Color.white;
                 img.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                 img.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
@@ -39,7 +40,7 @@ namespace EnhancedStreamChat.Graphics
                     img.sprite = null;
                 }
                 catch (Exception ex) {
-                    Logger.log.Error($"Exception while freeing EnhancedImage in EnhancedTextMeshProUGUI. {ex.ToString()}");
+                    Logger.Error($"Exception while freeing EnhancedImage in EnhancedTextMeshProUGUI. {ex.ToString()}");
                 }
             }
         );
@@ -48,6 +49,7 @@ namespace EnhancedStreamChat.Graphics
         {
             base.Awake();
             this.FontInfo = ESCFontManager.instance.FontInfo;
+            this.raycastTarget = false;
         }
 
         public void ClearImages()
@@ -65,7 +67,6 @@ namespace EnhancedStreamChat.Graphics
                 MainThreadInvoker.Invoke(() =>
                 {
                     this.ClearImages();
-
                 });
                 for (var i = 0; i < this.textInfo.characterCount; i++) {
                     var c = this.textInfo.characterInfo[i];
@@ -106,7 +107,7 @@ namespace EnhancedStreamChat.Graphics
                             this._currentImages.Add(img);
                         }
                         catch (Exception ex) {
-                            Logger.log.Error($"Exception while trying to overlay sprite. {ex.ToString()}");
+                            Logger.Error($"Exception while trying to overlay sprite. {ex.ToString()}");
                             _imagePool.Free(img);
                         }
                     });

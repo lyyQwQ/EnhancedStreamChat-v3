@@ -26,7 +26,10 @@ namespace EnhancedStreamChat.Chat
         {
             get
             {
-                if (this._mainFont?.material.shader != BeatSaberUtils.TMPNoGlowFontShader) {
+                if (!this._mainFont) {
+                    return null;
+                }
+                if (this._mainFont.material.shader != BeatSaberUtils.TMPNoGlowFontShader) {
                     this._mainFont.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
                 }
                 return this._mainFont;
@@ -50,13 +53,11 @@ namespace EnhancedStreamChat.Chat
         }
         public EnhancedFontInfo FontInfo { get; private set; } = null;
 
-        private void Awake()
-        {
-            HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont());
-        }
+        private void Awake() => HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont());
         public IEnumerator CreateChatFont()
         {
             this.IsInitialized = false;
+            yield return new WaitWhile(() => BeatSaberUtils.TMPNoGlowFontShader == null);
             if (this.MainFont != null) {
                 Destroy(this.MainFont);
             }
@@ -65,7 +66,7 @@ namespace EnhancedStreamChat.Chat
                     Destroy(font);
                 }
             }
-
+            
             if (!Directory.Exists(FontPath)) {
                 Directory.CreateDirectory(FontPath);
             }
@@ -111,7 +112,7 @@ namespace EnhancedStreamChat.Chat
                         }
                     }
                     catch (Exception e) {
-                        Logger.log.Error(e);
+                        Logger.Error(e);
                     }
                 }
             }
@@ -123,7 +124,7 @@ namespace EnhancedStreamChat.Chat
                     this.MainFont = asset;
                 }
                 else {
-                    Logger.log.Error($"Could not find font {fontName}! Falling back to Segoe UI");
+                    Logger.Error($"Could not find font {fontName}! Falling back to Segoe UI");
                     fontName = "Segoe UI";
                     FontManager.TryGetTMPFontByFamily(fontName, out asset);
                     asset.ReadFontAssetDefinition();

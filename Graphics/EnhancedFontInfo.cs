@@ -22,7 +22,7 @@ namespace EnhancedStreamChat.Graphics
             var ret = this.NextReplaceChar++;
             // If we used up all the Private Use Area characters, move onto Supplementary Private Use Area-A
             if (this.NextReplaceChar > 0xF8FF && this.NextReplaceChar < 0xF0000) {
-                Logger.log.Warn("Font is out of characters! Switching to overflow range.");
+                Logger.Warn("Font is out of characters! Switching to overflow range.");
                 this.NextReplaceChar = 0xF0000;
             }
             return ret;

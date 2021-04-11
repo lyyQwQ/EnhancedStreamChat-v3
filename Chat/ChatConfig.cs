@@ -80,7 +80,7 @@ namespace EnhancedStreamChat.Chat
 
         private ChatConfig(string configDirectory, string configName) : base(configDirectory, configName, Path.Combine(Environment.CurrentDirectory, "UserData", "StreamCore", "TwitchLoginInfo.ini"))
         {
-            Logger.log.Info("Config initialized.");
+            Logger.Info("Config initialized.");
         }
     }
 }
