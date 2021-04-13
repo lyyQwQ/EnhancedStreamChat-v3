@@ -103,6 +103,10 @@ namespace EnhancedStreamChat.Chat
                                                                                                                                      }
 
                                                                                                                                      var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
+
+                                                                                                                                     // Escape all html tags in the message
+                                                                                                                                     sb.Replace("<", "<\u2060");
+
                                                                                                                                      foreach (var emote in msg.Emotes) {
                                                                                                                                          if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace)) {
                                                                                                                                              Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
@@ -127,9 +131,6 @@ namespace EnhancedStreamChat.Chat
                                                                                                                                              Logger.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})\r\n{ex}");
                                                                                                                                          }
                                                                                                                                      }
-
-                                                                                                                                     // Escape all html tags in the message
-                                                                                                                                     sb.Replace("<", "<\u2060");
 
                                                                                                                                      if (msg.IsSystemMessage) {
                                                                                                                                          // System messages get a grayish color to differenciate them from normal messages in chat, and do not receive a username/badge prefix

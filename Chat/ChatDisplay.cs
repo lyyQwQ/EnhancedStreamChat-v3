@@ -462,7 +462,6 @@ namespace EnhancedStreamChat.Chat
 
         private void CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
         {
-            Logger.Debug($"text : {parsedMessage}");
             if (this._lastMessage != null && !msg.IsSystemMessage && this._lastMessage.Text.ChatMessage.Id == msg.Id) {
                 // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
                 this._lastMessage.SubText.text = parsedMessage;
