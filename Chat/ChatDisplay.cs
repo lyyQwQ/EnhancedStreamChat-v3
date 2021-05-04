@@ -287,7 +287,7 @@ namespace EnhancedStreamChat.Chat
         {
             newMsg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
             newMsg.OnLatePreRenderRebuildComplete += this.OnRenderRebuildComplete;
-            this.UpdateMessage(newMsg);
+            this.UpdateMessage(newMsg, true);
             this._messages.Enqueue(newMsg);
             HMMainThreadDispatcher.instance.Enqueue(this.ClearOldMessages());
         }
@@ -467,7 +467,7 @@ namespace EnhancedStreamChat.Chat
                 this._lastMessage.SubText.text = parsedMessage;
                 this._lastMessage.SubText.ChatMessage = msg;
                 this._lastMessage.SubTextEnabled = true;
-                this.UpdateMessage(this._lastMessage);
+                this.UpdateMessage(this._lastMessage, true);
             }
             else {
                 var newMsg = this.TextPool.Alloc();

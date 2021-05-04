@@ -15,20 +15,23 @@ namespace EnhancedStreamChat.Chat
 {
     public class ChatManager : PersistentSingleton<ChatManager>
     {
-        internal ChatCoreInstance _sc;
-        internal ChatServiceMultiplexer _svcs;
+        internal ChatCoreInstance _chatCoreInstance;
+        internal ChatServiceMultiplexer _chatServiceMultiplexer;
+        private ChatDisplay _chatDisplay;
 
+        #region // Unity message
         private void Awake()
         {
-            DontDestroyOnLoad(this.gameObject);
-            this._sc = ChatCoreInstance.Create();
-            //_sc.OnLogReceived += _sc_OnLogReceived;
-            this._svcs = this._sc.RunAllServices();
-            this._svcs.OnJoinChannel += this.QueueOrSendOnJoinChannel;
-            this._svcs.OnTextMessageReceived += this.QueueOrSendOnTextMessageReceived;
-            this._svcs.OnChatCleared += this.QueueOrSendOnClearChat;
-            this._svcs.OnMessageCleared += this.QueueOrSendOnClearMessage;
-            this._svcs.OnChannelResourceDataCached += this.QueueOrSendOnChannelResourceDataCached;
+            this._chatCoreInstance = ChatCoreInstance.Create();
+#if DEBUG
+            _chatCoreInstance.OnLogReceived += _sc_OnLogReceived;
+#endif
+            this._chatServiceMultiplexer = this._chatCoreInstance.RunAllServices();
+            this._chatServiceMultiplexer.OnJoinChannel += this.QueueOrSendOnJoinChannel;
+            this._chatServiceMultiplexer.OnTextMessageReceived += this.QueueOrSendOnTextMessageReceived;
+            this._chatServiceMultiplexer.OnChatCleared += this.QueueOrSendOnClearChat;
+            this._chatServiceMultiplexer.OnMessageCleared += this.QueueOrSendOnClearMessage;
+            this._chatServiceMultiplexer.OnChannelResourceDataCached += this.QueueOrSendOnChannelResourceDataCached;
             ChatImageProvider.TouchInstance();
             _ = this.HandleOverflowMessageQueue();
             BSEvents.lateMenuSceneLoadedFresh += this.BSEvents_menuSceneLoadedFresh;
@@ -41,6 +44,40 @@ namespace EnhancedStreamChat.Chat
                 action?.Invoke();
             }
         }
+
+        protected override void OnDestroy()
+        {
+            if (this._chatServiceMultiplexer != null) {
+                try {
+                    this._chatServiceMultiplexer.OnJoinChannel -= this.QueueOrSendOnJoinChannel;
+                    this._chatServiceMultiplexer.OnTextMessageReceived -= this.QueueOrSendOnTextMessageReceived;
+                    this._chatServiceMultiplexer.OnChatCleared -= this.QueueOrSendOnClearChat;
+                    this._chatServiceMultiplexer.OnMessageCleared -= this.QueueOrSendOnClearMessage;
+                    this._chatServiceMultiplexer.OnChannelResourceDataCached -= this.QueueOrSendOnChannelResourceDataCached;
+                }
+                catch (Exception e) {
+                    Logger.Error(e);
+                }
+                BSEvents.lateMenuSceneLoadedFresh -= this.BSEvents_menuSceneLoadedFresh;
+            }
+            if (this._chatCoreInstance != null) {
+#if DEBUG
+                _chatCoreInstance.OnLogReceived -= _sc_OnLogReceived;
+#endif
+                try {
+                    this._chatCoreInstance.StopAllServices();
+                }
+                catch (Exception e) {
+                    Logger.Error(e);
+                }
+            }
+            
+            MainThreadInvoker.ClearQueue();
+            ChatImageProvider.ClearCache();
+            base.OnDestroy();
+        }
+        #endregion
+
 
         private void _sc_OnLogReceived(CustomLogLevel level, string category, string log)
         {
@@ -56,33 +93,9 @@ namespace EnhancedStreamChat.Chat
             };
             Logger.cclog.Log(newLevel, log);
         }
-
-        public void OnDisable()
-        {
-            if (this._svcs != null) {
-                this._svcs.OnJoinChannel -= this.QueueOrSendOnJoinChannel;
-                this._svcs.OnTextMessageReceived -= this.QueueOrSendOnTextMessageReceived;
-                this._svcs.OnChatCleared -= this.QueueOrSendOnClearChat;
-                this._svcs.OnMessageCleared -= this.QueueOrSendOnClearMessage;
-                this._svcs.OnChannelResourceDataCached -= this.QueueOrSendOnChannelResourceDataCached;
-                BSEvents.lateMenuSceneLoadedFresh -= this.BSEvents_menuSceneLoadedFresh;
-            }
-            if (this._sc != null) {
-                //_sc.OnLogReceived -= _sc_OnLogReceived;
-                this._sc.StopAllServices();
-            }
-            if (this._chatDisplay != null) {
-                Destroy(this._chatDisplay.gameObject);
-                this._chatDisplay = null;
-            }
-            MainThreadInvoker.ClearQueue();
-            ChatImageProvider.ClearCache();
-        }
-
-        private ChatDisplay _chatDisplay;
         private void BSEvents_menuSceneLoadedFresh(ScenesTransitionSetupDataSO scenesTransitionSetupDataSo)
         {
-            if (this._chatDisplay != null) {
+            if (this._chatDisplay) {
                 DestroyImmediate(this._chatDisplay.gameObject);
                 this._chatDisplay = null;
                 MainThreadInvoker.ClearQueue();

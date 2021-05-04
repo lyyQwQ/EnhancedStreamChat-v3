@@ -52,7 +52,7 @@ namespace EnhancedStreamChat.Utilities
         /// <returns></returns>
         public T Alloc()
         {
-            if (!this._freeObjects.TryPop(out var obj) && !obj) {
+            if (!this._freeObjects.TryPop(out var obj) || !obj) {
                 obj = this.InternalAlloc();
                 Logger.Debug($"InternalAlloc() in Alloc! : {obj}");
             }

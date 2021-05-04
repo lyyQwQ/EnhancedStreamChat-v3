@@ -3,6 +3,7 @@ using ChatCore.Interfaces;
 using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Utilities;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -54,13 +55,13 @@ namespace EnhancedStreamChat.Graphics
 
         public void ClearImages()
         {
-            foreach (var enhancedImage in this._currentImages) {
-                _imagePool.Free(enhancedImage);
+            while (this._currentImages.TryTake(out var image)) {
+                _imagePool.Free(image);
             }
             this._currentImages.Clear();
         }
 
-        private readonly List<EnhancedImage> _currentImages = new List<EnhancedImage>();
+        private readonly ConcurrentBag<EnhancedImage> _currentImages = new ConcurrentBag<EnhancedImage>();
         public override void Rebuild(CanvasUpdate update)
         {
             if (update == CanvasUpdate.LatePreRender) {

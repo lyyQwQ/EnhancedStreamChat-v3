@@ -253,7 +253,7 @@ namespace EnhancedStreamChat.Chat
         public string ModVersion => Plugin.Version;
 
         [UIAction("launch-web-app")]
-        private void LaunchWebApp() => ChatManager.instance._sc.LaunchWebApp();
+        private void LaunchWebApp() => ChatManager.instance._chatCoreInstance.LaunchWebApp();
 
         [UIAction("launch-kofi")]
         private void LaunchKofi() => Application.OpenURL("https://ko-fi.com/brian91292");

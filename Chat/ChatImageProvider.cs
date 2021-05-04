@@ -20,14 +20,9 @@ namespace EnhancedStreamChat.Chat
 
     public class ChatImageProvider : PersistentSingleton<ChatImageProvider>
     {
-        private readonly ConcurrentDictionary<string, EnhancedImageInfo> _cachedImageInfo = new ConcurrentDictionary<string, EnhancedImageInfo>();
-        public ReadOnlyDictionary<string, EnhancedImageInfo> CachedImageInfo { get; internal set; }
-
+        public ConcurrentDictionary<string, EnhancedImageInfo> CachedImageInfo { get; } = new ConcurrentDictionary<string, EnhancedImageInfo>();
         private readonly ConcurrentDictionary<string, ActiveDownload> _activeDownloads = new ConcurrentDictionary<string, ActiveDownload>();
         private readonly ConcurrentDictionary<string, Texture2D> _cachedSpriteSheets = new ConcurrentDictionary<string, Texture2D>();
-
-        private void Awake() => this.CachedImageInfo = new ReadOnlyDictionary<string, EnhancedImageInfo>(this._cachedImageInfo);
-
         /// <summary>
         /// Retrieves the requested content from the provided Uri. 
         /// <para>
@@ -106,7 +101,7 @@ namespace EnhancedStreamChat.Chat
 
         public IEnumerator TryCacheSingleImage(string id, string uri, bool isAnimated, Action<EnhancedImageInfo> Finally = null, int forcedHeight = -1)
         {
-            if (this._cachedImageInfo.TryGetValue(id, out var info)) {
+            if (this.CachedImageInfo.TryGetValue(id, out var info)) {
                 Finally?.Invoke(info);
                 yield break;
             }
@@ -159,14 +154,14 @@ namespace EnhancedStreamChat.Chat
                     Height = spriteHeight,
                     AnimControllerData = animControllerData
                 };
-                this._cachedImageInfo[id] = ret;
+                this.CachedImageInfo.TryAdd(id, ret);
             }
             Finally?.Invoke(ret);
         }
 
         public IEnumerator TryCacheSpriteSheetImage(string id, string uri, ImageRect rect, Action<EnhancedImageInfo> Finally = null, int forcedHeight = -1)
         {
-            if (this._cachedImageInfo.TryGetValue(id, out var info)) {
+            if (this.CachedImageInfo.TryGetValue(id, out var info)) {
                 Finally?.Invoke(info);
                 yield break;
             }
@@ -199,18 +194,18 @@ namespace EnhancedStreamChat.Chat
                     Height = spriteHeight,
                     AnimControllerData = null
                 };
-                this._cachedImageInfo[id] = ret;
+                this.CachedImageInfo.TryAdd(id, ret);
             }
             Finally?.Invoke(ret);
         }
 
         internal static void ClearCache()
         {
-            if (instance._cachedImageInfo.Count > 0) {
-                foreach (var info in instance._cachedImageInfo.Values) {
+            if (instance.CachedImageInfo.Count > 0) {
+                foreach (var info in instance.CachedImageInfo.Values) {
                     Destroy(info.Sprite);
                 }
-                instance._cachedImageInfo.Clear();
+                instance.CachedImageInfo.Clear();
             }
         }
     }
