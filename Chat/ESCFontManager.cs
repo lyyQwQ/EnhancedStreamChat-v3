@@ -102,10 +102,10 @@ namespace EnhancedStreamChat.Chat
                 foreach (var fontFile in Directory.EnumerateFiles(FontPath, "*", SearchOption.TopDirectoryOnly)) {
                     try {
                         var font = new Font(fontFile);
-                        font.RequestCharactersInTexture(JPAll.JPText);
+                        font.RequestCharactersInTexture(ExtraCharacters.CNText);
                         font.name = Path.GetFileNameWithoutExtension(fontFile);
                         if (font.name.ToLower() == fontName.ToLower()) {
-                            asset = TMP_FontAsset.CreateFontAsset(font, 90, 6, GlyphRenderMode.SDFAA, 8192, 8192);
+                            asset = TMP_FontAsset.CreateFontAsset(font, 60, 6, GlyphRenderMode.SDFAA, 8192, 8192);
                             asset.ReadFontAssetDefinition();
                             this.MainFont = asset;
                             break;
