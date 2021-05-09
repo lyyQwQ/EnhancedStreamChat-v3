@@ -259,7 +259,7 @@ namespace EnhancedStreamChat.Chat
         private void LaunchKofi() => Application.OpenURL("https://ko-fi.com/brian91292");
 
         [UIAction("launch-github")]
-        private void LaunchGitHub() => Application.OpenURL("https://github.com/Auros/EnhancedStreamChat-v3");
+        private void LaunchGitHub() => Application.OpenURL("https://github.com/baoziii/EnhancedStreamChat-v3");
 
         [UIAction("on-settings-clicked")]
         private void OnSettingsClick() => Logger.Info("Settings clicked!");
