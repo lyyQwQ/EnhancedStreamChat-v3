@@ -30,6 +30,7 @@ namespace EnhancedStreamChat.Graphics
                 img.rectTransform.pivot = new Vector2(0, 0);
                 img.animStateUpdater = img.gameObject.AddComponent<AnimationStateUpdater>();
                 img.animStateUpdater.image = img;
+                img.SetAllDirty();
                 return img;
             },
             onFree: img =>
@@ -105,6 +106,7 @@ namespace EnhancedStreamChat.Graphics
                             img.rectTransform.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * this.fontScale * 0.558f / 2);
                             img.rectTransform.localRotation = Quaternion.identity;
                             img.gameObject.SetActive(true);
+                            img.SetAllDirty();
                             this._currentImages.Add(img);
                         }
                         catch (Exception ex) {

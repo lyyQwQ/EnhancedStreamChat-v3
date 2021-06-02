@@ -133,7 +133,7 @@ namespace EnhancedStreamChat.Chat
                     msg.SubText.autoSizeTextContainer = false;
                     (msg.transform as RectTransform).pivot = new Vector2(0.5f, 0);
                     msg.transform.SetParent(this._chatContainer.transform, false);
-                    this.UpdateMessage(msg, true);
+                    this.UpdateMessage(msg);
                     return msg;
                 },
                 onFree: (msg) =>
@@ -287,7 +287,7 @@ namespace EnhancedStreamChat.Chat
         {
             newMsg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
             newMsg.OnLatePreRenderRebuildComplete += this.OnRenderRebuildComplete;
-            this.UpdateMessage(newMsg);
+            this.UpdateMessage(newMsg, true);
             this._messages.Enqueue(newMsg);
             HMMainThreadDispatcher.instance.Enqueue(this.ClearOldMessages());
         }
@@ -361,12 +361,6 @@ namespace EnhancedStreamChat.Chat
                 msg.Text.SetAllDirty();
                 if (msg.SubTextEnabled) {
                     msg.SubText.SetAllDirty();
-                }
-            }
-            else {
-                msg.Text.SetVerticesDirty();
-                if (msg.SubTextEnabled) {
-                    msg.SubText.SetVerticesDirty();
                 }
             }
         }
