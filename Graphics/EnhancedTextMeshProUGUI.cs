@@ -17,7 +17,7 @@ namespace EnhancedStreamChat.Graphics
         public EnhancedFontInfo FontInfo { get; private set; }
         public event Action OnLatePreRenderRebuildComplete;
 
-        private static readonly ObjectPool<EnhancedImage> _imagePool = new ObjectPool<EnhancedImage>(64,
+        private static readonly ObjectMemoryPool<EnhancedImage> _imagePool = new ObjectMemoryPool<EnhancedImage>(64,
             constructor: () =>
             {
                 var img = new GameObject().AddComponent<EnhancedImage>();

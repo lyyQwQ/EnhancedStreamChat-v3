@@ -24,7 +24,7 @@ namespace EnhancedStreamChat.Chat
     [HotReload]
     public partial class ChatDisplay : BSMLAutomaticViewController
     {
-        public ObjectPool<EnhancedTextMeshProUGUIWithBackground> TextPool { get; internal set; }
+        public ObjectMemoryPool<EnhancedTextMeshProUGUIWithBackground> TextPool { get; internal set; }
         private readonly ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground> _messages = new ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground>();
         private ChatConfig _chatConfig;
 
@@ -120,7 +120,7 @@ namespace EnhancedStreamChat.Chat
                 }
             }
             (this.transform as RectTransform).pivot = new Vector2(0.5f, 0f);
-            this.TextPool = new ObjectPool<EnhancedTextMeshProUGUIWithBackground>(64,
+            this.TextPool = new ObjectMemoryPool<EnhancedTextMeshProUGUIWithBackground>(64,
                 constructor: () =>
                 {
                     var go = new GameObject(nameof(EnhancedTextMeshProUGUIWithBackground), typeof(EnhancedTextMeshProUGUIWithBackground));
@@ -133,7 +133,7 @@ namespace EnhancedStreamChat.Chat
                     msg.SubText.autoSizeTextContainer = false;
                     (msg.transform as RectTransform).pivot = new Vector2(0.5f, 0);
                     msg.transform.SetParent(this._chatContainer.transform, false);
-                    this.UpdateMessage(msg);
+                    this.UpdateMessage(msg, true);
                     return msg;
                 },
                 onFree: (msg) =>
@@ -287,7 +287,7 @@ namespace EnhancedStreamChat.Chat
         {
             newMsg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
             newMsg.OnLatePreRenderRebuildComplete += this.OnRenderRebuildComplete;
-            this.UpdateMessage(newMsg, true);
+            this.UpdateMessage(newMsg);
             this._messages.Enqueue(newMsg);
             HMMainThreadDispatcher.instance.Enqueue(this.ClearOldMessages());
         }
@@ -361,6 +361,12 @@ namespace EnhancedStreamChat.Chat
                 msg.Text.SetAllDirty();
                 if (msg.SubTextEnabled) {
                     msg.SubText.SetAllDirty();
+                }
+            }
+            else {
+                msg.Text.SetVerticesDirty();
+                if (msg.SubTextEnabled) {
+                    msg.SubText.SetVerticesDirty();
                 }
             }
         }

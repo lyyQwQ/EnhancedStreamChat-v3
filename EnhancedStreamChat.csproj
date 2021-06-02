@@ -77,7 +77,8 @@
             <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UI">
-            <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.UI.dll</HintPath>
+          <HintPath>D:\Oculus\Software\hyperbolic-magnetism-beat-saber\Beat Saber_Data\Managed\UnityEngine.UI.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.UIModule">
             <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.UIModule.dll</HintPath>
