@@ -1,43 +1,83 @@
-﻿using BS_Utils.Utilities;
-using EnhancedStreamChat.Utilities;
+﻿using BeatSaberMarkupLanguage;
+using BS_Utils.Utilities;
 using ChatCore;
 using ChatCore.Interfaces;
 using ChatCore.Logging;
 using ChatCore.Services;
+using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
-using BeatSaberMarkupLanguage;
 
 namespace EnhancedStreamChat.Chat
 {
     public class ChatManager : PersistentSingleton<ChatManager>
     {
-        internal ChatCoreInstance _sc;
-        internal ChatServiceMultiplexer _svcs;
-        void Awake()
+        internal ChatCoreInstance _chatCoreInstance;
+        internal ChatServiceMultiplexer _chatServiceMultiplexer;
+        private ChatDisplay _chatDisplay;
+
+        #region // Unity message
+        private void Awake()
         {
-            DontDestroyOnLoad(gameObject);
+            this._chatCoreInstance = ChatCoreInstance.Create();
+#if DEBUG
+            _chatCoreInstance.OnLogReceived += _sc_OnLogReceived;
+#endif
+            this._chatServiceMultiplexer = this._chatCoreInstance.RunAllServices();
+            this._chatServiceMultiplexer.OnJoinChannel += this.QueueOrSendOnJoinChannel;
+            this._chatServiceMultiplexer.OnTextMessageReceived += this.QueueOrSendOnTextMessageReceived;
+            this._chatServiceMultiplexer.OnChatCleared += this.QueueOrSendOnClearChat;
+            this._chatServiceMultiplexer.OnMessageCleared += this.QueueOrSendOnClearMessage;
+            this._chatServiceMultiplexer.OnChannelResourceDataCached += this.QueueOrSendOnChannelResourceDataCached;
+            ChatImageProvider.TouchInstance();
+            _ = this.HandleOverflowMessageQueue();
+            BSEvents.lateMenuSceneLoadedFresh += this.BSEvents_menuSceneLoadedFresh;
         }
 
-        public override void OnEnable()
+
+        private void Update()
         {
-            base.OnEnable();
-            _sc = ChatCoreInstance.Create();
-            //_sc.OnLogReceived += _sc_OnLogReceived;
-            _svcs = _sc.RunAllServices();
-            _svcs.OnJoinChannel += QueueOrSendOnJoinChannel;
-            _svcs.OnTextMessageReceived += QueueOrSendOnTextMessageReceived;
-            _svcs.OnChatCleared += QueueOrSendOnClearChat;
-            _svcs.OnMessageCleared += QueueOrSendOnClearMessage;
-            _svcs.OnChannelResourceDataCached += QueueOrSendOnChannelResourceDataCached;
-            ChatImageProvider.TouchInstance();
-            Task.Run(HandleOverflowMessageQueue);
-            BSEvents.lateMenuSceneLoadedFresh += BSEvents_menuSceneLoadedFresh;
+            while (this._chatDisplay && this.ActionQueue.TryDequeue(out var action)) {
+                action?.Invoke();
+            }
         }
+
+        protected override void OnDestroy()
+        {
+            if (this._chatServiceMultiplexer != null) {
+                try {
+                    this._chatServiceMultiplexer.OnJoinChannel -= this.QueueOrSendOnJoinChannel;
+                    this._chatServiceMultiplexer.OnTextMessageReceived -= this.QueueOrSendOnTextMessageReceived;
+                    this._chatServiceMultiplexer.OnChatCleared -= this.QueueOrSendOnClearChat;
+                    this._chatServiceMultiplexer.OnMessageCleared -= this.QueueOrSendOnClearMessage;
+                    this._chatServiceMultiplexer.OnChannelResourceDataCached -= this.QueueOrSendOnChannelResourceDataCached;
+                }
+                catch (Exception e) {
+                    Logger.Error(e);
+                }
+                BSEvents.lateMenuSceneLoadedFresh -= this.BSEvents_menuSceneLoadedFresh;
+            }
+            if (this._chatCoreInstance != null) {
+#if DEBUG
+                _chatCoreInstance.OnLogReceived -= _sc_OnLogReceived;
+#endif
+                try {
+                    this._chatCoreInstance.StopAllServices();
+                }
+                catch (Exception e) {
+                    Logger.Error(e);
+                }
+            }
+            
+            MainThreadInvoker.ClearQueue();
+            ChatImageProvider.ClearCache();
+            base.OnDestroy();
+        }
+        #endregion
+
 
         private void _sc_OnLogReceived(CustomLogLevel level, string category, string log)
         {
@@ -53,140 +93,91 @@ namespace EnhancedStreamChat.Chat
             };
             Logger.cclog.Log(newLevel, log);
         }
-
-        public void OnDisable()
-        {
-            if(_svcs != null)
-            {
-                _svcs.OnJoinChannel -= QueueOrSendOnJoinChannel;
-                _svcs.OnTextMessageReceived -= QueueOrSendOnTextMessageReceived;
-                _svcs.OnChatCleared -= QueueOrSendOnClearChat;
-                _svcs.OnMessageCleared -= QueueOrSendOnClearMessage;
-                _svcs.OnChannelResourceDataCached -= QueueOrSendOnChannelResourceDataCached;
-                BSEvents.lateMenuSceneLoadedFresh -= BSEvents_menuSceneLoadedFresh;
-            }
-            if (_sc != null)
-            {
-                //_sc.OnLogReceived -= _sc_OnLogReceived;
-                _sc.StopAllServices();
-            }
-            if(_chatDisplay != null)
-            {
-                Destroy(_chatDisplay.gameObject);
-                _chatDisplay = null;
-            }
-            MainThreadInvoker.ClearQueue();
-            ChatImageProvider.ClearCache();
-        }
-
-        ChatDisplay _chatDisplay;
         private void BSEvents_menuSceneLoadedFresh(ScenesTransitionSetupDataSO scenesTransitionSetupDataSo)
         {
-            if (_chatDisplay != null)
-            {
-                DestroyImmediate(_chatDisplay.gameObject);
-                _chatDisplay = null;
+            if (this._chatDisplay) {
+                DestroyImmediate(this._chatDisplay.gameObject);
+                this._chatDisplay = null;
                 MainThreadInvoker.ClearQueue();
             }
-            _chatDisplay = BeatSaberUI.CreateViewController<ChatDisplay>();
-            _chatDisplay.gameObject.SetActive(true);
+            this._chatDisplay = BeatSaberUI.CreateViewController<ChatDisplay>();
+            this._chatDisplay.gameObject.SetActive(true);
         }
 
-        private ConcurrentQueue<Action> _actionQueue = new ConcurrentQueue<Action>();
-        private SemaphoreSlim _msgLock = new SemaphoreSlim(1, 1);
+        private ConcurrentQueue<Action> ActionQueue { get; } = new ConcurrentQueue<Action>();
+        //private readonly SemaphoreSlim _msgLock = new SemaphoreSlim(1, 1);
         private async Task HandleOverflowMessageQueue()
         {
-            while (!_applicationIsQuitting)
-            {
-                if (_chatDisplay == null)
-                {
-                    // If _chatViewController isn't instantiated yet, lock the semaphore and wait until it is.
-                    await _msgLock.WaitAsync();
-                    while (_chatDisplay == null)
-                    {
-                        await Task.Delay(1000);
+            while (!_applicationIsQuitting) {
+                try {
+                    if (this._chatDisplay == null) {
+                        // If _chatViewController isn't instantiated yet, lock the semaphore and wait until it is.
+                        //await this._msgLock.WaitAsync();
+                        while (this._chatDisplay == null) {
+                            await Task.Delay(1000);
+                        }
                     }
-                }
-                else
-                {
-                    // If _chatViewController is instantiated, wait here until the action queue has any actions.
-                    while(_actionQueue.IsEmpty)
-                    {
-                        //Logger.log.Info("Queue is empty.");
-                        await Task.Delay(1000);
+                    else {
+                        // If _chatViewController is instantiated, wait here until the action queue has any actions.
+                        while (this.ActionQueue.IsEmpty) {
+                            //Logger.Info("Queue is empty.");
+                            await Task.Delay(1000);
+                        }
+                        // Once an action is added to the queue, lock the semaphore before working through the queue.
+                        //await this._msgLock.WaitAsync();
                     }
-                    // Once an action is added to the queue, lock the semaphore before working through the queue.
-                    await _msgLock.WaitAsync();
+                    var i = 0;
+                    var start = DateTime.UtcNow;
+                    var stopwatch = Stopwatch.StartNew();
+                    // Work through the queue of messages that has piled up one by one until they're all gone.
+                    while (this.ActionQueue.TryDequeue(out var action)) {
+                        action.Invoke();
+                        i++;
+                    }
+                    stopwatch.Stop();
+                    Logger.Warn($"{i} overflowed actions were executed in {stopwatch.ElapsedTicks / TimeSpan.TicksPerMillisecond}ms.");
                 }
-                int i = 0;
-                DateTime start = DateTime.UtcNow;
-                Stopwatch stopwatch = Stopwatch.StartNew();
-                // Work through the queue of messages that has piled up one by one until they're all gone.
-                while (_actionQueue.TryDequeue(out var action))
-                {
-                    action.Invoke();
-                    i++;
+                finally {
+                    // Release the lock, which will allow messages to pass through without the queue again
+                    //this._msgLock.Release();
                 }
-                stopwatch.Stop();
-                Logger.log.Warn($"{i} overflowed actions were executed in {stopwatch.ElapsedTicks/TimeSpan.TicksPerMillisecond}ms.");
-                // Release the lock, which will allow messages to pass through without the queue again
-                _msgLock.Release();
             }
         }
 
         private void QueueOrSendMessage<A>(IChatService svc, A a, Action<IChatService, A> action)
         {
-            if (_chatDisplay == null || !_msgLock.Wait(50))
-            {
-                _actionQueue.Enqueue(() => action.Invoke(svc, a));
+            if (this._chatDisplay == null) {
+                this.ActionQueue.Enqueue(() => action.Invoke(svc, a));
             }
-            else
-            {
+            else {
                 action.Invoke(svc, a);
-                _msgLock.Release();
+                //this._msgLock.Release();
             }
         }
         private void QueueOrSendMessage<A, B>(IChatService svc, A a, B b, Action<IChatService, A, B> action)
         {
-            if (_chatDisplay == null || !_msgLock.Wait(50))
-            {
-                _actionQueue.Enqueue(() => action.Invoke(svc, a, b));
+            if (this._chatDisplay == null) {
+                this.ActionQueue.Enqueue(() => action.Invoke(svc, a, b));
             }
-            else
-            {
+            else {
                 action.Invoke(svc, a, b);
-                _msgLock.Release();
+                //this._msgLock.Release();
             }
         }
 
-        private void QueueOrSendOnChannelResourceDataCached(IChatService svc, IChatChannel channel, Dictionary<string, IChatResourceData> resources) => QueueOrSendMessage(svc, channel, resources, OnChannelResourceDataCached);
-        private void OnChannelResourceDataCached(IChatService svc, IChatChannel channel, Dictionary<string, IChatResourceData> resources)
-        {
-            _chatDisplay.OnChannelResourceDataCached(channel, resources);
-        }
+        private void QueueOrSendOnChannelResourceDataCached(IChatService svc, IChatChannel channel, Dictionary<string, IChatResourceData> resources) => this.QueueOrSendMessage(svc, channel, resources, this.OnChannelResourceDataCached);
+        private void OnChannelResourceDataCached(IChatService svc, IChatChannel channel, Dictionary<string, IChatResourceData> resources) => this._chatDisplay.OnChannelResourceDataCached(channel, resources);
 
-        private void QueueOrSendOnTextMessageReceived(IChatService svc, IChatMessage msg) => QueueOrSendMessage(svc, msg, OnTextMesssageReceived);
-        private void OnTextMesssageReceived(IChatService svc, IChatMessage msg)
-        {
-            _chatDisplay.OnTextMessageReceived(msg);
-        }
+        private void QueueOrSendOnTextMessageReceived(IChatService svc, IChatMessage msg) => this.QueueOrSendMessage(svc, msg, this.OnTextMesssageReceived);
+        private void OnTextMesssageReceived(IChatService svc, IChatMessage msg) => this._chatDisplay.OnTextMessageReceived(msg);
 
-        private void QueueOrSendOnJoinChannel(IChatService svc, IChatChannel channel) => QueueOrSendMessage(svc, channel, OnJoinChannel);
-        private void OnJoinChannel(IChatService svc, IChatChannel channel)
-        {
-            _chatDisplay.OnJoinChannel(svc, channel);
-        }
+        private void QueueOrSendOnJoinChannel(IChatService svc, IChatChannel channel) => this.QueueOrSendMessage(svc, channel, this.OnJoinChannel);
+        private void OnJoinChannel(IChatService svc, IChatChannel channel) => this._chatDisplay.OnJoinChannel(svc, channel);
 
-        private void QueueOrSendOnClearMessage(IChatService svc, string messageId) => QueueOrSendMessage(svc, messageId, OnClearMessage);
-        private void OnClearMessage(IChatService svc, string messageId)
-        {
-            _chatDisplay.OnMessageCleared(messageId);
-        }
+        private void QueueOrSendOnClearMessage(IChatService svc, string messageId) => this.QueueOrSendMessage(svc, messageId, this.OnClearMessage);
+        private void OnClearMessage(IChatService svc, string messageId) => this._chatDisplay.OnMessageCleared(messageId);
 
-        private void QueueOrSendOnClearChat(IChatService svc, string userId) => QueueOrSendMessage(svc, userId, OnClearChat);
-        private void OnClearChat(IChatService svc, string userId)
-        {
-            _chatDisplay.OnChatCleared(userId);
-        }
+        private void QueueOrSendOnClearChat(IChatService svc, string userId) => this.QueueOrSendMessage(svc, userId, this.OnClearChat);
+        private void OnClearChat(IChatService svc, string userId) => this._chatDisplay.OnChatCleared(userId);
     }
 }

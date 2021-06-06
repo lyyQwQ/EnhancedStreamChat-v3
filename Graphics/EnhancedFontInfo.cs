@@ -10,48 +10,39 @@ namespace EnhancedStreamChat.Graphics
         public uint NextReplaceChar { get; private set; } = 0xe000;
         public ConcurrentDictionary<string, uint> CharacterLookupTable { get; } = new ConcurrentDictionary<string, uint>();
         public ConcurrentDictionary<uint, EnhancedImageInfo> ImageInfoLookupTable { get; } = new ConcurrentDictionary<uint, EnhancedImageInfo>();
-        private object _lock = new object();
+        private readonly object _lock = new object();
 
         public EnhancedFontInfo(TMP_FontAsset font)
         {
-            Font = font;
+            this.Font = font;
         }
 
         public uint GetNextReplaceChar()
         {
-            uint ret = NextReplaceChar++;
+            var ret = this.NextReplaceChar++;
             // If we used up all the Private Use Area characters, move onto Supplementary Private Use Area-A
-            if (NextReplaceChar > 0xF8FF && NextReplaceChar < 0xF0000)
-            {
-                Logger.log.Warn("Font is out of characters! Switching to overflow range.");
-                NextReplaceChar = 0xF0000;
+            if (this.NextReplaceChar > 0xF8FF && this.NextReplaceChar < 0xF0000) {
+                Logger.Warn("Font is out of characters! Switching to overflow range.");
+                this.NextReplaceChar = 0xF0000;
             }
             return ret;
         }
 
-        public bool TryGetCharacter(string id, out uint character)
-        {
-            return CharacterLookupTable.TryGetValue(id, out character);
-        }
+        public bool TryGetCharacter(string id, out uint character) => this.CharacterLookupTable.TryGetValue(id, out character);
 
-        public bool TryGetImageInfo(uint character, out EnhancedImageInfo imageInfo)
-        {
-            return ImageInfoLookupTable.TryGetValue(character, out imageInfo);
-        }
+        public bool TryGetImageInfo(uint character, out EnhancedImageInfo imageInfo) => this.ImageInfoLookupTable.TryGetValue(character, out imageInfo);
 
         public bool TryRegisterImageInfo(EnhancedImageInfo imageInfo, out uint replaceCharacter)
         {
-            if (!CharacterLookupTable.ContainsKey(imageInfo.ImageId))
-            {
+            if (!this.CharacterLookupTable.ContainsKey(imageInfo.ImageId)) {
                 uint next;
-                do
-                {
-                    next = GetNextReplaceChar();
+                do {
+                    next = this.GetNextReplaceChar();
                 }
-                while (Font.characterLookupTable.ContainsKey(next));
-                Font.characterLookupTable.Add(next, new TMP_Character(next, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width), new GlyphRect(0, 0, 0, 0))));
-                CharacterLookupTable.TryAdd(imageInfo.ImageId, next);
-                ImageInfoLookupTable.TryAdd(next, imageInfo);
+                while (this.Font.characterLookupTable.ContainsKey(next));
+                this.Font.characterLookupTable.Add(next, new TMP_Character(next, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width), new GlyphRect(0, 0, 0, 0))));
+                this.CharacterLookupTable.TryAdd(imageInfo.ImageId, next);
+                this.ImageInfoLookupTable.TryAdd(next, imageInfo);
                 replaceCharacter = next;
                 return true;
             }
@@ -61,19 +52,16 @@ namespace EnhancedStreamChat.Graphics
 
         public bool TryUnregisterImageInfo(string id, out uint unregisteredCharacter)
         {
-            lock (_lock)
-            {
-                if (!CharacterLookupTable.TryGetValue(id, out var c))
-                {
+            lock (this._lock) {
+                if (!this.CharacterLookupTable.TryGetValue(id, out var c)) {
                     unregisteredCharacter = 0;
                     return false;
                 }
-                if (Font.characterLookupTable.ContainsKey(c))
-                {
-                    Font.characterLookupTable.Remove(c);
+                if (this.Font.characterLookupTable.ContainsKey(c)) {
+                    this.Font.characterLookupTable.Remove(c);
                 }
-                CharacterLookupTable.TryRemove(id, out unregisteredCharacter);
-                return ImageInfoLookupTable.TryRemove(unregisteredCharacter, out var unregisteredImageInfo);
+                this.CharacterLookupTable.TryRemove(id, out unregisteredCharacter);
+                return this.ImageInfoLookupTable.TryRemove(unregisteredCharacter, out var unregisteredImageInfo);
             }
         }
     }

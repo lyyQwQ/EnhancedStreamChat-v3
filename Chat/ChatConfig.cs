@@ -41,7 +41,7 @@ namespace EnhancedStreamChat.Chat
         [ConfigMeta(Comment = "The name of the system font to be used in chat")]
         public string SystemFontName = "Segoe UI";
         [ConfigMeta(Comment = "The background color of the chat")]
-        public Color BackgroundColor = Color.black.ColorWithAlpha(0.5f);
+        public Color BackgroundColor = Color.black.ColorWithAlpha(0.87f);
         [ConfigMeta(Comment = "The base color of the chat text.")]
         public Color TextColor = Color.white;
         [ConfigMeta(Comment = "The accent color to be used on system messages")]
@@ -80,7 +80,7 @@ namespace EnhancedStreamChat.Chat
 
         private ChatConfig(string configDirectory, string configName) : base(configDirectory, configName, Path.Combine(Environment.CurrentDirectory, "UserData", "StreamCore", "TwitchLoginInfo.ini"))
         {
-            Logger.log.Info("Config initialized.");
+            Logger.Info("Config initialized.");
         }
     }
 }
