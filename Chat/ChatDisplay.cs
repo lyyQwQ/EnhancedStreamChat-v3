@@ -98,8 +98,8 @@ namespace EnhancedStreamChat.Chat
             this._updateMessagePositions = false;
         }
 
-        private bool _applicationQuitting = false;
-        private void OnApplicationQuit() => this._applicationQuitting = true;
+        //private bool _applicationQuitting = false;
+        //private void OnApplicationQuit() => this._applicationQuitting = true;
 
         private FloatingScreen _chatScreen;
         private GameObject _chatContainer;
@@ -140,6 +140,7 @@ namespace EnhancedStreamChat.Chat
                 {
                     try {
                         msg.gameObject.SetActive(false);
+                        (msg.transform as RectTransform).localPosition = Vector3.zero;
                         msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
                         msg.HighlightEnabled = false;
                         msg.AccentEnabled = false;
@@ -457,10 +458,10 @@ namespace EnhancedStreamChat.Chat
         public async void OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
         {
             var parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, this._isInGame);
-            this.CreateMessage(msg, dateTime, parsedMessage);
+            HMMainThreadDispatcher.instance.Enqueue(this.CreateMessage(msg, dateTime, parsedMessage));
         }
 
-        private void CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
+        private IEnumerator CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
         {
             if (this._lastMessage != null && !msg.IsSystemMessage && this._lastMessage.Text.ChatMessage.Id == msg.Id) {
                 // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
@@ -475,6 +476,7 @@ namespace EnhancedStreamChat.Chat
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
                 newMsg.ReceivedDate = date;
+                yield return null;
                 this.AddMessage(newMsg);
                 this._lastMessage = newMsg;
             }
