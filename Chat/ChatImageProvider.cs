@@ -31,6 +31,7 @@ namespace EnhancedStreamChat.Chat
         /// </summary>
         /// <param name="uri">The resource location</param>
         /// <param name="Finally">A callback that occurs after the resource is retrieved. This will always occur even if the resource is already cached.</param>
+        /// <param name="isRetry">Retry</param>
         public IEnumerator DownloadContent(string uri, Action<byte[]> Finally, bool isRetry = false)
         {
             if (string.IsNullOrEmpty(uri)) {

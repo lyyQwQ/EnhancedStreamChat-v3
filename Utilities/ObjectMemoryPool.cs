@@ -8,7 +8,7 @@ namespace EnhancedStreamChat.Utilities
     /// A dynamic pool of unity components of type T, that recycles old objects when possible, and allocates new objects when required.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class ObjectPool<T> : IDisposable where T : Component
+    public class ObjectMemoryPool<T> : IDisposable where T : Component
     {
         private readonly ConcurrentStack<T> _freeObjects;
         private readonly Action<T>? _firstAlloc;
@@ -25,7 +25,7 @@ namespace EnhancedStreamChat.Utilities
         /// <param name="firstAlloc">The callback function you want to occur only the first time when a new component of type T is allocated.</param>
         /// <param name="onAlloc">The callback function to be called everytime ObjectPool.Alloc() is called.</param>
         /// <param name="onFree">The callback function to be called everytime ObjectPool.Free() is called</param>
-        public ObjectPool(int initialCount = 0, Func<T>? constructor = null, Action<T>? firstAlloc = null, Action<T>? onAlloc = null, Action<T>? onFree = null)
+        public ObjectMemoryPool(int initialCount = 0, Func<T>? constructor = null, Action<T>? firstAlloc = null, Action<T>? onAlloc = null, Action<T>? onFree = null)
         {
             this._constructor = constructor;
             this._firstAlloc = firstAlloc;
