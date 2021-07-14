@@ -3,6 +3,8 @@ using BeatSaberMarkupLanguage.FloatingScreen;
 using BeatSaberMarkupLanguage.ViewControllers;
 using BS_Utils.Utilities;
 using ChatCore.Interfaces;
+using ChatCore.Models.BiliBili;
+using ChatCore.Utilities;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.HarmonyPatches;
 using EnhancedStreamChat.Utilities;
@@ -13,6 +15,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -365,6 +369,17 @@ namespace EnhancedStreamChat.Chat
                 }
             }
         }
+        private void UpdateMessageContent(string id, string content)
+        {
+            foreach (var msg in this._messages.ToArray())
+            {
+                if (msg.Text.ChatMessage.Id == id && msg.Text.ChatMessage is BiliBiliChatMessage) {
+                    ((BiliBiliChatMessage)msg.Text.ChatMessage).UpdateContent(content);
+                    this.UpdateMessage(msg, true);
+                } 
+            }
+            this._updateMessagePositions = true;
+        }
         private IEnumerator ClearOldMessages()
         {
             yield return this._waitForEndOfFrame;
@@ -476,6 +491,27 @@ namespace EnhancedStreamChat.Chat
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
                 newMsg.ReceivedDate = date;
+                if (msg is BiliBiliChatMessage) {
+                    var message = msg.AsBiliBiliMessage();
+                    if (message.MessageType == "pk_pre") {
+                        Task.Run(() => {
+                            int tic = message.extra["timer"] - 1;
+                            while (tic > 0) {
+                                Thread.Sleep(1000);
+                                UpdateMessageContent(msg.Id, "【大乱斗】距离与" + message.extra["uname"] + "的PK还有" + tic-- + "秒");
+                            }
+                        });
+                    } else if (message.MessageType == "pk_start") {
+                        Task.Run(() => {
+                            int tic = message.extra["timer"] - 1;
+                            while (tic > 0)
+                            {
+                                Thread.Sleep(1000);
+                                UpdateMessageContent(msg.Id, "【大乱斗】距离与 " + message.extra["uname"] + " 的PK还有" + tic-- + "秒");
+                            }
+                        });
+                    }
+                }
                 yield return null;
                 this.AddMessage(newMsg);
                 this._lastMessage = newMsg;
