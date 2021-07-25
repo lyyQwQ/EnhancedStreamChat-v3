@@ -369,17 +369,46 @@ namespace EnhancedStreamChat.Chat
                 }
             }
         }
-        private void UpdateMessageContent(string id, string content)
+        private bool UpdateMessageContent(string id, string content)
         {
+            var flag = false;
             foreach (var msg in this._messages.ToArray())
             {
-                if (msg.Text.ChatMessage.Id == id && msg.Text.ChatMessage is BiliBiliChatMessage) {
+                if (msg.Text.ChatMessage is BiliBiliChatMessage && msg.Text.ChatMessage.Id == id) {
+                    Console.WriteLine("1: Find Msg id: " + id + "Content: " + msg.Text.ChatMessage.Message + " --> " + content);
                     ((BiliBiliChatMessage)msg.Text.ChatMessage).UpdateContent(content);
                     this.UpdateMessage(msg, true);
+                    flag = true;
+                    break;
                 } 
             }
-            this._updateMessagePositions = true;
+            if (flag) {
+                Console.WriteLine("Update Message");
+                this._updateMessagePositions = true;
+            }
+
+            return flag;
         }
+
+        private bool UpdateMessageContent2(string id, string content) {
+            var flag = false;
+            foreach (var msg in this._messages.ToArray())
+            {
+                if (msg.Text.ChatMessage is BiliBiliChatMessage && msg.Text.ChatMessage.Id == id)
+                {
+                    Console.WriteLine("2: Find Msg id: " + id + "Content: " + msg.Text.ChatMessage.Message + " --> " + content);
+                    ((BiliBiliChatMessage)msg.Text.ChatMessage).UpdateContent(content);
+                    msg.SubText.text = content;
+                    msg.SubText.ChatMessage = msg.Text.ChatMessage;
+                    msg.SubTextEnabled = true;
+                    this.UpdateMessage(msg, true);
+                    flag = true;
+                    break;
+                }
+            }
+            return flag;
+        }
+
         private IEnumerator ClearOldMessages()
         {
             yield return this._waitForEndOfFrame;
@@ -491,14 +520,14 @@ namespace EnhancedStreamChat.Chat
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
                 newMsg.ReceivedDate = date;
-                if (msg is BiliBiliChatMessage) {
+                /*if (msg is BiliBiliChatMessage) {
                     var message = msg.AsBiliBiliMessage();
                     if (message.MessageType == "pk_pre") {
                         Task.Run(() => {
                             int tic = message.extra["timer"] - 1;
                             while (tic > 0) {
                                 Thread.Sleep(1000);
-                                UpdateMessageContent(msg.Id, "【大乱斗】距离与" + message.extra["uname"] + "的PK还有" + tic-- + "秒");
+                                if (UpdateMessageContent(msg.Id, "【大乱斗】距离与" + message.extra["uname"] + "的PK还有" + tic-- + "秒")) break;
                             }
                         });
                     } else if (message.MessageType == "pk_start") {
@@ -507,11 +536,11 @@ namespace EnhancedStreamChat.Chat
                             while (tic > 0)
                             {
                                 Thread.Sleep(1000);
-                                UpdateMessageContent(msg.Id, "【大乱斗】距离与 " + message.extra["uname"] + " 的PK还有" + tic-- + "秒");
+                                if (UpdateMessageContent(msg.Id, "【大乱斗】距离与 " + message.extra["uname"] + " 的PK还有" + tic-- + "秒")) break;
                             }
                         });
                     }
-                }
+                }*/
                 yield return null;
                 this.AddMessage(newMsg);
                 this._lastMessage = newMsg;
