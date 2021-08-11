@@ -5,6 +5,7 @@ using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UI;
@@ -119,7 +120,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 this.SetProperty(ref this._chatConfig.BackgroundColor, value);
-                this._chatScreen.GetComponentInChildren<ImageView>().material.color = value;
+                this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "bg").color = value;
             }
         }
 

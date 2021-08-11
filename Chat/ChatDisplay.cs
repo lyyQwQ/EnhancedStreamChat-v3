@@ -201,10 +201,13 @@ namespace EnhancedStreamChat.Chat
                 this._chatScreen.transform.SetParent(this._rootGameObject.transform);
                 this._chatScreen.ScreenRotation = Quaternion.Euler(this.ChatRotation);
 
-                this._bg = this._chatScreen.GetComponentInChildren<ImageView>();
+                this._bg = this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "bg");
                 this._bg.raycastTarget = false;
-                this._bg.material.mainTexture = BeatSaberUtils.UINoGlowMaterial.mainTexture;
+                this._bg.material = Instantiate(this._bg.material);
+                this._bg.SetField("_gradient", false);
+                this._bg.material.color = Color.white.ColorWithAlpha(1);
                 this._bg.color = this.BackgroundColor;
+                this._bg.SetAllDirty();
 
                 this.AddToVRPointer();
                 this.UpdateChatUI();
