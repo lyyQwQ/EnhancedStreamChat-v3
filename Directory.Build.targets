@@ -12,6 +12,7 @@
     <ArtifactDestination>$(OutDir)Final</ArtifactDestination>
     <ErrorOnMismatchedVersions Condition="'$(Configuration)' == 'Release'">True</ErrorOnMismatchedVersions>
   </PropertyGroup>
+  
   <!--Build Targets-->
   <!--Displays a warning if BeatSaberModdingTools.Tasks is not installed.-->
   <Target Name="CheckBSMTInstalled" AfterTargets="BeforeBuild" Condition="'$(BSMTTaskAssembly)' == ''">
@@ -20,11 +21,16 @@
   <!--Runs a build task to get info about the project used by later targets.-->
   <Target Name="GetProjectInfo" AfterTargets="CheckBSMTInstalled" DependsOnTargets="CheckBSMTInstalled" Condition="'$(BSMTTaskAssembly)' != ''">
     <Message Text="Using AssemblyVersion defined in project instead of 'Properties\AssemblyInfo.cs'" Importance="high" Condition="'$(AssemblyVersion)' != ''" />
-    <GetManifestInfo KnownAssemblyVersion="$(AssemblyVersion)" ErrorOnMismatch="">
+    <GetManifestInfo ErrorOnMismatch="">
       <Output TaskParameter="PluginVersion" PropertyName="PluginVersion" />
       <Output TaskParameter="GameVersion" PropertyName="GameVersion" />
-      <Output TaskParameter="PluginVersion" PropertyName="AssemblyVersion" />
+      <Output TaskParameter="BasePluginVersion" PropertyName="BasePluginVersion" />
     </GetManifestInfo>
+    <PropertyGroup>
+      <AssemblyVersion>$(BasePluginVersion)</AssemblyVersion>
+      <FileVersion>$(BasePluginVersion)</FileVersion>
+      <InformationalVersion>$(BasePluginVersion)</InformationalVersion>
+    </PropertyGroup>
     <GetCommitInfo ProjectDir="$(ProjectDir)">
       <Output TaskParameter="CommitHash" PropertyName="CommitHash" />
       <Output TaskParameter="Branch" PropertyName="Branch" />
