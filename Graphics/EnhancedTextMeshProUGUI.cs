@@ -4,7 +4,6 @@ using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -59,7 +58,6 @@ namespace EnhancedStreamChat.Graphics
             while (this._currentImages.TryTake(out var image)) {
                 _imagePool.Free(image);
             }
-            this._currentImages.Clear();
         }
 
         private readonly ConcurrentBag<EnhancedImage> _currentImages = new ConcurrentBag<EnhancedImage>();

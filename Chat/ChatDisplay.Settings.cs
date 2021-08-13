@@ -79,7 +79,6 @@ namespace EnhancedStreamChat.Chat
         [UIComponent("text-color-setting")]
         private readonly ColorSetting _textColorSetting;
 
-        private Color _accentColor;
         [UIValue("accent-color")]
         public Color AccentColor
         {

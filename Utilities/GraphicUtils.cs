@@ -40,7 +40,5 @@ namespace EnhancedStreamChat.Utilities
             stream.Read(data, 0, (int)stream.Length);
             return data;
         }
-
-        public static Image ByteArrayToImage(byte[] byteArrayIn) => Image.FromStream(new MemoryStream(byteArrayIn));
     }
 }
