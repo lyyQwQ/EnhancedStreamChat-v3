@@ -10,10 +10,10 @@
     <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
     <!--<ModVersion>4.0.5</ModVersion>-->
     <!--<InformationalVersion>$(ModVersion)</InformationalVersion>-->
-    <Version>4.0.5-rc1</Version>
+    <Version>4.0.6-rc1</Version>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <AssemblyVersion>4.0.5</AssemblyVersion>
-    <FileVersion>4.0.5</FileVersion>
+    <AssemblyVersion>4.0.6</AssemblyVersion>
+    <FileVersion>4.0.6</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
