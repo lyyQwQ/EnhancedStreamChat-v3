@@ -377,10 +377,8 @@ namespace EnhancedStreamChat.Chat
         private string BuildClearedMessage(EnhancedTextMeshProUGUI msg)
         {
             var nameColorCode = msg.ChatMessage.Sender.Color;
-            Logger.Debug(nameColorCode);
             if (ColorUtility.TryParseHtmlString(msg.ChatMessage.Sender.Color.Substring(0, 7), out var nameColor)) {
                 Color.RGBToHSV(nameColor, out var h, out var s, out var v);
-                Logger.Debug($"{new Vector3(h, s, v)}");
                 if (v < 0.85f) {
                     v = 0.85f;
                     nameColor = Color.HSVToRGB(h, s, v);

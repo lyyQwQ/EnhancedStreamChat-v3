@@ -152,7 +152,6 @@ namespace EnhancedStreamChat.Chat
                     Logger.Debug(nameColorCode);
                     if (ColorUtility.TryParseHtmlString(msg.Sender.Color.Substring(0, 7), out var nameColor)) {
                         Color.RGBToHSV(nameColor, out var h, out var s, out var v);
-                        Logger.Debug($"{new Vector3(h, s, v)}");
                         if (v < 0.85f) {
                             v = 0.85f;
                             nameColor = Color.HSVToRGB(h, s, v);
@@ -160,7 +159,6 @@ namespace EnhancedStreamChat.Chat
                         nameColorCode = ColorUtility.ToHtmlStringRGBA(nameColor);
                         nameColorCode = nameColorCode.Insert(0, "#");
                     }
-                    Logger.Debug(nameColorCode);
                     if (msg.IsActionMessage) {
                         // Message becomes the color of their name if it's an action message
                         sb.Insert(0, $"<color={nameColorCode}><b>{msg.Sender.DisplayName}</b> ");
