@@ -13,6 +13,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,7 +25,7 @@ namespace EnhancedStreamChat.Chat
     [HotReload]
     public partial class ChatDisplay : BSMLAutomaticViewController
     {
-        public ObjectMemoryPool<EnhancedTextMeshProUGUIWithBackground> TextPool { get; internal set; }
+        public ObjectMemoryComponentPool<EnhancedTextMeshProUGUIWithBackground> TextPool { get; internal set; }
         private readonly ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground> _messages = new ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground>();
         private ChatConfig _chatConfig;
 
@@ -33,7 +34,6 @@ namespace EnhancedStreamChat.Chat
         private void Awake()
         {
             this._waitForEndOfFrame = new WaitForEndOfFrame();
-            HMMainThreadDispatcher.instance.Enqueue(this.Initialize());
             VRPointerOnEnablePatch.OnEnabled += this.PointerOnEnabled;
         }
 
@@ -57,7 +57,6 @@ namespace EnhancedStreamChat.Chat
         private static readonly ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>> _backupMessageQueue = new ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>>();
         protected override void OnDestroy()
         {
-            base.OnDestroy();
             ChatConfig.instance.OnConfigChanged -= this.Instance_OnConfigChanged;
             BSEvents.menuSceneActive -= this.BSEvents_menuSceneActive;
             BSEvents.gameSceneActive -= this.BSEvents_gameSceneActive;
@@ -87,6 +86,7 @@ namespace EnhancedStreamChat.Chat
                 Destroy(this._chatMoverMaterial);
                 this._chatMoverMaterial = null;
             }
+            base.OnDestroy();
         }
 
         private void Update()
@@ -98,16 +98,13 @@ namespace EnhancedStreamChat.Chat
             this._updateMessagePositions = false;
         }
 
-        //private bool _applicationQuitting = false;
-        //private void OnApplicationQuit() => this._applicationQuitting = true;
-
         private FloatingScreen _chatScreen;
         private GameObject _chatContainer;
         private GameObject _rootGameObject;
         private Material _chatMoverMaterial;
         private ImageView _bg;
 
-        private IEnumerator Initialize()
+        private IEnumerator Start()
         {
             DontDestroyOnLoad(this.gameObject);
             this._chatConfig = ChatConfig.instance;
@@ -120,7 +117,7 @@ namespace EnhancedStreamChat.Chat
                 }
             }
             (this.transform as RectTransform).pivot = new Vector2(0.5f, 0f);
-            this.TextPool = new ObjectMemoryPool<EnhancedTextMeshProUGUIWithBackground>(64,
+            this.TextPool = new ObjectMemoryComponentPool<EnhancedTextMeshProUGUIWithBackground>(64,
                 constructor: () =>
                 {
                     var go = new GameObject(nameof(EnhancedTextMeshProUGUIWithBackground), typeof(EnhancedTextMeshProUGUIWithBackground));
@@ -162,9 +159,9 @@ namespace EnhancedStreamChat.Chat
             BSEvents.gameSceneActive += this.BSEvents_gameSceneActive;
 
             yield return new WaitWhile(() => this._chatScreen == null);
-
             while (_backupMessageQueue.TryDequeue(out var msg)) {
-                this.OnTextMessageReceived(msg.Value, msg.Key);
+                var task = this.OnTextMessageReceived(msg.Value, msg.Key).GetAwaiter();
+                yield return new WaitWhile(() => !task.IsCompleted);
             }
         }
 
@@ -293,7 +290,7 @@ namespace EnhancedStreamChat.Chat
             newMsg.OnLatePreRenderRebuildComplete += this.OnRenderRebuildComplete;
             this.UpdateMessage(newMsg, true);
             this._messages.Enqueue(newMsg);
-            HMMainThreadDispatcher.instance.Enqueue(this.ClearOldMessages());
+            this.ClearOldMessages();
         }
 
         private void UpdateChatUI()
@@ -368,9 +365,8 @@ namespace EnhancedStreamChat.Chat
                 }
             }
         }
-        private IEnumerator ClearOldMessages()
+        private void ClearOldMessages()
         {
-            yield return this._waitForEndOfFrame;
             while (this._messages.TryPeek(out var msg) && this.ReverseChatOrder ? msg.transform.localPosition.y < 0 - (msg.transform as RectTransform).sizeDelta.y : msg.transform.localPosition.y >= ChatConfig.instance.ChatHeight) {
                 if (this._messages.TryDequeue(out msg)) {
                     this.TextPool.Free(msg);
@@ -380,7 +376,19 @@ namespace EnhancedStreamChat.Chat
 
         private string BuildClearedMessage(EnhancedTextMeshProUGUI msg)
         {
-            var sb = new StringBuilder($"<color={msg.ChatMessage.Sender.Color}>{msg.ChatMessage.Sender.DisplayName}</color>");
+            var nameColorCode = msg.ChatMessage.Sender.Color;
+            Logger.Debug(nameColorCode);
+            if (ColorUtility.TryParseHtmlString(msg.ChatMessage.Sender.Color.Substring(0, 7), out var nameColor)) {
+                Color.RGBToHSV(nameColor, out var h, out var s, out var v);
+                Logger.Debug($"{new Vector3(h, s, v)}");
+                if (v < 0.85f) {
+                    v = 0.85f;
+                    nameColor = Color.HSVToRGB(h, s, v);
+                }
+                nameColorCode = ColorUtility.ToHtmlStringRGB(nameColor);
+                nameColorCode = nameColorCode.Insert(0, "#");
+            }
+            var sb = new StringBuilder($"<color={nameColorCode}>{msg.ChatMessage.Sender.DisplayName}</color>");
             var badgeEndIndex = msg.text.IndexOf("<color=");
             if (badgeEndIndex != -1) {
                 sb.Insert(0, msg.text.Substring(0, badgeEndIndex));
@@ -457,14 +465,14 @@ namespace EnhancedStreamChat.Chat
                                                                                                                         });
 
         private EnhancedTextMeshProUGUIWithBackground _lastMessage;
-        public void OnTextMessageReceived(IChatMessage msg) => this.OnTextMessageReceived(msg, DateTime.Now);
-        public async void OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
+        public void OnTextMessageReceived(IChatMessage msg) => _ = this.OnTextMessageReceived(msg, DateTime.Now);
+        public async Task OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
         {
-            var parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, this._isInGame);
-            HMMainThreadDispatcher.instance.Enqueue(this.CreateMessage(msg, dateTime, parsedMessage));
+            var parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo);
+            HMMainThreadDispatcher.instance.Enqueue(() => this.CreateMessage(msg, dateTime, parsedMessage));
         }
 
-        private IEnumerator CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
+        private void CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
         {
             if (this._lastMessage != null && !msg.IsSystemMessage && this._lastMessage.Text.ChatMessage.Id == msg.Id) {
                 // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
@@ -479,7 +487,6 @@ namespace EnhancedStreamChat.Chat
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
                 newMsg.ReceivedDate = date;
-                yield return null;
                 this.AddMessage(newMsg);
                 this._lastMessage = newMsg;
             }
