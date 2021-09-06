@@ -467,6 +467,9 @@ namespace EnhancedStreamChat.Chat
         public async Task OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
         {
             var parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo);
+            while (this.TextPool == null) {
+                await Task.Delay(100);
+            }
             HMMainThreadDispatcher.instance.Enqueue(() => this.CreateMessage(msg, dateTime, parsedMessage));
         }
 

@@ -53,6 +53,9 @@ namespace EnhancedStreamChat.Chat
             // Move interactables in front of the screen
             this.settingsModalGameObject.transform.localPosition = new Vector3(this.settingsModalGameObject.transform.localPosition.x, this.settingsModalGameObject.transform.localPosition.y, -2f);
             this.settingsIconGameObject.transform.localPosition = new Vector3(this.settingsIconGameObject.transform.localPosition.x, this.settingsIconGameObject.transform.localPosition.y, -2f);
+
+            this.settingsIconGameObject.layer = 5;
+            this.settingsModalGameObject.layer = 5;
         }
 
         [UIParams]
