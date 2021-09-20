@@ -5,6 +5,7 @@ using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UI;
@@ -52,6 +53,9 @@ namespace EnhancedStreamChat.Chat
             // Move interactables in front of the screen
             this.settingsModalGameObject.transform.localPosition = new Vector3(this.settingsModalGameObject.transform.localPosition.x, this.settingsModalGameObject.transform.localPosition.y, -2f);
             this.settingsIconGameObject.transform.localPosition = new Vector3(this.settingsIconGameObject.transform.localPosition.x, this.settingsIconGameObject.transform.localPosition.y, -2f);
+
+            this.settingsIconGameObject.layer = 5;
+            this.settingsModalGameObject.layer = 5;
         }
 
         [UIParams]
@@ -78,7 +82,6 @@ namespace EnhancedStreamChat.Chat
         [UIComponent("text-color-setting")]
         private readonly ColorSetting _textColorSetting;
 
-        private Color _accentColor;
         [UIValue("accent-color")]
         public Color AccentColor
         {
@@ -119,7 +122,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 this.SetProperty(ref this._chatConfig.BackgroundColor, value);
-                this._chatScreen.GetComponentInChildren<ImageView>().material.color = value;
+                this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "bg").color = value;
             }
         }
 

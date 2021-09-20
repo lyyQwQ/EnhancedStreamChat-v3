@@ -41,7 +41,7 @@ namespace EnhancedStreamChat.Chat
         [ConfigMeta(Comment = "聊天框中使用的系统字体名称 The name of the system font to be used in chat")]
         public string SystemFontName = "Segoe UI";
         [ConfigMeta(Comment = "聊天框中的背景颜色 The background color of the chat")]
-        public Color BackgroundColor = Color.black.ColorWithAlpha(0.87f);
+        public Color BackgroundColor = ((Color)(Vector4.one * 0.3f)).ColorWithAlpha(1f);
         [ConfigMeta(Comment = "聊天框中的文字颜色 The base color of the chat text.")]
         public Color TextColor = Color.white;
         [ConfigMeta(Comment = "聊天框中的着重色 The accent color to be used on system messages")]

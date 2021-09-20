@@ -24,7 +24,7 @@ namespace EnhancedStreamChat.Chat
         {
             this._chatCoreInstance = ChatCoreInstance.Create();
 #if DEBUG
-            _chatCoreInstance.OnLogReceived += _sc_OnLogReceived;
+            this._chatCoreInstance.OnLogReceived += this._sc_OnLogReceived;
 #endif
             this._chatServiceMultiplexer = this._chatCoreInstance.RunAllServices();
             this._chatServiceMultiplexer.OnJoinChannel += this.QueueOrSendOnJoinChannel;
@@ -62,7 +62,7 @@ namespace EnhancedStreamChat.Chat
             }
             if (this._chatCoreInstance != null) {
 #if DEBUG
-                _chatCoreInstance.OnLogReceived -= _sc_OnLogReceived;
+                this._chatCoreInstance.OnLogReceived -= this._sc_OnLogReceived;
 #endif
                 try {
                     this._chatCoreInstance.StopAllServices();
@@ -71,7 +71,7 @@ namespace EnhancedStreamChat.Chat
                     Logger.Error(e);
                 }
             }
-            
+
             MainThreadInvoker.ClearQueue();
             ChatImageProvider.ClearCache();
             base.OnDestroy();

@@ -14,7 +14,7 @@ namespace EnhancedStreamChat
     {
         internal static Plugin Instance { get; private set; }
         internal static string Name => "EnhancedStreamChat";
-        internal static string Version => _meta.Version.ToString() ?? Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        internal static string Version => _meta.HVersion.ToString() ?? Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         public const string HARMONY_ID = "EnhancedStreamChat.denpadokei.com.github";
         private Harmony harmony;

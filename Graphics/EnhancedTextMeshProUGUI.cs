@@ -4,7 +4,6 @@ using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -17,7 +16,7 @@ namespace EnhancedStreamChat.Graphics
         public EnhancedFontInfo FontInfo { get; private set; }
         public event Action OnLatePreRenderRebuildComplete;
 
-        private static readonly ObjectMemoryPool<EnhancedImage> _imagePool = new ObjectMemoryPool<EnhancedImage>(64,
+        private static readonly ObjectMemoryComponentPool<EnhancedImage> _imagePool = new ObjectMemoryComponentPool<EnhancedImage>(64,
             constructor: () =>
             {
                 var img = new GameObject().AddComponent<EnhancedImage>();
@@ -59,7 +58,6 @@ namespace EnhancedStreamChat.Graphics
             while (this._currentImages.TryTake(out var image)) {
                 _imagePool.Free(image);
             }
-            this._currentImages.Clear();
         }
 
         private readonly ConcurrentBag<EnhancedImage> _currentImages = new ConcurrentBag<EnhancedImage>();

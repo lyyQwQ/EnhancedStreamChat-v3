@@ -5,7 +5,6 @@ using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.ObjectModel;
 using UnityEngine;
 using UnityEngine.Networking;
 

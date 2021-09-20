@@ -8,7 +8,7 @@ namespace EnhancedStreamChat.Utilities
     /// A dynamic pool of unity components of type T, that recycles old objects when possible, and allocates new objects when required.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class ObjectMemoryPool<T> : IDisposable where T : new()
+    public class ObjectMemoryComponentPool<T> : IDisposable where T : Component
     {
         private readonly ConcurrentStack<T> _freeObjects;
         private readonly Action<T>? _firstAlloc;
@@ -25,7 +25,7 @@ namespace EnhancedStreamChat.Utilities
         /// <param name="firstAlloc">The callback function you want to occur only the first time when a new component of type T is allocated.</param>
         /// <param name="onAlloc">The callback function to be called everytime ObjectPool.Alloc() is called.</param>
         /// <param name="onFree">The callback function to be called everytime ObjectPool.Free() is called</param>
-        public ObjectMemoryPool(int initialCount = 0, Func<T>? constructor = null, Action<T>? firstAlloc = null, Action<T>? onAlloc = null, Action<T>? onFree = null)
+        public ObjectMemoryComponentPool(int initialCount = 0, Func<T>? constructor = null, Action<T>? firstAlloc = null, Action<T>? onAlloc = null, Action<T>? onFree = null)
         {
             this._constructor = constructor;
             this._firstAlloc = firstAlloc;
@@ -40,7 +40,7 @@ namespace EnhancedStreamChat.Utilities
 
         private T InternalAlloc()
         {
-            var newObj = this._constructor is null ? new T() : this._constructor.Invoke();
+            var newObj = this._constructor is null ? new GameObject().AddComponent<T>() : this._constructor.Invoke();
 
             this._firstAlloc?.Invoke(newObj);
             return newObj;
@@ -52,7 +52,7 @@ namespace EnhancedStreamChat.Utilities
         /// <returns></returns>
         public T Alloc()
         {
-            if (!this._freeObjects.TryPop(out var obj) || obj == null) {
+            if (!this._freeObjects.TryPop(out var obj) || !obj) {
                 obj = this.InternalAlloc();
                 Logger.Debug($"InternalAlloc() in Alloc! : {obj}");
             }
@@ -66,7 +66,7 @@ namespace EnhancedStreamChat.Utilities
         /// <param name="obj"></param>
         public void Free(T obj)
         {
-            if (obj != null) {
+            if (!obj) {
                 Logger.Warn($"{nameof(obj)} is Destroyed.");
                 return;
             }
@@ -79,15 +79,18 @@ namespace EnhancedStreamChat.Utilities
             if (!this.disposedValue) {
                 if (disposing) {
                     // TODO: マネージド状態を破棄します (マネージド オブジェクト)
-                    while (this._freeObjects.TryPop(out _)) {
+                    while (this._freeObjects.TryPop(out var obj)) {
+                        UnityEngine.Object.Destroy(obj.gameObject);
                     }
                     this._freeObjects.Clear();
                 }
+
                 // TODO: アンマネージド リソース (アンマネージド オブジェクト) を解放し、ファイナライザーをオーバーライドします
                 // TODO: 大きなフィールドを null に設定します
                 this.disposedValue = true;
             }
         }
+
         public void Dispose()
         {
             // このコードを変更しないでください。クリーンアップ コードを 'Dispose(bool disposing)' メソッドに記述します
