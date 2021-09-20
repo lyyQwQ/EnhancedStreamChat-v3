@@ -532,6 +532,27 @@ namespace EnhancedStreamChat.Chat
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
                 newMsg.ReceivedDate = date;
+                 /*if (msg is BiliBiliChatMessage) {
+                    var message = msg.AsBiliBiliMessage();
+                    if (message.MessageType == "pk_pre") {
+                        Task.Run(() => {
+                            int tic = message.extra["timer"] - 1;
+                            while (tic > 0) {
+                                Thread.Sleep(1000);
+                                if (UpdateMessageContent(msg.Id, "【大乱斗】距离与" + message.extra["uname"] + "的PK还有" + tic-- + "秒")) break;
+                            }
+                        });
+                    } else if (message.MessageType == "pk_start") {
+                        Task.Run(() => {
+                            int tic = message.extra["timer"] - 1;
+                            while (tic > 0)
+                            {
+                                Thread.Sleep(1000);
+                                if (UpdateMessageContent(msg.Id, "【大乱斗】距离与 " + message.extra["uname"] + " 的PK还有" + tic-- + "秒")) break;
+                            }
+                        });
+                    }
+                }*/
                 this.AddMessage(newMsg);
                 this._lastMessage = newMsg;
             }
