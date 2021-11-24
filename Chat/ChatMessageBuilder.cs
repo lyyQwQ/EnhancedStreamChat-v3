@@ -14,7 +14,7 @@ namespace EnhancedStreamChat.Chat
 {
     public class ChatMessageBuilder
     {
-        public static ObjectMemoryPool<ConcurrentStack<EnhancedImageInfo>> ImageStackPool;
+        public static ObjectMemoryPool<ConcurrentStack<EnhancedImageInfo>> ImageStackPool { get; }
 
         static ChatMessageBuilder()
         {
