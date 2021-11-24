@@ -66,8 +66,8 @@ namespace EnhancedStreamChat.Utilities
         /// <param name="obj"></param>
         public void Free(T obj)
         {
-            if (obj != null) {
-                Logger.Warn($"{nameof(obj)} is Destroyed.");
+            if (obj == null) {
+                Logger.Warn($"{obj} is Destroyed.");
                 return;
             }
             this._onFree?.Invoke(obj);
