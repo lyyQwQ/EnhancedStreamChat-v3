@@ -1,5 +1,6 @@
 ﻿using ChatCore.Interfaces;
 using ChatCore.Models;
+using ChatCore.Models.BiliBili;
 using ChatCore.Models.Twitch;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
@@ -105,11 +106,18 @@ namespace EnhancedStreamChat.Chat
 
                 var badges = ImageStackPool.Alloc();
                 foreach (var badge in msg.Sender.Badges) {
-                    if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo)) {
-                        Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
-                        continue;
+                    Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
+                    if (msg is BiliBiliChatMessage)
+                    {
                     }
-                    badges.Push(badgeInfo);
+                    else {
+                        if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo))
+                        {
+                            Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
+                            continue;
+                        }
+                        badges.Push(badgeInfo);
+                    }
                 }
 
                 var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
@@ -171,8 +179,15 @@ namespace EnhancedStreamChat.Chat
 
                     for (var i = 0; i < msg.Sender.Badges.Length; i++) {
                         // Insert user badges at the beginning of the string in reverse order
-                        if (badges.TryPop(out var badge) && font.TryGetCharacter(badge.ImageId, out var character)) {
-                            sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
+                        // if (badges.TryPop(out var badge) && font.TryGetCharacter(badge.ImageId, out var character)) {
+                        if (badges.TryPop(out var badge))
+                        {
+                            if (msg is BiliBiliChatMessage)
+                            {
+                            }
+                            else if (font.TryGetCharacter(badge.ImageId, out var character)) {
+                                sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
+                            }
                         }
                     }
                     ImageStackPool.Free(badges);

@@ -9,6 +9,7 @@
     <RootNamespace>EnhancedStreamChat</RootNamespace>
     <OutDir>$(ProjectDir)bin\$(Configuration)</OutDir>
 	<GameDirPath>S:\Game\SteamLibrary\steamapps\common\Beat Saber</GameDirPath>
+	<BeatSaberDir>S:\Game\SteamLibrary\steamapps\common\Beat Saber</BeatSaberDir>
     <!--<ModVersion>4.0.5</ModVersion>-->
     <!--<InformationalVersion>$(ModVersion)</InformationalVersion>-->
     <Version>4.0.7</Version>
@@ -44,7 +45,7 @@
             <HintPath>$(GameDirPath)\Libs\ChatCore.dll</HintPath>
         </Reference>
         <Reference Include="Hive.Versioning">
-          <HintPath>$(BeatSaberDir)\Libs\Hive.Versioning.dll</HintPath>
+          <HintPath>$(GameDirPath)\Libs\Hive.Versioning.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="Main">
@@ -64,7 +65,7 @@
             <HintPath>$(GameDirPath)\Beat Saber_Data\Managed\IPA.Loader.dll</HintPath>
         </Reference>
         <Reference Include="SiraUtil">
-          <HintPath>D:\Oculus\Software\hyperbolic-magnetism-beat-saber\Plugins\SiraUtil.dll</HintPath>
+          <HintPath>$(GameDirPath)\Plugins\SiraUtil.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="Unity.TextMeshPro">
