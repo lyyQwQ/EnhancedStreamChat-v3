@@ -12,8 +12,10 @@
 	<BeatSaberDir>S:\Game\SteamLibrary\steamapps\common\Beat Saber</BeatSaberDir>
     <!--<ModVersion>4.0.5</ModVersion>-->
     <!--<InformationalVersion>$(ModVersion)</InformationalVersion>-->
-    <Version>4.0.8</Version>
+    <Version>4.1.0</Version>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <DebugType>embedded</DebugType>
+	  <AssemblySearchPath>$(ReferencePath)</AssemblySearchPath>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -126,22 +128,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="BeatSaberModdingTools.Tasks" Version="1.4.3">
+      <PackageReference Include="BeatSaberModdingTools.Tasks" Version="2.0.0-beta4">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
     </ItemGroup>
-    <ItemGroup>
-      <None Update="FontAssets\sourcehansanscn-medium sdf.assets">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
-    </ItemGroup>
-
-    <!--<Target Name="CopyToPlugins" AfterTargets="AfterBuild">
-        <Message Text="Copying $(OutDir)EnhancedStreamChat.dll to Plugins folder" Importance="high" />
-        <Copy SourceFiles="$(OutDir)EnhancedStreamChat.dll" DestinationFiles="$(GameDirPath)\Plugins\EnhancedStreamChat.dll" />
-        <Message Text="Copying $(OutDir)EnhancedStreamChat.pdb to Plugins folder" Importance="high" />
-        <Copy SourceFiles="$(OutDir)EnhancedStreamChat.pdb" DestinationFiles="$(GameDirPath)\Plugins\EnhancedStreamChat.pdb" />
-    </Target>-->
-
 </Project>
