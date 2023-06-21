@@ -91,12 +91,14 @@ namespace EnhancedStreamChat.Chat
 
         private void SetImageHeight(ref int spriteHeight, ref int spriteWidth, int height)
         {
+            /*Logger.Debug($"Origin size: {spriteHeight}x{spriteWidth}");*/
             var scale = 1.0f;
             if (spriteHeight != (float)height) {
                 scale = (float)height / spriteHeight;
             }
             spriteWidth = (int)(scale * spriteWidth);
             spriteHeight = (int)(scale * spriteHeight);
+            /*Logger.Debug($"New size: {spriteHeight}x{spriteWidth}, Scale: {scale}");*/
         }
 
         public IEnumerator TryCacheSingleImage(string id, string uri, bool isAnimated, Action<EnhancedImageInfo> Finally = null, int forcedHeight = -1)
@@ -144,7 +146,7 @@ namespace EnhancedStreamChat.Chat
             EnhancedImageInfo ret = null;
             if (sprite != null) {
                 if (forcedHeight != -1) {
-                    this.SetImageHeight(ref spriteWidth, ref spriteHeight, forcedHeight);
+                    this.SetImageHeight(ref spriteHeight, ref spriteWidth, forcedHeight);
                 }
                 ret = new EnhancedImageInfo()
                 {

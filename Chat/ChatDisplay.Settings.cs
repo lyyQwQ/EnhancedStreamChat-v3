@@ -2,7 +2,9 @@
 using BeatSaberMarkupLanguage.Components.Settings;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
+using EnhancedStreamChat.Utilities;
 using HMUI;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -49,6 +51,8 @@ namespace EnhancedStreamChat.Chat
             this._textColorSetting.editButton.onClick.AddListener(this.HideSettings);
             this._textColorSetting.modalColorPicker.cancelEvent += this.ShowSettings;
             this._textColorSetting.CurrentColor = this._chatConfig.TextColor;
+            // layer
+            this.gameObject.layer = (int)this.textLayerVisibility;
 
             // Move interactables in front of the screen
             this.settingsModalGameObject.transform.localPosition = new Vector3(this.settingsModalGameObject.transform.localPosition.x, this.settingsModalGameObject.transform.localPosition.y, -2f);
@@ -81,6 +85,28 @@ namespace EnhancedStreamChat.Chat
 
         [UIComponent("text-color-setting")]
         private readonly ColorSetting _textColorSetting;
+
+        [UIComponent("text-layer-settings")]
+        private readonly DropDownListSetting _textLayerSetting;
+
+        internal BeatSaberUtils.TextLayerVisibility textLayerVisibility
+        {
+            get => this._isInGame ? BeatSaberUtils.textLayerVisibilityReverser(this._chatConfig.Song_ChatLayer) : BeatSaberUtils.textLayerVisibilityReverser(this._chatConfig.Menu_ChatLayer);
+            set
+            {
+                if (this._isInGame || this.SyncOrientation)
+                {
+                    this._chatConfig.Song_ChatLayer = (int)value;
+                }
+
+                if (!this._isInGame || this.SyncOrientation)
+                {
+                    this._chatConfig.Menu_ChatLayer = (int)value;
+                }
+            }
+        }
+
+        private static readonly List<object> textLayerVisibilities = Enum.GetValues(typeof(BeatSaberUtils.TextLayerVisibility)).Cast<object>().ToList();
 
         [UIValue("accent-color")]
         public Color AccentColor

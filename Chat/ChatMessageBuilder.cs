@@ -1,6 +1,6 @@
 ﻿using ChatCore.Interfaces;
 using ChatCore.Models;
-using ChatCore.Models.BiliBili;
+using ChatCore.Models.Bilibili;
 using ChatCore.Models.Twitch;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using static UnityEngine.RectTransform;
 
 namespace EnhancedStreamChat.Chat
 {
@@ -42,6 +43,7 @@ namespace EnhancedStreamChat.Chat
                     var tcs = new TaskCompletionSource<EnhancedImageInfo>();
                     switch (emote.Type) {
                         case EmoteType.SingleImage:
+                            Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri + " IsAnimated: " + emote.IsAnimated);
                             SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, emote.IsAnimated, (info) =>
                             {
                                 if (info != null) {
@@ -50,9 +52,10 @@ namespace EnhancedStreamChat.Chat
                                     }
                                 }
                                 tcs.SetResult(info);
-                            }, forcedHeight: 110));
+                            }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));
                             break;
                         case EmoteType.SpriteSheet:
+                            Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
                             SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
                             {
                                 if (info != null) {
@@ -87,7 +90,7 @@ namespace EnhancedStreamChat.Chat
                             }
                         }
                         tcs.SetResult(info);
-                    }, forcedHeight: 100));
+                    }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));
                     tasks.Add(tcs.Task);
                 }
             }
@@ -99,55 +102,89 @@ namespace EnhancedStreamChat.Chat
         public static Task<string> BuildMessage(IChatMessage msg, EnhancedFontInfo font) => Task.Run(() =>
         {
             try {
+
                 if (!PrepareImages(msg, font)) {
                     Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
                     //return msg.Message;
                 }
 
                 var badges = ImageStackPool.Alloc();
-                foreach (var badge in msg.Sender.Badges) {
-                    Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
-                    if (msg is BiliBiliChatMessage)
+                try {
+                    foreach (var badge in msg.Sender.Badges)
                     {
-                    }
-                    else {
-                        if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo))
+                        if (badge != null && !string.IsNullOrEmpty(badge.Id))
                         {
-                            Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
-                            continue;
+                            Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
+                            if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo))
+                            {
+                                Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
+                                continue;
+                            }
+                            badges.Push(badgeInfo);
                         }
-                        badges.Push(badgeInfo);
                     }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"An exception occurred in ChatMessageBuilder while parsing badges. Msg: \"{msg.Message}\". {ex.ToString()}");
                 }
 
                 var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
 
                 // Escape all html tags in the message
                 sb.Replace("<", "<\u2060");
-
-                foreach (var emote in msg.Emotes) {
-                    if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace)) {
-                        Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
-                        continue;
-                    }
-                    //Logger.Info($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
-                    if (!font.TryGetCharacter(replace.ImageId, out var character)) {
-                        Logger.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
-                        continue;
-                    }
-
-                    try {
-                        // Replace emotes by index, in reverse order (msg.Emotes is sorted by emote.StartIndex in descending order)
-                        sb.Replace(emote.Name, emote switch
+                
+                try{
+                    /*Logger.Debug("Phase emotes: " + sb.ToString() + ", got " + msg.Emotes.Length + " Emote(s).");*/
+                    foreach (var emote in msg.Emotes)
+                    {
+                        if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace))
                         {
-                            TwitchEmote t when t.Bits > 0 => $"{char.ConvertFromUtf32((int)character)}\u00A0<color={t.Color}><size=77%><b>{t.Bits}\u00A0</b></size></color>",
-                            _ => char.ConvertFromUtf32((int)character)
-                        },
-                        emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
+                            Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
+                            continue;
+                        }
+                        //Logger.Info($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
+                        if (!font.TryGetCharacter(replace.ImageId, out var character))
+                        {
+                            Logger.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
+                            continue;
+                        }
+
+                        /* Logger.Debug("Try to show emotes: " + emote.Name.ToString());*/
+                        try
+                        {
+                            // Replace emotes by index, in reverse order (msg.Emotes is sorted by emote.StartIndex in descending order)
+                            if (msg is BilibiliChatMessage)
+                            {
+                                Logger.Debug("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
+                                sb.Replace(emote.Name, emote switch
+                                {
+                                    BilibiliChatEmote b when true => char.ConvertFromUtf32((int)character),
+                                    _ => char.ConvertFromUtf32((int)character)
+                                },
+                                emote.StartIndex, emote.EndIndex - emote.StartIndex);
+                                /*Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());*/
+                            }
+                            else
+                            {
+                                sb.Replace(emote.Name, emote switch
+                                {
+                                    TwitchEmote t when t.Bits > 0 => $"{char.ConvertFromUtf32((int)character)}\u00A0<color={t.Color}><size=77%><b>{t.Bits}\u00A0</b></size></color>",
+                                    _ => char.ConvertFromUtf32((int)character)
+                                },
+                                emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
+                                /*Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());*/
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})\r\n{ex}");
+                        }
                     }
-                    catch (Exception ex) {
-                        Logger.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})\r\n{ex}");
-                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"An exception occurred in ChatMessageBuilder while parsing badges. Msg: \"{msg.Message}\". {ex.ToString()}");
                 }
 
                 if (msg.IsSystemMessage) {
@@ -157,7 +194,7 @@ namespace EnhancedStreamChat.Chat
                 }
                 else {
                     var nameColorCode = msg.Sender.Color;
-                    Logger.Debug(nameColorCode);
+                    // Logger.Debug(nameColorCode);
                     if (ColorUtility.TryParseHtmlString(msg.Sender.Color.Substring(0, 7), out var nameColor)) {
                         Color.RGBToHSV(nameColor, out var h, out var s, out var v);
                         if (v < 0.85f) {
@@ -177,18 +214,28 @@ namespace EnhancedStreamChat.Chat
                         sb.Insert(0, $"<color={nameColorCode}><b>{msg.Sender.DisplayName}</b></color>: ");
                     }
 
-                    for (var i = 0; i < msg.Sender.Badges.Length; i++) {
-                        // Insert user badges at the beginning of the string in reverse order
-                        // if (badges.TryPop(out var badge) && font.TryGetCharacter(badge.ImageId, out var character)) {
-                        if (badges.TryPop(out var badge))
+                    try {
+                        for (var i = 0; i < msg.Sender.Badges.Length; i++)
                         {
-                            if (msg is BiliBiliChatMessage)
+                            // Insert user badges at the beginning of the string in reverse order
+                            // if (badges.TryPop(out var badge) && font.TryGetCharacter(badge.ImageId, out var character)) {
+                            if (badges.TryPop(out var badge))
                             {
-                            }
-                            else if (font.TryGetCharacter(badge.ImageId, out var character)) {
-                                sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
+                                if (font.TryGetCharacter(badge.ImageId, out var character))
+                                {
+                                    sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
+                                }
+                                /*if (msg is BilibiliChatMessage)
+                                {
+                                }
+                                else if (font.TryGetCharacter(badge.ImageId, out var character)) {
+                                    sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
+                                }*/
                             }
                         }
+                    } catch (Exception ex)
+                    {
+                        Logger.Error($"An exception occurred in ChatMessageBuilder while replace emotes. Msg: \"{msg.Message}\". {ex.ToString()}");
                     }
                     ImageStackPool.Free(badges);
                 }

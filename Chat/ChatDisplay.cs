@@ -3,7 +3,7 @@ using BeatSaberMarkupLanguage.FloatingScreen;
 using BeatSaberMarkupLanguage.ViewControllers;
 using BS_Utils.Utilities;
 using ChatCore.Interfaces;
-using ChatCore.Models.BiliBili;
+using ChatCore.Models.Bilibili;
 using ChatCore.Utilities;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.HarmonyPatches;
@@ -311,10 +311,12 @@ namespace EnhancedStreamChat.Chat
             if (this._isInGame) {
                 this.ChatPosition = this._chatConfig.Song_ChatPosition;
                 this.ChatRotation = this._chatConfig.Song_ChatRotation;
+                this.gameObject.layer = this._chatConfig.Song_ChatLayer;
             }
             else {
                 this.ChatPosition = this._chatConfig.Menu_ChatPosition;
                 this.ChatRotation = this._chatConfig.Menu_ChatRotation;
+                this.gameObject.layer = this._chatConfig.Menu_ChatLayer;
             }
             var chatContainerTransform = this._chatContainer.GetComponent<RectMask2D>().rectTransform!;
             chatContainerTransform.sizeDelta = new Vector2(this.ChatWidth, this.ChatHeight);
@@ -375,9 +377,9 @@ namespace EnhancedStreamChat.Chat
             var flag = false;
             foreach (var msg in this._messages.ToArray())
             {
-                if (msg.Text.ChatMessage is BiliBiliChatMessage && msg.Text.ChatMessage.Id == id) {
-                    Console.WriteLine("1: Find Msg id: " + id + "Content: " + msg.Text.ChatMessage.Message + " --> " + content);
-                    ((BiliBiliChatMessage)msg.Text.ChatMessage).UpdateContent(content);
+                if (msg.Text.ChatMessage is BilibiliChatMessage && msg.Text.ChatMessage.Id == id) {
+                    // Console.WriteLine("1: Find Msg id: " + id + "Content: " + msg.Text.ChatMessage.Message + " --> " + content);
+                    ((BilibiliChatMessage)msg.Text.ChatMessage).UpdateContent(content);
                     this.UpdateMessage(msg, true);
                     flag = true;
                     break;
@@ -395,10 +397,10 @@ namespace EnhancedStreamChat.Chat
             var flag = false;
             foreach (var msg in this._messages.ToArray())
             {
-                if (msg.Text.ChatMessage is BiliBiliChatMessage && msg.Text.ChatMessage.Id == id)
+                if (msg.Text.ChatMessage is BilibiliChatMessage && msg.Text.ChatMessage.Id == id)
                 {
-                    Console.WriteLine("2: Find Msg id: " + id + "Content: " + msg.Text.ChatMessage.Message + " --> " + content);
-                    ((BiliBiliChatMessage)msg.Text.ChatMessage).UpdateContent(content);
+                    // Console.WriteLine("2: Find Msg id: " + id + "Content: " + msg.Text.ChatMessage.Message + " --> " + content);
+                    ((BilibiliChatMessage)msg.Text.ChatMessage).UpdateContent(content);
                     msg.SubText.text = content;
                     msg.SubText.ChatMessage = msg.Text.ChatMessage;
                     msg.SubTextEnabled = true;
@@ -533,8 +535,8 @@ namespace EnhancedStreamChat.Chat
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
                 newMsg.ReceivedDate = date;
-                 /*if (msg is BiliBiliChatMessage) {
-                    var message = msg.AsBiliBiliMessage();
+                 /*if (msg is BilibiliChatMessage) {
+                    var message = msg.AsBilibiliMessage();
                     if (message.MessageType == "pk_pre") {
                         Task.Run(() => {
                             int tic = message.extra["timer"] - 1;

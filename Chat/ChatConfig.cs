@@ -70,12 +70,16 @@ namespace EnhancedStreamChat.Chat
         public Vector3 Menu_ChatPosition = new Vector3(0, 3.75f, 2.5f);
         [ConfigMeta(Comment = "菜单中聊天框的世界坐标轴旋转 The world rotation of the chat while at the main menu")]
         public Vector3 Menu_ChatRotation = new Vector3(325, 0, 0);
+        [ConfigMeta(Comment = "菜单中聊天框所在层级 The layer of the chat while at the main menu")]
+        public int Menu_ChatLayer = 5;
 
         [ConfigSection("In-Song Layout")]
         [ConfigMeta(Comment = "游戏中聊天框的世界坐标轴坐标 The world position of the chat while in-song")]
         public Vector3 Song_ChatPosition = new Vector3(0, 3.75f, 2.5f);
         [ConfigMeta(Comment = "游戏中聊天框的世界坐标轴旋转 The world rotation of the chat while in-song")]
         public Vector3 Song_ChatRotation = new Vector3(325, 0, 0);
+        [ConfigMeta(Comment = "游戏中聊天框所在层级 The layer of the chat while while in-song")]
+        public int Song_ChatLayer = 5;
 
 
         private ChatConfig(string configDirectory, string configName) : base(configDirectory, configName, Path.Combine(Environment.CurrentDirectory, "UserData", "StreamCore", "TwitchLoginInfo.ini"))

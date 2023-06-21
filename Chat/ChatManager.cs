@@ -26,6 +26,7 @@ namespace EnhancedStreamChat.Chat
 #if DEBUG
             this._chatCoreInstance.OnLogReceived += this._sc_OnLogReceived;
 #endif
+            this._chatCoreInstance.OnLogReceived += this._sc_OnLogReceived;
             this._chatServiceMultiplexer = this._chatCoreInstance.RunAllServices();
             this._chatServiceMultiplexer.OnJoinChannel += this.QueueOrSendOnJoinChannel;
             this._chatServiceMultiplexer.OnTextMessageReceived += this.QueueOrSendOnTextMessageReceived;

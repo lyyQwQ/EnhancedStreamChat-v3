@@ -18,6 +18,7 @@
             <slider-setting text='聊天框宽度' min='5' max='1000' increment='5' pref-height='6' value='chat-width' apply-on-change='true' integer-only='true'></slider-setting>
             <slider-setting text='聊天框高度' min='5' max='1000' increment='5' pref-height='6' value='chat-height' apply-on-change='true' integer-only='true'></slider-setting>
             <slider-setting text='字体大小' min='1' max='20' increment='0.1' pref-height='6' value='font-size' apply-on-change='true'></slider-setting>
+            <dropdown-list-setting text='所在层级' value='textLayerVisibility' choices='textLayerVisibilities' bind-value='true' apply-on-change='true'/>
           </vertical>
         </tab>
         <tab tags ='settings-tab' tab-name='颜色'>
@@ -31,7 +32,7 @@
         </tab>
         <tab tags ='settings-tab' tab-name='登录/配置'>
           <vertical pad='10' pad-top='70' vertical-fit='PreferredSize' child-expand-height='false' child-align='MiddleCenter' pref-width='~settings-width'>
-            <text text='现在，登录和配置项都需要在新聊天核心ChatCore网页应用中完成。' font-size='5' word-wrapping='true' align='Center'></text>
+            <text text='现在，登录和配置项都需要在聊天核心ChatCore网页应用中完成。' font-size='5' word-wrapping='true' align='Center'></text>
             <horizontal child-expand-width='false' child-align='MiddleCenter' pad-top='10'>
               <text text='要打开聊天核心ChatCore网页应用 &#xA0;' font-size='5'></text>
               <clickable-text text='点这里' default-color='#00bcff' on-click='launch-web-app' highlight-color='cyan' font-size='5'></clickable-text>
@@ -49,7 +50,7 @@
           </vertical>
           <vertical pad='10' spacing='3' pad-top='72' vertical-fit='PreferredSize' child-expand-height='false' child-align='MiddleCenter' pref-width='~settings-width'>
             <clickable-image src='EnhancedStreamChat.Resources.PizzaDog.jpg' on-click='launch-kofi' preferred-height='35' preserve-aspect='true' highlight-color='#aaaaaa'></clickable-image>
-            <text text="增强直播聊天Enhanced Stream Chat是免费的哟，而且永远免费。如果你想支持作者，点击披萨狗图片，并在打开的浏览器中给作者打赏。B站直播支持以及汉化：B站@包子侯爵" font-size='4.5' word-wrapping='true' align='Center'></text>
+            <text text="增强直播聊天Enhanced Stream Chat是免费的哟，而且永远免费。如果你想支持原作者，点击披萨狗图片，并在打开的浏览器中给作者打赏。\nB站直播支持以及汉化：B站@包子侯爵" font-size='4.5' word-wrapping='true' align='Center'></text>
           </vertical>
         </tab>
       </vertical>
