@@ -3,14 +3,14 @@
   "id": "EnhancedStreamChat",
   "name": "Enhanced Stream Chat",
   "author": "baoziii",
-  "version": "4.1.1",
+  "version": "4.2.0",
   "description": "Enhanced Stream Chat is a rich text chat integration mod, with full unicode, emote, and emoji support.",
-  "gameVersion": "1.20.0",
+  "gameVersion": "1.29.1",
   "dependsOn": {
     "BSIPA": "^4.2.2",
-    "ChatCore": "^2.2.0",
-    "BS Utils": "^1.11.0",
-    "BeatSaberMarkupLanguage": "^1.5.4"
+    "ChatCore": "^3.0.0-alpha",
+    "BS Utils": "^1.12.2",
+    "BeatSaberMarkupLanguage": "^1.6.10"
   },
   "links": {
     "project-home": "https://github.com/baoziii/EnhancedStreamChat-v3",
