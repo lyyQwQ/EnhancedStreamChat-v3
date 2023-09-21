@@ -5,6 +5,7 @@ using ChatCore.Models.Twitch;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
 using System;
+using System.IO;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
@@ -44,7 +45,18 @@ namespace EnhancedStreamChat.Chat
                     switch (emote.Type) {
                         case EmoteType.SingleImage:
                             Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri + " IsAnimated: " + emote.IsAnimated);
-                            SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, emote.IsAnimated, (info) =>
+                            var IsAnimated = emote.IsAnimated;
+                            switch (Path.GetExtension(emote.Uri)) {
+                                case ".jpg":
+                                case ".png":
+                                case ".bmp":
+                                    IsAnimated = false;
+                                    break;
+                                case ".gif":
+                                    IsAnimated = true;
+                                    break;
+                            }
+                            SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
                             {
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
@@ -135,7 +147,7 @@ namespace EnhancedStreamChat.Chat
                 sb.Replace("<", "<\u2060");
                 
                 try{
-                    /*Logger.Debug("Phase emotes: " + sb.ToString() + ", got " + msg.Emotes.Length + " Emote(s).");*/
+                    Logger.Debug("Phase emotes: " + sb.ToString() + ", got " + msg.Emotes.Length + " Emote(s).");
                     foreach (var emote in msg.Emotes)
                     {
                         if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace))
@@ -143,7 +155,7 @@ namespace EnhancedStreamChat.Chat
                             Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
                             continue;
                         }
-                        //Logger.Info($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
+                        Logger.Info($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
                         if (!font.TryGetCharacter(replace.ImageId, out var character))
                         {
                             Logger.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
@@ -153,7 +165,7 @@ namespace EnhancedStreamChat.Chat
                         /* Logger.Debug("Try to show emotes: " + emote.Name.ToString());*/
                         try
                         {
-                            // Replace emotes by index, in reverse order (msg.Emotes is sorted by emote.StartIndex in descending order)
+                             //Replace emotes by index, in reverse order (msg.Emotes is sorted by emote.StartIndex in descending order)
                             if (msg is BilibiliChatMessage)
                             {
                                 Logger.Debug("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
@@ -163,7 +175,7 @@ namespace EnhancedStreamChat.Chat
                                     _ => char.ConvertFromUtf32((int)character)
                                 },
                                 emote.StartIndex, emote.EndIndex - emote.StartIndex);
-                                /*Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());*/
+                                Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
                             }
                             else
                             {
@@ -173,7 +185,7 @@ namespace EnhancedStreamChat.Chat
                                     _ => char.ConvertFromUtf32((int)character)
                                 },
                                 emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
-                                /*Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());*/
+                                Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
                             }
                         }
                         catch (Exception ex)
