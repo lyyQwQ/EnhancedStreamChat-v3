@@ -5,8 +5,10 @@ using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using BeatSaberMarkupLanguage.Util;
 using UnityEngine;
 using UnityEngine.Networking;
+
 
 namespace EnhancedStreamChat.Chat
 {
@@ -17,13 +19,13 @@ namespace EnhancedStreamChat.Chat
         public Action<byte[]> Finally;
     }
 
-    public class ChatImageProvider : PersistentSingleton<ChatImageProvider>
+    public class ChatImageProvider : Utilities.PersistentSingleton<ChatImageProvider>
     {
         public ConcurrentDictionary<string, EnhancedImageInfo> CachedImageInfo { get; } = new ConcurrentDictionary<string, EnhancedImageInfo>();
         private readonly ConcurrentDictionary<string, ActiveDownload> _activeDownloads = new ConcurrentDictionary<string, ActiveDownload>();
         private readonly ConcurrentDictionary<string, Texture2D> _cachedSpriteSheets = new ConcurrentDictionary<string, Texture2D>();
         /// <summary>
-        /// Retrieves the requested content from the provided Uri. 
+        /// Retrieves the requested content from the provided Uri.
         /// <para>
         /// The <paramref name="Finally"/> callback will *always* be called for this function. If it returns an empty byte array, that should be considered a failure.
         /// </para>
@@ -68,7 +70,8 @@ namespace EnhancedStreamChat.Chat
                     if (!isRetry) {
                         Logger.Error($"A network error occurred during request to {uri}. Retrying in 3 seconds... {wr.error}");
                         yield return new WaitForSeconds(3);
-                        this.StartCoroutine(this.DownloadContent(uri, Finally, true));
+                        // this.StartCoroutine(this.DownloadContent(uri, Finally, true));
+                        _ = SharedCoroutineStarter.Instance.StartCoroutine(this.DownloadContent(uri, Finally, true));
                         yield break;
                     }
                     activeDownload.Finally?.Invoke(new byte[0]);
@@ -205,7 +208,7 @@ namespace EnhancedStreamChat.Chat
         {
             if (instance.CachedImageInfo.Count > 0) {
                 foreach (var info in instance.CachedImageInfo.Values) {
-                    Destroy(info.Sprite);
+                    GameObject.Destroy(info.Sprite);
                 }
                 instance.CachedImageInfo.Clear();
             }

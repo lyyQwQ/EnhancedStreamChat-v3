@@ -18,8 +18,10 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using SiraUtil.Zenject;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using VRUIControls;
 using Color = UnityEngine.Color;
@@ -38,24 +40,27 @@ namespace EnhancedStreamChat.Chat
         private void Awake()
         {
             this._waitForEndOfFrame = new WaitForEndOfFrame();
-            VRPointerOnEnablePatch.OnEnabled += this.PointerOnEnabled;
+            DontDestroyOnLoad(this.gameObject);
+            Logger.Info("ChatDisplay Awake");
+            // StartCoroutine(Start());
+            // VRPointerOnEnablePatch.OnEnabled += this.PointerOnEnabled;
         }
 
-        private void PointerOnEnabled(VRPointer obj)
-        {
-            try {
-                var mover = this._chatScreen.gameObject.GetComponent<FloatingScreenMoverPointer>();
-                if (!mover) {
-                    mover = this._chatScreen.gameObject.AddComponent<FloatingScreenMoverPointer>();
-                    Destroy(this._chatScreen.screenMover);
-                }
-                this._chatScreen.screenMover = mover;
-                this._chatScreen.screenMover.Init(this._chatScreen, obj);
-            }
-            catch (Exception e) {
-                Logger.Error(e);
-            }
-        }
+        // private void PointerOnEnabled(VRPointer obj)
+        // {
+        //     try {
+        //         var mover = this._chatScreen.gameObject.GetComponent<FloatingScreenMoverPointer>();
+        //         if (!mover) {
+        //             mover = this._chatScreen.gameObject.AddComponent<FloatingScreenMoverPointer>();
+        //             Destroy(this._chatScreen.screenMover);
+        //         }
+        //         this._chatScreen.screenMover = mover;
+        //         this._chatScreen.screenMover.Init(this._chatScreen, obj);
+        //     }
+        //     catch (Exception e) {
+        //         Logger.Error(e);
+        //     }
+        // }
 
         // TODO: eventually figure out a way to make this more modular incase we want to create multiple instances of ChatDisplay
         private static readonly ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>> _backupMessageQueue = new ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>>();
@@ -64,7 +69,7 @@ namespace EnhancedStreamChat.Chat
             ChatConfig.instance.OnConfigChanged -= this.Instance_OnConfigChanged;
             BSEvents.menuSceneActive -= this.BSEvents_menuSceneActive;
             BSEvents.gameSceneActive -= this.BSEvents_gameSceneActive;
-            VRPointerOnEnablePatch.OnEnabled -= this.PointerOnEnabled;
+            // VRPointerOnEnablePatch.OnEnabled -= this.PointerOnEnabled;
             this.StopAllCoroutines();
             while (this._messages.TryDequeue(out var msg)) {
                 msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
@@ -98,7 +103,10 @@ namespace EnhancedStreamChat.Chat
             if (!this._updateMessagePositions) {
                 return;
             }
-            HMMainThreadDispatcher.instance.Enqueue(this.UpdateMessagePositions());
+            // HMMainThreadDispatcher.instance.Enqueue(this.UpdateMessagePositions());
+            // this.StartCoroutine(this.UpdateMessagePositions());
+            this.UpdateMessagePositions();
+            Logger.Info("UpdateMessagePositions called");
             this._updateMessagePositions = false;
         }
 
@@ -107,13 +115,19 @@ namespace EnhancedStreamChat.Chat
         private GameObject _rootGameObject;
         private Material _chatMoverMaterial;
         private ImageView _bg;
+        private static readonly string s_menu = "MainMenu";
+        private static readonly string s_game = "GameCore";
 
         private IEnumerator Start()
         {
+            Logger.Info("ChatDisplay Start");
             DontDestroyOnLoad(this.gameObject);
             this._chatConfig = ChatConfig.instance;
+            Logger.Info($"Waiting for ESCFontManager to be initialized, ESCFontManager.instance.IsInitialized: {ESCFontManager.instance.IsInitialized}");
             yield return new WaitWhile(() => !ESCFontManager.instance.IsInitialized);
+            Logger.Info($"ESCFontManager initialized, ESCFontManager.instance.IsInitialized: {ESCFontManager.instance.IsInitialized}");
             this.SetupScreens();
+            Logger.Info("SetupScreens complete");
             foreach (var msg in this._messages.ToArray()) {
                 msg.Text.SetAllDirty();
                 if (msg.SubTextEnabled) {
@@ -121,6 +135,7 @@ namespace EnhancedStreamChat.Chat
                 }
             }
             (this.transform as RectTransform).pivot = new Vector2(0.5f, 0f);
+            Logger.Info("Create TextPool");
             this.TextPool = new ObjectMemoryComponentPool<EnhancedTextMeshProUGUIWithBackground>(64,
                 constructor: () =>
                 {
@@ -161,6 +176,7 @@ namespace EnhancedStreamChat.Chat
             ChatConfig.instance.OnConfigChanged += this.Instance_OnConfigChanged;
             BSEvents.menuSceneActive += this.BSEvents_menuSceneActive;
             BSEvents.gameSceneActive += this.BSEvents_gameSceneActive;
+            SceneManager.activeSceneChanged += (a, b) => this.SetupScreens();
 
             yield return new WaitWhile(() => this._chatScreen == null);
             while (_backupMessageQueue.TryDequeue(out var msg)) {
@@ -171,48 +187,65 @@ namespace EnhancedStreamChat.Chat
 
         private void SetupScreens()
         {
+            Logger.Info($"SetupScreens, _chatScreen: {this._chatScreen}");
             if (this._chatScreen == null) {
                 var screenSize = new Vector2(this.ChatWidth, this.ChatHeight);
+                Logger.Info($"Creating FloatingScreen, screenSize: {screenSize}");
                 this._chatScreen = FloatingScreen.CreateFloatingScreen(screenSize, true, this.ChatPosition, Quaternion.identity, 0f, true);
+                Logger.Info($"FloatingScreen created, _chatScreen: {this._chatScreen}");
                 this._chatScreen.gameObject.layer = 5;
+                Logger.Info($"Setting up FloatingScreen");
+                this._chatScreen.HandleReleased += OnHandleReleased;
+                Logger.Info($"HandleReleased event added");
                 var rectMask2D = this._chatScreen.GetComponent<RectMask2D>();
                 if (rectMask2D) {
                     Destroy(rectMask2D);
                 }
 
+                Logger.Info($"Creating chatContainer");
                 this._chatContainer = new GameObject("chatContainer");
                 this._chatContainer.transform.SetParent(this._chatScreen.transform, false);
                 this._chatContainer.AddComponent<RectMask2D>().rectTransform.sizeDelta = screenSize;
+                Logger.Info($"chatContainer created");
 
                 var canvas = this._chatScreen.GetComponent<Canvas>();
                 canvas.worldCamera = Camera.main;
                 canvas.sortingOrder = 3;
+                Logger.Info($"Setting up chatScreen");
 
                 this._chatScreen.SetRootViewController(this, AnimationType.None);
                 this._rootGameObject = new GameObject();
                 DontDestroyOnLoad(this._rootGameObject);
+                Logger.Info($"Creating chatMoverMaterial");
 
                 this._chatMoverMaterial = Instantiate(BeatSaberUtils.UINoGlowMaterial);
                 this._chatMoverMaterial.color = Color.clear;
+                Logger.Info($"chatMoverMaterial created");
 
                 var renderer = this._chatScreen.handle.gameObject.GetComponent<Renderer>();
                 renderer.material = this._chatMoverMaterial;
                 renderer.material.mainTexture = this._chatMoverMaterial.mainTexture;
+                Logger.Info($"Setting up chatScreen handle");
 
                 this._chatScreen.transform.SetParent(this._rootGameObject.transform);
                 this._chatScreen.ScreenRotation = Quaternion.Euler(this.ChatRotation);
+                Logger.Info($"Setting up chatScreen rotation");
 
-                this._bg = this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "bg");
+                // this._bg = this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "bg");
+                this._bg = this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "Background");
                 this._bg.raycastTarget = false;
                 this._bg.material = Instantiate(this._bg.material);
                 this._bg.SetField("_gradient", false);
                 this._bg.material.color = Color.white.ColorWithAlpha(1);
                 this._bg.color = this.BackgroundColor;
                 this._bg.SetAllDirty();
+                Logger.Info($"ChatScreen setup complete");
 
-                this.AddToVRPointer();
+                // this.AddToVRPointer();
                 this.UpdateChatUI();
+                Logger.Info($"UpdateChatUI complete");
             }
+            Logger.Info($"SetupScreens complete, _chatScreen: {this._chatScreen}");
         }
 
         private void Instance_OnConfigChanged(ChatConfig obj) => this.UpdateChatUI();
@@ -238,7 +271,7 @@ namespace EnhancedStreamChat.Chat
             foreach (var canvas in this._chatScreen.GetComponentsInChildren<Canvas>(true)) {
                 canvas.sortingOrder = 0;
             }
-            this.AddToVRPointer();
+            // this.AddToVRPointer();
             this.UpdateChatUI();
         }
 
@@ -248,18 +281,41 @@ namespace EnhancedStreamChat.Chat
             foreach (var canvas in this._chatScreen.GetComponentsInChildren<Canvas>(true)) {
                 canvas.sortingOrder = 3;
             }
-            this.AddToVRPointer();
+            // this.AddToVRPointer();
             this.UpdateChatUI();
         }
 
-        private void AddToVRPointer()
+        private void SceneManager_activeSceneChanged(Scene arg0, Scene arg1)
         {
-            if (this._chatScreen.screenMover) {
-                this._chatScreen.HandleReleased -= this.OnHandleReleased;
-                this._chatScreen.HandleReleased += this.OnHandleReleased;
-                this._chatScreen.screenMover.transform.SetAsFirstSibling();
+            if (arg1.name != s_game && arg1.name != s_menu) {
+                this._isInGame = false;
+                this._rootGameObject.SetActive(false);
+                return;
             }
+            this._rootGameObject.SetActive(true);
+            if (arg1.name == s_game) {
+                this._isInGame = true;
+                foreach (var canvas in this._chatScreen.GetComponentsInChildren<Canvas>(true)) {
+                    canvas.sortingOrder = 0;
+                }
+            }
+            else if (arg1.name == s_menu) {
+                this._isInGame = false;
+                foreach (var canvas in this._chatScreen.GetComponentsInChildren<Canvas>(true)) {
+                    canvas.sortingOrder = 3;
+                }
+            }
+            this.UpdateChatUI();
         }
+
+        // private void AddToVRPointer()
+        // {
+        //     if (this._chatScreen.screenMover) {
+        //         this._chatScreen.HandleReleased -= this.OnHandleReleased;
+        //         this._chatScreen.HandleReleased += this.OnHandleReleased;
+        //         this._chatScreen.screenMover.transform.SetAsFirstSibling();
+        //     }
+        // }
 
         private bool _updateMessagePositions = false;
         private WaitForEndOfFrame _waitForEndOfFrame;
@@ -267,14 +323,18 @@ namespace EnhancedStreamChat.Chat
 
         private IEnumerator UpdateMessagePositions()
         {
+            Logger.Info($"UpdateMessagePositions, _messages.Count: {this._messages.Count}");
             yield return this._waitForEndOfFrame;
             // TODO: Remove later on
             //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
+            Logger.Info($"UpdateMessagePositions, ReverseChatOrder: {this.ReverseChatOrder}");
             float? msgPos = this.ChatHeight / (this.ReverseChatOrder ? 2f : -2f);
+            Logger.Info($"UpdateMessagePositions, msgPos: {msgPos}");
             foreach (var chatMsg in this._messages.OrderBy(x => x.ReceivedDate).Reverse()) {
                 if (chatMsg == null) {
                     continue;
                 }
+                Logger.Info($"UpdateMessagePositions, chatMsg: {chatMsg}");
                 var msgHeight = (chatMsg.transform as RectTransform)?.sizeDelta.y;
                 if (this.ReverseChatOrder) {
                     msgPos -= msgHeight;
@@ -284,6 +344,7 @@ namespace EnhancedStreamChat.Chat
                     msgPos += msgHeight;
                 }
             }
+            Logger.Info("UpdateMessagePositions complete");
         }
 
         private void OnRenderRebuildComplete() => this._updateMessagePositions = true;
@@ -299,15 +360,19 @@ namespace EnhancedStreamChat.Chat
 
         private void UpdateChatUI()
         {
+            Logger.Info("UpdateChatUI");
             this.ChatWidth = this._chatConfig.ChatWidth;
             this.ChatHeight = this._chatConfig.ChatHeight;
             this.FontSize = this._chatConfig.FontSize;
+            Logger.Info($"ChatWidth: {this.ChatWidth}, ChatHeight: {this.ChatHeight}, FontSize: {this.FontSize}");
             this.AccentColor = this._chatConfig.AccentColor;
             this.HighlightColor = this._chatConfig.HighlightColor;
             this.BackgroundColor = this._chatConfig.BackgroundColor;
+            Logger.Info($"AccentColor: {this.AccentColor}, HighlightColor: {this.HighlightColor}, BackgroundColor: {this.BackgroundColor}");
             this.PingColor = this._chatConfig.PingColor;
             this.TextColor = this._chatConfig.TextColor;
             this.ReverseChatOrder = this._chatConfig.ReverseChatOrder;
+            Logger.Info($"PingColor: {this.PingColor}, TextColor: {this.TextColor}, ReverseChatOrder: {this.ReverseChatOrder}");
             if (this._isInGame) {
                 this.ChatPosition = this._chatConfig.Song_ChatPosition;
                 this.ChatRotation = this._chatConfig.Song_ChatRotation;
@@ -318,15 +383,21 @@ namespace EnhancedStreamChat.Chat
                 this.ChatRotation = this._chatConfig.Menu_ChatRotation;
                 this.gameObject.layer = this._chatConfig.Menu_ChatLayer;
             }
+            Logger.Info($"ChatPosition: {this.ChatPosition}, ChatRotation: {this.ChatRotation}, gameObject.layer: {this.gameObject.layer}");
             var chatContainerTransform = this._chatContainer.GetComponent<RectMask2D>().rectTransform!;
+            Logger.Info($"chatContainerTransform: {chatContainerTransform}");
             chatContainerTransform.sizeDelta = new Vector2(this.ChatWidth, this.ChatHeight);
+            Logger.Info($"chatContainerTransform.sizeDelta: {chatContainerTransform.sizeDelta}");
 
             this._chatScreen.handle.transform.localScale = new Vector3(this.ChatWidth, this.ChatHeight * 0.9f, 0.01f);
             this._chatScreen.handle.transform.localPosition = Vector3.zero;
             this._chatScreen.handle.transform.localRotation = Quaternion.identity;
+            Logger.Info($"_chatScreen.handle.transform.localScale: {this._chatScreen.handle.transform.localScale}, _chatScreen.handle.transform.localPosition: {this._chatScreen.handle.transform.localPosition}");
 
             this.AllowMovement = this._chatConfig.AllowMovement;
+            Logger.Info($"AllowMovement: {this.AllowMovement}");
             this.UpdateMessages();
+            Logger.Info("UpdateChatUI complete");
         }
 
         private void UpdateMessages()
@@ -339,7 +410,7 @@ namespace EnhancedStreamChat.Chat
 
         private void UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
         {
-
+            Logger.Info("UpdateMessage");
             (msg.transform as RectTransform).sizeDelta = new Vector2(this.ChatWidth, (msg.transform as RectTransform).sizeDelta.y);
             msg.Text.font = ESCFontManager.instance.MainFont;
             msg.Text.font.fallbackFontAssetTable = ESCFontManager.instance.FallBackFonts;
@@ -349,6 +420,7 @@ namespace EnhancedStreamChat.Chat
             msg.Text.fontSize = this.FontSize;
             msg.Text.lineSpacing = 1.5f;
 
+            Logger.Info("UpdateMessage: SubText");
             msg.SubText.font = ESCFontManager.instance.MainFont;
             msg.SubText.font.fallbackFontAssetTable = ESCFontManager.instance.FallBackFonts;
             msg.SubText.overflowMode = TextOverflowModes.Overflow;
@@ -356,6 +428,7 @@ namespace EnhancedStreamChat.Chat
             msg.SubText.color = this.TextColor;
             msg.SubText.fontSize = this.FontSize;
             msg.SubText.lineSpacing = 1.5f;
+            Logger.Info("UpdateMessage: SubText complete");
 
             if (msg.Text.ChatMessage != null) {
                 msg.HighlightColor = msg.Text.ChatMessage.IsPing ? this.PingColor : this.HighlightColor;
@@ -364,12 +437,14 @@ namespace EnhancedStreamChat.Chat
                 msg.AccentEnabled = !msg.Text.ChatMessage.IsPing && (msg.HighlightEnabled || msg.SubText.ChatMessage != null);
             }
 
+            Logger.Info("UpdateMessage: SetAllDirty");
             if (setAllDirty) {
                 msg.Text.SetAllDirty();
                 if (msg.SubTextEnabled) {
                     msg.SubText.SetAllDirty();
                 }
             }
+            Logger.Info("UpdateMessage complete");
         }
 
         private bool UpdateMessageContent(string id, string content)
@@ -498,7 +573,9 @@ namespace EnhancedStreamChat.Chat
                                                                                                                             if (this._chatConfig.PreCacheAnimatedEmotes) {
                                                                                                                                 foreach (var emote in resources) {
                                                                                                                                     if (emote.Value.IsAnimated) {
-                                                                                                                                        HMMainThreadDispatcher.instance.Enqueue(ChatImageProvider.instance.PrecacheAnimatedImage(emote.Value.Uri, emote.Key, 110));
+                                                                                                                                        // 没有HMMainThreadDispatcher了
+                                                                                                                                        // HMMainThreadDispatcher.instance.Enqueue(ChatImageProvider.instance.PrecacheAnimatedImage(emote.Value.Uri, emote.Key, 110));
+                                                                                                                                        this.StartCoroutine(ChatImageProvider.instance.PrecacheAnimatedImage(emote.Value.Uri, emote.Key, 110));
                                                                                                                                         count++;
                                                                                                                                     }
                                                                                                                                 }
@@ -510,26 +587,54 @@ namespace EnhancedStreamChat.Chat
                                                                                                                         });
 
         private EnhancedTextMeshProUGUIWithBackground _lastMessage;
-        public void OnTextMessageReceived(IChatMessage msg) => _ = this.OnTextMessageReceived(msg, DateTime.Now);
+        // public void OnTextMessageReceived(IChatMessage msg) => _ = this.OnTextMessageReceived(msg, DateTime.Now);
+        public void OnTextMessageReceived(IChatMessage msg)
+        {
+            Logger.Info($"Received message: {msg.Message}");
+            _ = this.OnTextMessageReceived(msg, DateTime.Now);
+            Logger.Info($"OnTextMessageReceived: {msg.Message}");
+        }
         public async Task OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
         {
+            Logger.Info($"Received message: {msg.Message}");
             var parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo);
+            Logger.Info($"Build message end: {parsedMessage}");
+            if (this.TextPool == null)
+            {
+                Logger.Warn("TextPool is null, waiting for it to be initialized.");
+            }
             while (this.TextPool == null) {
                 await Task.Delay(100);
             }
-            HMMainThreadDispatcher.instance.Enqueue(() => this.CreateMessage(msg, dateTime, parsedMessage));
+            Logger.Info($"Create message coroutine: {parsedMessage}");
+            // 没有HMMainThreadDispatcher了
+            // HMMainThreadDispatcher.instance.Enqueue(() => this.CreateMessage(msg, dateTime, parsedMessage));
+            this.StartCoroutine(CreateMessageCoroutine(msg, dateTime, parsedMessage));
+            Logger.Info($"Create message coroutine end: {parsedMessage}");
+        }
+
+        private IEnumerator CreateMessageCoroutine(IChatMessage msg, DateTime dateTime, string parsedMessage)
+        {
+            Logger.Info($"Into Create message coroutine: {parsedMessage}");
+            this.CreateMessage(msg, dateTime, parsedMessage);
+            Logger.Info($"Create message coroutine end 2: {parsedMessage}");
+            yield return null; // 使用yield return null 表示等待一帧
         }
 
         private void CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
         {
+            Logger.Info($"Create message: {parsedMessage}");
             if (this._lastMessage != null && !msg.IsSystemMessage && this._lastMessage.Text.ChatMessage.Id == msg.Id) {
                 // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
                 this._lastMessage.SubText.text = parsedMessage;
                 this._lastMessage.SubText.ChatMessage = msg;
                 this._lastMessage.SubTextEnabled = true;
+                Logger.Info($"Sub message: {parsedMessage}");
                 this.UpdateMessage(this._lastMessage, true);
+                Logger.Info($"Update message: {parsedMessage}");
             }
             else {
+                Logger.Info($"New message: {parsedMessage}");
                 var newMsg = this.TextPool.Alloc();
                 newMsg.gameObject.SetActive(true);
                 newMsg.Text.ChatMessage = msg;
@@ -556,10 +661,15 @@ namespace EnhancedStreamChat.Chat
                         });
                     }
                 }*/
+                 Logger.Info($"New message: {newMsg.Text.text}");
                 this.AddMessage(newMsg);
+                Logger.Info($"Add message: {newMsg.Text.text}");
                 this._lastMessage = newMsg;
+                Logger.Info($"Last message: {newMsg.Text.text}");
             }
+            Logger.Info($"Update message positions: {parsedMessage}");
             this._updateMessagePositions = true;
+            Logger.Info($"Update message positions end: {parsedMessage}");
         }
     }
 }

@@ -148,7 +148,7 @@ namespace EnhancedStreamChat.Chat
             set
             {
                 this.SetProperty(ref this._chatConfig.BackgroundColor, value);
-                this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "bg").color = value;
+                this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "Background").color = value;
             }
         }
 

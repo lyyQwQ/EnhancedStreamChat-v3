@@ -10,10 +10,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using BeatSaberMarkupLanguage.Util;
 
 namespace EnhancedStreamChat.Chat
 {
-    public class ChatManager : PersistentSingleton<ChatManager>
+    public class ChatManager : Utilities.PersistentSingleton<ChatManager>
     {
         internal ChatCoreInstance _chatCoreInstance;
         internal ChatServiceMultiplexer _chatServiceMultiplexer;
@@ -96,6 +97,7 @@ namespace EnhancedStreamChat.Chat
         }
         private void BSEvents_menuSceneLoadedFresh(ScenesTransitionSetupDataSO scenesTransitionSetupDataSo)
         {
+            Logger.Info( "Menu scene loaded fresh.");
             if (this._chatDisplay) {
                 DestroyImmediate(this._chatDisplay.gameObject);
                 this._chatDisplay = null;

@@ -4,6 +4,8 @@ using IPA;
 using IPA.Loader;
 using System;
 using System.Reflection;
+using EnhancedStreamChat.Installers;
+using SiraUtil.Zenject;
 using UnityEngine;
 using IPALogger = IPA.Logging.Logger;
 
@@ -20,7 +22,7 @@ namespace EnhancedStreamChat
         private Harmony harmony;
         private static PluginMetadata _meta;
         [Init]
-        public void Init(IPALogger logger, PluginMetadata meta)
+        public void Init(IPALogger logger, PluginMetadata meta, Zenjector zenjector)
         {
             Instance = this;
             _meta = meta;
@@ -29,6 +31,7 @@ namespace EnhancedStreamChat
             var config = ChatConfig.instance;
             Font.textureRebuilt += this.Font_textureRebuilt;
             this.harmony = new Harmony(HARMONY_ID);
+            zenjector.Install<ESCMenuInstaller>(Location.Menu);
         }
         [OnStart]
         public void OnStart()

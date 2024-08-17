@@ -8,8 +8,27 @@ namespace EnhancedStreamChat.Graphics
 {
     public class EnhancedTextMeshProUGUIWithBackground : MonoBehaviour
     {
-        public EnhancedTextMeshProUGUI Text { get; internal set; }
-        public EnhancedTextMeshProUGUI SubText { get; internal set; }
+        private EnhancedTextMeshProUGUI _text;
+        public EnhancedTextMeshProUGUI Text
+        {
+            get => _text;
+            internal set
+            {
+                _text = value;
+                Logger.Info($"Text set: {value}");
+            }
+        }
+
+        private EnhancedTextMeshProUGUI _subText;
+        public EnhancedTextMeshProUGUI SubText
+        {
+            get => _subText;
+            internal set
+            {
+                _subText = value;
+                Logger.Info($"SubText set: {value}");
+            }
+        }
 
         public DateTime ReceivedDate { get; internal set; }
 
@@ -18,6 +37,7 @@ namespace EnhancedStreamChat.Graphics
         private ImageView _highlight;
         private ImageView _accent;
         private VerticalLayoutGroup _verticalLayoutGroup;
+
         public Vector2 Size
         {
             get => (this.transform as RectTransform).sizeDelta;
@@ -42,10 +62,12 @@ namespace EnhancedStreamChat.Graphics
             set
             {
                 this._highlight.enabled = value;
-                if (value) {
+                if (value)
+                {
                     this._verticalLayoutGroup.padding = new RectOffset(5, 5, 2, 2);
                 }
-                else {
+                else
+                {
                     this._verticalLayoutGroup.padding = new RectOffset(5, 5, 1, 1);
                 }
             }
@@ -63,10 +85,12 @@ namespace EnhancedStreamChat.Graphics
             set
             {
                 this.SubText.enabled = value;
-                if (value) {
+                if (value)
+                {
                     this.SubText.rectTransform.SetParent(this.gameObject.transform, false);
                 }
-                else {
+                else
+                {
                     this.SubText.rectTransform.SetParent(null, false);
                 }
             }
@@ -123,7 +147,8 @@ namespace EnhancedStreamChat.Graphics
 
         private void Text_OnLatePreRenderRebuildComplete()
         {
-            (this._accent.gameObject.transform as RectTransform).sizeDelta = new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
+            (this._accent.gameObject.transform as RectTransform).sizeDelta =
+                new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
             OnLatePreRenderRebuildComplete?.Invoke();
         }
     }

@@ -32,6 +32,7 @@ namespace EnhancedStreamChat.Chat
         /// <param name="font">The font to register these images to</param>
         public static bool PrepareImages(IChatMessage msg, EnhancedFontInfo font)
         {
+            Logger.Info($"Preparing images for message: {msg.Message}");
             var tasks = new List<Task<EnhancedImageInfo>>();
             var pendingEmoteDownloads = new HashSet<string>();
 
@@ -56,7 +57,8 @@ namespace EnhancedStreamChat.Chat
                                     IsAnimated = true;
                                     break;
                             }
-                            SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
+                            // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
+                            CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
                             {
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
@@ -68,7 +70,8 @@ namespace EnhancedStreamChat.Chat
                             break;
                         case EmoteType.SpriteSheet:
                             Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
-                            SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
+                            // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
+                            CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
                             {
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
@@ -94,7 +97,8 @@ namespace EnhancedStreamChat.Chat
                 if (!font.CharacterLookupTable.ContainsKey(badge.Id)) {
                     pendingEmoteDownloads.Add(badge.Id);
                     var tcs = new TaskCompletionSource<EnhancedImageInfo>();
-                    SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
+                    // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
+                    CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
                     {
                         if (info != null) {
                             if (!font.TryRegisterImageInfo(info, out var character)) {
@@ -114,11 +118,13 @@ namespace EnhancedStreamChat.Chat
         public static Task<string> BuildMessage(IChatMessage msg, EnhancedFontInfo font) => Task.Run(() =>
         {
             try {
+                Logger.Info($"Building message: {msg.Message}");
 
                 if (!PrepareImages(msg, font)) {
                     Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
                     //return msg.Message;
                 }
+                Logger.Info($"Images prepared for message: {msg.Message}");
 
                 var badges = ImageStackPool.Alloc();
                 try {

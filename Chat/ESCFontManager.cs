@@ -53,77 +53,114 @@ namespace EnhancedStreamChat.Chat
         }
         public EnhancedFontInfo FontInfo { get; private set; } = null;
 
-        private void Awake() => HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont());
+        // private void Awake() => HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont()); // 没有HMMainThreadDispatcher了
+        // private void Awake() => this.StartCoroutine(this.CreateChatFont());
+        private void Awake()
+        {
+            Logger.Info("ESCFontManager Awake");
+            this.StartCoroutine(this.CreateChatFont());
+        }
+
         public IEnumerator CreateChatFont()
         {
+            Logger.Info("Creating chat font");
             this.IsInitialized = false;
+            Logger.Info("Waiting for TMPNoGlowFontShader");
             yield return new WaitWhile(() => BeatSaberUtils.TMPNoGlowFontShader == null);
-            if (this.MainFont != null) {
+            Logger.Info("TMPNoGlowFontShader loaded");
+            if (this.MainFont != null)
+            {
                 Destroy(this.MainFont);
             }
-            foreach (var font in this.FallBackFonts) {
-                if (font != null) {
+
+            foreach (var font in this.FallBackFonts)
+            {
+                if (font != null)
+                {
                     Destroy(font);
                 }
             }
 
-            if (!Directory.Exists(FontPath)) {
+            if (!Directory.Exists(FontPath))
+            {
                 Directory.CreateDirectory(FontPath);
             }
-            if (!Directory.Exists(MainFontPath)) {
+
+            if (!Directory.Exists(MainFontPath))
+            {
                 Directory.CreateDirectory(MainFontPath);
             }
-            if (!Directory.Exists(FallBackFontPath)) {
+
+            if (!Directory.Exists(FallBackFontPath))
+            {
                 Directory.CreateDirectory(FallBackFontPath);
             }
 
             var fontName = ChatConfig.instance.SystemFontName;
             TMP_FontAsset? asset = null;
             AssetBundle? bundle = null;
-            foreach (var filename in Directory.EnumerateFiles(MainFontPath, "*.assets", SearchOption.TopDirectoryOnly)) {
-                using (var fs = File.OpenRead(filename)) {
+            foreach (var filename in Directory.EnumerateFiles(MainFontPath, "*.assets", SearchOption.TopDirectoryOnly))
+            {
+                using (var fs = File.OpenRead(filename))
+                {
                     bundle = AssetBundle.LoadFromStream(fs);
                 }
-                if (bundle != null) {
+
+                if (bundle != null)
+                {
                     break;
                 }
             }
-            if (bundle != null) {
-                foreach (var bundleItem in bundle.GetAllAssetNames()) {
+
+            if (bundle != null)
+            {
+                foreach (var bundleItem in bundle.GetAllAssetNames())
+                {
                     asset = bundle.LoadAsset<TMP_FontAsset>(Path.GetFileNameWithoutExtension(bundleItem));
-                    if (asset != null) {
+                    if (asset != null)
+                    {
                         this.MainFont = asset;
                         bundle.Unload(false);
                         break;
                     }
                 }
             }
-            if (this.MainFont == null) {
-                foreach (var fontFile in Directory.EnumerateFiles(FontPath, "*", SearchOption.TopDirectoryOnly)) {
-                    try {
+
+            if (this.MainFont == null)
+            {
+                foreach (var fontFile in Directory.EnumerateFiles(FontPath, "*", SearchOption.TopDirectoryOnly))
+                {
+                    try
+                    {
                         var font = new Font(fontFile);
                         font.RequestCharactersInTexture(ExtraCharacters.CNText);
                         font.name = Path.GetFileNameWithoutExtension(fontFile);
-                        if (font.name.ToLower() == fontName.ToLower()) {
+                        if (font.name.ToLower() == fontName.ToLower())
+                        {
                             asset = TMP_FontAsset.CreateFontAsset(font, 60, 6, GlyphRenderMode.SDFAA, 8192, 8192);
                             asset.ReadFontAssetDefinition();
                             this.MainFont = asset;
                             break;
                         }
                     }
-                    catch (Exception e) {
+                    catch (Exception e)
+                    {
                         Logger.Error(e);
                     }
                 }
             }
-            if (this.MainFont == null) {
+
+            if (this.MainFont == null)
+            {
                 yield return new WaitWhile(() => !FontManager.IsInitialized);
-                if (FontManager.TryGetTMPFontByFamily(fontName, out asset)) {
+                if (FontManager.TryGetTMPFontByFamily(fontName, out asset))
+                {
                     asset.ReadFontAssetDefinition();
                     asset.material.shader = BeatSaberUtils.TMPNoGlowFontShader;
                     this.MainFont = asset;
                 }
-                else {
+                else
+                {
                     Logger.Error($"Could not find font {fontName}! Falling back to Segoe UI");
                     fontName = "Segoe UI";
                     FontManager.TryGetTMPFontByFamily(fontName, out asset);
@@ -131,35 +168,52 @@ namespace EnhancedStreamChat.Chat
                     this.MainFont = asset;
                 }
             }
+
             this._fallbackFonts.Clear();
-            foreach (var fallbackFontPath in Directory.EnumerateFiles(FallBackFontPath, "*.assets")) {
-                using (var fs = File.OpenRead(fallbackFontPath)) {
+            foreach (var fallbackFontPath in Directory.EnumerateFiles(FallBackFontPath, "*.assets"))
+            {
+                using (var fs = File.OpenRead(fallbackFontPath))
+                {
                     bundle = AssetBundle.LoadFromStream(fs);
                 }
-                if (bundle == null) {
+
+                if (bundle == null)
+                {
                     continue;
                 }
-                foreach (var bundleItem in bundle.GetAllAssetNames()) {
+
+                foreach (var bundleItem in bundle.GetAllAssetNames())
+                {
                     asset = bundle.LoadAsset<TMP_FontAsset>(Path.GetFileNameWithoutExtension(bundleItem));
-                    if (asset != null) {
+                    if (asset != null)
+                    {
                         this._fallbackFonts.Add(asset);
                     }
                 }
+
                 bundle.Unload(false);
             }
-            foreach (var osFontPath in Font.GetPathsToOSFonts()) {
-                if (Path.GetFileNameWithoutExtension(osFontPath).ToLower() != "meiryo") {
+
+            foreach (var osFontPath in Font.GetPathsToOSFonts())
+            {
+                if (Path.GetFileNameWithoutExtension(osFontPath).ToLower() != "meiryo")
+                {
                     continue;
                 }
+
                 var meiryo = new Font(osFontPath);
                 meiryo.name = Path.GetFileNameWithoutExtension(osFontPath);
                 asset = TMP_FontAsset.CreateFontAsset(meiryo);
                 this._fallbackFonts.Add(asset);
             }
-            if (this.MainFont != null) {
+
+            if (this.MainFont != null)
+            {
                 this.FontInfo = new EnhancedFontInfo(this.MainFont);
             }
+
             this.IsInitialized = true;
+            Logger.Info($"Chat font created, this.IsInitialized = ({this.IsInitialized})");
         }
     }
 }
