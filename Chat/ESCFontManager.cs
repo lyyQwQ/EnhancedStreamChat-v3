@@ -57,17 +57,17 @@ namespace EnhancedStreamChat.Chat
         // private void Awake() => this.StartCoroutine(this.CreateChatFont());
         private void Awake()
         {
-            Logger.Info("ESCFontManager Awake");
+            Logger.Debug("ESCFontManager Awake");
             this.StartCoroutine(this.CreateChatFont());
         }
 
         public IEnumerator CreateChatFont()
         {
-            Logger.Info("Creating chat font");
+            Logger.Debug("Creating chat font");
             this.IsInitialized = false;
-            Logger.Info("Waiting for TMPNoGlowFontShader");
+            Logger.Debug("Waiting for TMPNoGlowFontShader");
             yield return new WaitWhile(() => BeatSaberUtils.TMPNoGlowFontShader == null);
-            Logger.Info("TMPNoGlowFontShader loaded");
+            Logger.Debug("TMPNoGlowFontShader loaded");
             if (this.MainFont != null)
             {
                 Destroy(this.MainFont);
@@ -213,7 +213,7 @@ namespace EnhancedStreamChat.Chat
             }
 
             this.IsInitialized = true;
-            Logger.Info($"Chat font created, this.IsInitialized = ({this.IsInitialized})");
+            Logger.Debug($"Chat font created, this.IsInitialized = ({this.IsInitialized})");
         }
     }
 }

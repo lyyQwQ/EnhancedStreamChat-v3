@@ -55,7 +55,7 @@ namespace EnhancedStreamChat.Graphics
         {
             base.Awake();
             this.FontInfo = ESCFontManager.instance.FontInfo;
-            Logger.Info($"FontInfo: {this.FontInfo}");
+            Logger.Debug($"FontInfo: {this.FontInfo}");
             this.raycastTarget = false;
         }
 
@@ -71,54 +71,54 @@ namespace EnhancedStreamChat.Graphics
 
         // public override void Rebuild(CanvasUpdate update)
         // {
-        //     Logger.Info($"Into EnhancedTextMeshProUGUI.Rebuild, update: {update}");
+        //     Logger.Debug($"Into EnhancedTextMeshProUGUI.Rebuild, update: {update}");
         //     if (update == CanvasUpdate.LatePreRender) {
         //         MainThreadInvoker.Invoke(() =>
         //         {
-        //             Logger.Info("Clearing images...");
+        //             Logger.Debug("Clearing images...");
         //             this.ClearImages();
-        //             Logger.Info("Images cleared.");
+        //             Logger.Debug("Images cleared.");
         //         });
-        //         Logger.Info("Rebuilding images...");
+        //         Logger.Debug("Rebuilding images...");
         //         for (var i = 0; i < this.textInfo.characterCount; i++) {
         //             var c = this.textInfo.characterInfo[i];
         //             if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length) {
         //                 // Skip invisible/empty/out of range chars
-        //                 Logger.Info($"Skipping character: {this.text[c.index]}, isVisible: {c.isVisible}, text: {this.text}, index: {c.index}, textLength: {this.text.Length}");
+        //                 Logger.Debug($"Skipping character: {this.text[c.index]}, isVisible: {c.isVisible}, text: {this.text}, index: {c.index}, textLength: {this.text.Length}");
         //                 continue;
         //             }
         //
-        //             Logger.Info($"Processing character: {this.text[c.index]}");
+        //             Logger.Debug($"Processing character: {this.text[c.index]}");
         //             uint character = this.text[c.index];
         //             if (c.index + 1 < this.text.Length && char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1])) {
         //                 // If it's a surrogate pair, convert the character
-        //                 Logger.Info($"Character is a surrogate pair.");
+        //                 Logger.Debug($"Character is a surrogate pair.");
         //                 character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
-        //                 Logger.Info($"Converted character: {character}");
+        //                 Logger.Debug($"Converted character: {character}");
         //             }
         //
         //             if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) || imageInfo is null) {
         //                 // Skip characters that have no imageInfo registered
-        //                 Logger.Info($"No imageInfo found for character: {this.text[c.index]}");
+        //                 Logger.Debug($"No imageInfo found for character: {this.text[c.index]}");
         //                 continue;
         //             }
         //
-        //             Logger.Info($"Found imageInfo for character: {this.text[c.index]}");
+        //             Logger.Debug($"Found imageInfo for character: {this.text[c.index]}");
         //             MainThreadInvoker.Invoke(() =>
         //             {
         //                 var img = _imagePool.Alloc();
         //                 try {
-        //                     Logger.Info($"Overlaying sprite for character: {this.text[c.index]}");
+        //                     Logger.Debug($"Overlaying sprite for character: {this.text[c.index]}");
         //                     if (imageInfo.AnimControllerData != null) {
-        //                         Logger.Info($"Overlaying animated sprite for character: {this.text[c.index]}");
+        //                         Logger.Debug($"Overlaying animated sprite for character: {this.text[c.index]}");
         //                         img.animStateUpdater.controllerData = imageInfo.AnimControllerData;
         //                         img.sprite = imageInfo.AnimControllerData.sprites[imageInfo.AnimControllerData.uvIndex];
         //                     }
         //                     else {
-        //                         Logger.Info($"Overlaying static sprite for character: {this.text[c.index]}");
+        //                         Logger.Debug($"Overlaying static sprite for character: {this.text[c.index]}");
         //                         img.sprite = imageInfo.Sprite;
         //                     }
-        //                     Logger.Info($"Sprite overlayed for character: {this.text[c.index]}");
+        //                     Logger.Debug($"Sprite overlayed for character: {this.text[c.index]}");
         //                     img.material = BeatSaberUtils.UINoGlowMaterial;
         //                     // img.rectTransform.localScale = new Vector3(this.fontScale * 1.08f, this.fontScale * 1.08f, this.fontScale * 1.08f);
         //                     img.rectTransform.localScale = new Vector3(this.m_fontScaleMultiplier * 1.08f, this.m_fontScaleMultiplier * 1.08f, this.m_fontScaleMultiplier * 1.08f);
@@ -129,58 +129,58 @@ namespace EnhancedStreamChat.Graphics
         //                     img.gameObject.SetActive(true);
         //                     img.SetAllDirty();
         //                     this._currentImages.Add(img);
-        //                     Logger.Info($"Sprite overlayed for character: {this.text[c.index]}");
+        //                     Logger.Debug($"Sprite overlayed for character: {this.text[c.index]}");
         //                 }
         //                 catch (Exception ex) {
         //                     Logger.Error($"Exception while trying to overlay sprite. {ex.ToString()}");
         //                     _imagePool.Free(img);
         //                 }
         //             });
-        //             Logger.Info($"Image overlayed for character: {this.text[c.index]}");
+        //             Logger.Debug($"Image overlayed for character: {this.text[c.index]}");
         //         }
         //     }
-        //     Logger.Info("Exiting EnhancedTextMeshProUGUI.Rebuild.");
+        //     Logger.Debug("Exiting EnhancedTextMeshProUGUI.Rebuild.");
         //     base.Rebuild(update);
-        //     Logger.Info("Base rebuild complete.");
+        //     Logger.Debug("Base rebuild complete.");
         //     if (update == CanvasUpdate.LatePreRender) {
         //         MainThreadInvoker.Invoke(OnLatePreRenderRebuildComplete);
         //     }
-        //     Logger.Info("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");
+        //     Logger.Debug("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");
         // }
         //
         public override void Rebuild(CanvasUpdate update)
         {
             try
             {
-                Logger.Info($"Into EnhancedTextMeshProUGUI.Rebuild, update: {update}");
+                Logger.Debug($"Into EnhancedTextMeshProUGUI.Rebuild, update: {update}");
 
                 // 如果是处理图片的阶段
                 if (update == CanvasUpdate.LatePreRender)
                 {
                     MainThreadInvoker.Invoke(() =>
                     {
-                        Logger.Info("Clearing images...");
+                        Logger.Debug("Clearing images...");
                         this.ClearImages();
-                        Logger.Info("Images cleared.");
+                        Logger.Debug("Images cleared.");
 
 
-                        Logger.Info("Rebuilding images...");
+                        Logger.Debug("Rebuilding images...");
                         try
                         {
                             var fieldInfo = typeof(TextMeshProUGUI).GetField("m_TextProcessingArray",
                                 BindingFlags.NonPublic | BindingFlags.Instance);
                             var mTextProcessingArray = fieldInfo.GetValue(this);
-                            Logger.Info($"m_TextProcessingArray is null: {mTextProcessingArray == null}");
+                            Logger.Debug($"m_TextProcessingArray is null: {mTextProcessingArray == null}");
                             if (mTextProcessingArray != null)
                             {
-                                Logger.Info($"m_TextProcessingArray length: {((Array)mTextProcessingArray).Length}");
+                                Logger.Debug($"m_TextProcessingArray length: {((Array)mTextProcessingArray).Length}");
                                 // for (var i = 0; i < ((Array)mTextProcessingArray).Length; i++)
                                 // {
-                                //     Logger.Info($"m_TextProcessingArray[{i}]: {((Array)mTextProcessingArray).GetValue(i)}");
+                                //     Logger.Debug($"m_TextProcessingArray[{i}]: {((Array)mTextProcessingArray).GetValue(i)}");
                                 // }
                             }
-                            Logger.Info($"m_havePropertiesChanged: {this.havePropertiesChanged}");
-                            Logger.Info($"m_text: {this.m_text}");
+                            Logger.Debug($"m_havePropertiesChanged: {this.havePropertiesChanged}");
+                            Logger.Debug($"m_text: {this.m_text}");
                             // this.havePropertiesChanged = true;
 
                             // this.ForceMeshUpdate();
@@ -190,19 +190,19 @@ namespace EnhancedStreamChat.Graphics
                             Logger.Error($"Exception while trying to force mesh update. {ex}");
                         }
 
-                        Logger.Info(
+                        Logger.Debug(
                             $"textInfo is null: {this.textInfo == null}, characterCount: {this.textInfo.characterCount}, text: {this.text}");
                         for (var i = 0; i < this.textInfo.characterCount; i++)
                         {
                             var c = this.textInfo.characterInfo[i];
 
-                            Logger.Info(
+                            Logger.Debug(
                                 $"Processing character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
 
                             if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
                             {
                                 // 跳过不可见字符、空字符或索引越界的字符
-                                Logger.Info(
+                                Logger.Debug(
                                     $"Skipping character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
                                 continue;
                             }
@@ -212,12 +212,12 @@ namespace EnhancedStreamChat.Graphics
                                 char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
                             {
                                 // 处理代理对字符
-                                Logger.Info($"Character at index {i} is a surrogate pair.");
+                                Logger.Debug($"Character at index {i} is a surrogate pair.");
                                 character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
-                                Logger.Info($"Converted surrogate pair to: {character}");
+                                Logger.Debug($"Converted surrogate pair to: {character}");
                             }
 
-                            Logger.Info($"Processing character: {character}");
+                            Logger.Debug($"Processing character: {character}");
 
                             if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) ||
                                 imageInfo == null)
@@ -226,14 +226,14 @@ namespace EnhancedStreamChat.Graphics
                                 continue;
                             }
 
-                            Logger.Info($"Found imageInfo for character: {character}");
+                            Logger.Debug($"Found imageInfo for character: {character}");
 
                             MainThreadInvoker.Invoke(() =>
                             {
                                 var img = _imagePool.Alloc();
                                 try
                                 {
-                                    Logger.Info($"Overlaying sprite for character: {character}");
+                                    Logger.Debug($"Overlaying sprite for character: {character}");
                                     if (imageInfo.AnimControllerData != null)
                                     {
                                         img.animStateUpdater.controllerData = imageInfo.AnimControllerData;
@@ -256,7 +256,7 @@ namespace EnhancedStreamChat.Graphics
                                     img.gameObject.SetActive(true);
                                     img.SetAllDirty();
                                     this._currentImages.Add(img);
-                                    Logger.Info($"Sprite overlayed for character: {character}");
+                                    Logger.Debug($"Sprite overlayed for character: {character}");
                                 }
                                 catch (Exception ex)
                                 {
@@ -269,28 +269,28 @@ namespace EnhancedStreamChat.Graphics
                 }
 
                 // 在此处添加日志，检查传递给 SetArraySizes 的 unicodeChars 数组
-                Logger.Info("Before calling SetArraySizes.");
-                Logger.Info(
+                Logger.Debug("Before calling SetArraySizes.");
+                Logger.Debug(
                     $"textInfo is null: {this.textInfo == null}, characterCount: {this.textInfo.characterCount}, text: {this.text}");
                 if (this.textInfo != null && this.textInfo.characterCount > 0)
                 {
                     for (var i = 0; i < this.textInfo.characterCount; i++)
                     {
-                        Logger.Info($"UnicodeChar[{i}]: {this.textInfo.characterInfo[i].character}");
+                        Logger.Debug($"UnicodeChar[{i}]: {this.textInfo.characterInfo[i].character}");
                     }
                 }
 
                 base.Rebuild(update);
-                Logger.Info("Base rebuild complete.");
+                Logger.Debug("Base rebuild complete.");
 
                 if (update == CanvasUpdate.LatePreRender)
                 {
-                    Logger.Info("Calling OnLatePreRenderRebuildComplete.");
+                    Logger.Debug("Calling OnLatePreRenderRebuildComplete.");
                     MainThreadInvoker.Invoke(OnLatePreRenderRebuildComplete);
-                    Logger.Info("OnLatePreRenderRebuildComplete called.");
+                    Logger.Debug("OnLatePreRenderRebuildComplete called.");
                 }
 
-                Logger.Info("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");
+                Logger.Debug("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");
             }
             catch (Exception ex)
             {

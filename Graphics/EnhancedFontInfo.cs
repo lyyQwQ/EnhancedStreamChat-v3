@@ -57,20 +57,20 @@ namespace EnhancedStreamChat.Graphics
         {
             Logger.Info($"Registering image info for {imageInfo.ImageId}, sprite: {imageInfo.Sprite}, width: {imageInfo.Width}, height: {imageInfo.Height}");
             if (!this.CharacterLookupTable.ContainsKey(imageInfo.ImageId)) {
-                Logger.Info("Character not found, registering...");
+                Logger.Debug("Character not found, registering...");
                 uint next;
                 do {
                     next = this.GetNextReplaceChar();
-                    Logger.Info($"Trying character {next:X}");
+                    Logger.Debug($"Trying character {next:X}");
                 }
                 while (this.Font.characterLookupTable.ContainsKey(next));
-                Logger.Info($"Character {next:X} is available, registering...");
+                Logger.Debug($"Character {next:X} is available, registering...");
                 this.Font.characterLookupTable.Add(next, new TMP_Character(next, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width), new GlyphRect(0, 0, 0, 0))));
                 this.CharacterLookupTable.TryAdd(imageInfo.ImageId, next);
                 this.ImageInfoLookupTable.TryAdd(next, imageInfo);
-                Logger.Info($"Registered image info for {imageInfo.ImageId} at character {next:X}, font name: {this.Font.name}");
+                Logger.Debug($"Registered image info for {imageInfo.ImageId} at character {next:X}, font name: {this.Font.name}");
                 replaceCharacter = next;
-                Logger.Info($"Returning character {replaceCharacter:X}");
+                Logger.Debug($"Returning character {replaceCharacter:X}");
                 return true;
             }
             replaceCharacter = 0;

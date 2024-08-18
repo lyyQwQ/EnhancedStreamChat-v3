@@ -123,7 +123,7 @@ namespace EnhancedStreamChat.Chat
                     else {
                         // If _chatViewController is instantiated, wait here until the action queue has any actions.
                         while (this.ActionQueue.IsEmpty) {
-                            //Logger.Info("Queue is empty.");
+                            //Logger.Debug("Queue is empty.");
                             await Task.Delay(1000);
                         }
                         // Once an action is added to the queue, lock the semaphore before working through the queue.
