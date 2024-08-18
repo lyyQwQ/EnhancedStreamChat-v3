@@ -132,7 +132,7 @@ namespace EnhancedStreamChat.Chat
                     {
                         if (badge != null && !string.IsNullOrEmpty(badge.Id))
                         {
-                            Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
+                            Logger.Info("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
                             if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo))
                             {
                                 Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
@@ -148,12 +148,13 @@ namespace EnhancedStreamChat.Chat
                 }
 
                 var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
-
+                Logger.Info($"Message: {msg.Message}");
                 // Escape all html tags in the message
                 sb.Replace("<", "<\u2060");
+                Logger.Info($"Message sb: {sb.ToString()}");
                 
                 try{
-                    Logger.Debug("Phase emotes: " + sb.ToString() + ", got " + msg.Emotes.Length + " Emote(s).");
+                    Logger.Info("Phase emotes: " + sb.ToString() + ", got " + msg.Emotes.Length + " Emote(s).");
                     foreach (var emote in msg.Emotes)
                     {
                         if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace))
@@ -174,14 +175,14 @@ namespace EnhancedStreamChat.Chat
                              //Replace emotes by index, in reverse order (msg.Emotes is sorted by emote.StartIndex in descending order)
                             if (msg is BilibiliChatMessage)
                             {
-                                Logger.Debug("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
+                                Logger.Info("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
                                 sb.Replace(emote.Name, emote switch
                                 {
                                     BilibiliChatEmote b when true => char.ConvertFromUtf32((int)character),
                                     _ => char.ConvertFromUtf32((int)character)
                                 },
                                 emote.StartIndex, emote.EndIndex - emote.StartIndex);
-                                Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
+                                Logger.Info("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
                             }
                             else
                             {
@@ -191,7 +192,7 @@ namespace EnhancedStreamChat.Chat
                                     _ => char.ConvertFromUtf32((int)character)
                                 },
                                 emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
-                                Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
+                                Logger.Info("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
                             }
                         }
                         catch (Exception ex)
@@ -212,7 +213,7 @@ namespace EnhancedStreamChat.Chat
                 }
                 else {
                     var nameColorCode = msg.Sender.Color;
-                    // Logger.Debug(nameColorCode);
+                    Logger.Info(nameColorCode);
                     if (ColorUtility.TryParseHtmlString(msg.Sender.Color.Substring(0, 7), out var nameColor)) {
                         Color.RGBToHSV(nameColor, out var h, out var s, out var v);
                         if (v < 0.85f) {
@@ -226,13 +227,16 @@ namespace EnhancedStreamChat.Chat
                         // Message becomes the color of their name if it's an action message
                         sb.Insert(0, $"<color={nameColorCode}><b>{msg.Sender.DisplayName}</b> ");
                         sb.Append("</color>");
+                        Logger.Info("Action message: " + sb.ToString());
                     }
                     else {
                         // Insert username w/ color
                         sb.Insert(0, $"<color={nameColorCode}><b>{msg.Sender.DisplayName}</b></color>: ");
+                        Logger.Info("Normal message: " + sb.ToString());
                     }
 
                     try {
+                        Logger.Info("Badges: " + msg.Sender.Badges.Length + " Badge(s).");
                         for (var i = 0; i < msg.Sender.Badges.Length; i++)
                         {
                             // Insert user badges at the beginning of the string in reverse order
@@ -241,7 +245,8 @@ namespace EnhancedStreamChat.Chat
                             {
                                 if (font.TryGetCharacter(badge.ImageId, out var character))
                                 {
-                                    sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
+                                    // sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} "); //todo 图片显示有问题，暂时注释掉
+                                    Logger.Info("Badge: " + sb.ToString());
                                 }
                                 /*if (msg is BilibiliChatMessage)
                                 {
@@ -251,12 +256,17 @@ namespace EnhancedStreamChat.Chat
                                 }*/
                             }
                         }
+                        Logger.Info("Badges: " + sb.ToString());
                     } catch (Exception ex)
                     {
                         Logger.Error($"An exception occurred in ChatMessageBuilder while replace emotes. Msg: \"{msg.Message}\". {ex.ToString()}");
                     }
                     ImageStackPool.Free(badges);
                 }
+                // 在开头插一个a，防止textMeshPro的textinfo计算错误
+                // sb.Insert(0, "aaaaaa ");
+
+                Logger.Info("Final message: " + sb.ToString());
                 return sb.ToString();
             }
             catch (Exception ex) {

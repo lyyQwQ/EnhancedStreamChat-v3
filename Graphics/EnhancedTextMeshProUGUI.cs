@@ -4,6 +4,7 @@ using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections.Concurrent;
+using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -161,82 +162,110 @@ namespace EnhancedStreamChat.Graphics
                         Logger.Info("Clearing images...");
                         this.ClearImages();
                         Logger.Info("Images cleared.");
-                    });
 
-                    Logger.Info("Rebuilding images...");
-                    for (var i = 0; i < this.textInfo.characterCount; i++)
-                    {
-                        var c = this.textInfo.characterInfo[i];
+
+                        Logger.Info("Rebuilding images...");
+                        try
+                        {
+                            var fieldInfo = typeof(TextMeshProUGUI).GetField("m_TextProcessingArray",
+                                BindingFlags.NonPublic | BindingFlags.Instance);
+                            var mTextProcessingArray = fieldInfo.GetValue(this);
+                            Logger.Info($"m_TextProcessingArray is null: {mTextProcessingArray == null}");
+                            if (mTextProcessingArray != null)
+                            {
+                                Logger.Info($"m_TextProcessingArray length: {((Array)mTextProcessingArray).Length}");
+                                // for (var i = 0; i < ((Array)mTextProcessingArray).Length; i++)
+                                // {
+                                //     Logger.Info($"m_TextProcessingArray[{i}]: {((Array)mTextProcessingArray).GetValue(i)}");
+                                // }
+                            }
+                            Logger.Info($"m_havePropertiesChanged: {this.havePropertiesChanged}");
+                            Logger.Info($"m_text: {this.m_text}");
+                            // this.havePropertiesChanged = true;
+
+                            // this.ForceMeshUpdate();
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Exception while trying to force mesh update. {ex}");
+                        }
 
                         Logger.Info(
-                            $"Processing character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
-
-                        if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
+                            $"textInfo is null: {this.textInfo == null}, characterCount: {this.textInfo.characterCount}, text: {this.text}");
+                        for (var i = 0; i < this.textInfo.characterCount; i++)
                         {
-                            // 跳过不可见字符、空字符或索引越界的字符
+                            var c = this.textInfo.characterInfo[i];
+
                             Logger.Info(
-                                $"Skipping character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
-                            continue;
-                        }
+                                $"Processing character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
 
-                        uint character = this.text[c.index];
-                        if (c.index + 1 < this.text.Length &&
-                            char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
-                        {
-                            // 处理代理对字符
-                            Logger.Info($"Character at index {i} is a surrogate pair.");
-                            character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
-                            Logger.Info($"Converted surrogate pair to: {character}");
-                        }
-
-                        Logger.Info($"Processing character: {character}");
-
-                        if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) ||
-                            imageInfo == null)
-                        {
-                            Logger.Warn($"No imageInfo found for character: {character}");
-                            continue;
-                        }
-
-                        Logger.Info($"Found imageInfo for character: {character}");
-
-                        MainThreadInvoker.Invoke(() =>
-                        {
-                            var img = _imagePool.Alloc();
-                            try
+                            if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
                             {
-                                Logger.Info($"Overlaying sprite for character: {character}");
-                                if (imageInfo.AnimControllerData != null)
-                                {
-                                    img.animStateUpdater.controllerData = imageInfo.AnimControllerData;
-                                    img.sprite =
-                                        imageInfo.AnimControllerData.sprites[imageInfo.AnimControllerData.uvIndex];
-                                }
-                                else
-                                {
-                                    img.sprite = imageInfo.Sprite;
-                                }
+                                // 跳过不可见字符、空字符或索引越界的字符
+                                Logger.Info(
+                                    $"Skipping character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
+                                continue;
+                            }
 
-                                img.material = BeatSaberUtils.UINoGlowMaterial;
-                                img.rectTransform.localScale = new Vector3(this.m_fontScaleMultiplier * 1.08f,
-                                    this.m_fontScaleMultiplier * 1.08f, this.m_fontScaleMultiplier * 1.08f);
-                                img.rectTransform.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
-                                img.rectTransform.SetParent(this.rectTransform, false);
-                                img.rectTransform.localPosition = c.topLeft - new Vector3(0,
-                                    imageInfo.Height * this.m_fontScaleMultiplier * 0.558f / 2);
-                                img.rectTransform.localRotation = Quaternion.identity;
-                                img.gameObject.SetActive(true);
-                                img.SetAllDirty();
-                                this._currentImages.Add(img);
-                                Logger.Info($"Sprite overlayed for character: {character}");
-                            }
-                            catch (Exception ex)
+                            uint character = this.text[c.index];
+                            if (c.index + 1 < this.text.Length &&
+                                char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
                             {
-                                Logger.Error($"Exception while trying to overlay sprite. {ex}");
-                                _imagePool.Free(img);
+                                // 处理代理对字符
+                                Logger.Info($"Character at index {i} is a surrogate pair.");
+                                character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
+                                Logger.Info($"Converted surrogate pair to: {character}");
                             }
-                        });
-                    }
+
+                            Logger.Info($"Processing character: {character}");
+
+                            if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) ||
+                                imageInfo == null)
+                            {
+                                Logger.Warn($"No imageInfo found for character: {character}");
+                                continue;
+                            }
+
+                            Logger.Info($"Found imageInfo for character: {character}");
+
+                            MainThreadInvoker.Invoke(() =>
+                            {
+                                var img = _imagePool.Alloc();
+                                try
+                                {
+                                    Logger.Info($"Overlaying sprite for character: {character}");
+                                    if (imageInfo.AnimControllerData != null)
+                                    {
+                                        img.animStateUpdater.controllerData = imageInfo.AnimControllerData;
+                                        img.sprite =
+                                            imageInfo.AnimControllerData.sprites[imageInfo.AnimControllerData.uvIndex];
+                                    }
+                                    else
+                                    {
+                                        img.sprite = imageInfo.Sprite;
+                                    }
+
+                                    img.material = BeatSaberUtils.UINoGlowMaterial;
+                                    img.rectTransform.localScale = new Vector3(this.m_fontScaleMultiplier * 1.08f,
+                                        this.m_fontScaleMultiplier * 1.08f, this.m_fontScaleMultiplier * 1.08f);
+                                    img.rectTransform.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
+                                    img.rectTransform.SetParent(this.rectTransform, false);
+                                    img.rectTransform.localPosition = c.topLeft - new Vector3(0,
+                                        imageInfo.Height * this.m_fontScaleMultiplier * 0.558f / 2);
+                                    img.rectTransform.localRotation = Quaternion.identity;
+                                    img.gameObject.SetActive(true);
+                                    img.SetAllDirty();
+                                    this._currentImages.Add(img);
+                                    Logger.Info($"Sprite overlayed for character: {character}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Error($"Exception while trying to overlay sprite. {ex}");
+                                    _imagePool.Free(img);
+                                }
+                            });
+                        }
+                    });
                 }
 
                 // 在此处添加日志，检查传递给 SetArraySizes 的 unicodeChars 数组
@@ -266,5 +295,9 @@ namespace EnhancedStreamChat.Graphics
                 Logger.Error($"Exception in EnhancedTextMeshProUGUI.Rebuild: {ex}");
             }
         }
+
+
     }
+
+
 }

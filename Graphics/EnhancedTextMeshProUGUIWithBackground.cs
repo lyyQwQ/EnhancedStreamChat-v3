@@ -8,27 +8,9 @@ namespace EnhancedStreamChat.Graphics
 {
     public class EnhancedTextMeshProUGUIWithBackground : MonoBehaviour
     {
-        private EnhancedTextMeshProUGUI _text;
-        public EnhancedTextMeshProUGUI Text
-        {
-            get => _text;
-            internal set
-            {
-                _text = value;
-                Logger.Info($"Text set: {value}");
-            }
-        }
+        public EnhancedTextMeshProUGUI Text { get; internal set; }
 
-        private EnhancedTextMeshProUGUI _subText;
-        public EnhancedTextMeshProUGUI SubText
-        {
-            get => _subText;
-            internal set
-            {
-                _subText = value;
-                Logger.Info($"SubText set: {value}");
-            }
-        }
+        public EnhancedTextMeshProUGUI SubText { get; internal set; }
 
         public DateTime ReceivedDate { get; internal set; }
 
