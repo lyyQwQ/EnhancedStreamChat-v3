@@ -129,9 +129,11 @@ namespace EnhancedStreamChat.Graphics
 
         private void Text_OnLatePreRenderRebuildComplete()
         {
+            Logger.Info("Text_OnLatePreRenderRebuildComplete");
             (this._accent.gameObject.transform as RectTransform).sizeDelta =
                 new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
             OnLatePreRenderRebuildComplete?.Invoke();
+            Logger.Info("Text_OnLatePreRenderRebuildComplete: Invoke");
         }
     }
 }

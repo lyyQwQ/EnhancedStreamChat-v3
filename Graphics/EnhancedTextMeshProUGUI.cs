@@ -285,7 +285,9 @@ namespace EnhancedStreamChat.Graphics
 
                 if (update == CanvasUpdate.LatePreRender)
                 {
+                    Logger.Info("Calling OnLatePreRenderRebuildComplete.");
                     MainThreadInvoker.Invoke(OnLatePreRenderRebuildComplete);
+                    Logger.Info("OnLatePreRenderRebuildComplete called.");
                 }
 
                 Logger.Info("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");

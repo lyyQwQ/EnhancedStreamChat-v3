@@ -127,7 +127,8 @@ namespace EnhancedStreamChat.Chat
 
             // HMMainThreadDispatcher.instance.Enqueue(this.UpdateMessagePositions());
             // this.StartCoroutine(this.UpdateMessagePositions());
-            _ = this.UpdateMessagePositions();
+            Logger.Info("UpdateMessagePositions call");
+            UpdateMessagePositions();
             Logger.Info("UpdateMessagePositions called");
             this._updateMessagePositions = false;
         }
@@ -380,10 +381,10 @@ namespace EnhancedStreamChat.Chat
         private WaitForEndOfFrame _waitForEndOfFrame;
 
 
-        private IEnumerator UpdateMessagePositions()
+        private void UpdateMessagePositions()
         {
             Logger.Info($"UpdateMessagePositions, _messages.Count: {this._messages.Count}");
-            yield return this._waitForEndOfFrame;
+            // yield return this._waitForEndOfFrame;
             // TODO: Remove later on
             //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
             Logger.Info($"UpdateMessagePositions, ReverseChatOrder: {this.ReverseChatOrder}");
