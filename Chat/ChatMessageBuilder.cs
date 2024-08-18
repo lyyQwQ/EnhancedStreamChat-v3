@@ -38,14 +38,16 @@ namespace EnhancedStreamChat.Chat
 
             foreach (var emote in msg.Emotes) {
                 if (string.IsNullOrEmpty(emote.Id) || pendingEmoteDownloads.Contains(emote.Id)) {
+                    Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
                     continue;
                 }
                 if (!font.CharacterLookupTable.ContainsKey(emote.Id)) {
+                    Logger.Info($"characterLookupTable not contains emote {emote.Id}, characterLookupTable: {font.CharacterLookupTable}");
                     pendingEmoteDownloads.Add(emote.Id);
                     var tcs = new TaskCompletionSource<EnhancedImageInfo>();
                     switch (emote.Type) {
                         case EmoteType.SingleImage:
-                            Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri + " IsAnimated: " + emote.IsAnimated);
+                            Logger.Info("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri + " IsAnimated: " + emote.IsAnimated);
                             var IsAnimated = emote.IsAnimated;
                             switch (Path.GetExtension(emote.Uri)) {
                                 case ".jpg":
@@ -58,52 +60,64 @@ namespace EnhancedStreamChat.Chat
                                     break;
                             }
                             // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
+                            Logger.Info("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | start cache image Emote: ID:" + emote.Id + " Uri: " + emote.Uri);
                             CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
                             {
+                                Logger.Info($"try cache image Emote: ID: {emote.Id}, Uri: {emote.Uri}, IsAnimated: {IsAnimated}, info: {info}");
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
                                         Logger.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
                                     }
+                                    Logger.Info($"register emote \"{emote.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                                 }
                                 tcs.SetResult(info);
                             }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));
                             break;
                         case EmoteType.SpriteSheet:
-                            Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
+                            Logger.Info("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | start cache SpriteSheet Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
                             // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
                             CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
                             {
+                                Logger.Info($"try cache SpriteSheet Emote: ID: {emote.Id}, Uri: {emote.Uri}, UVs: {emote.UVs}");
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
                                         Logger.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
                                     }
+                                    Logger.Info($"register emote \"{emote.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                                 }
                                 tcs.SetResult(info);
                             }, forcedHeight: 110));
                             break;
                         default:
                             tcs.SetResult(null);
+                            Logger.Warn($"Unknown emote type {emote.Type} for emote {emote.Name}!");
                             break;
                     }
                     tasks.Add(tcs.Task);
                 }
             }
 
+            Logger.Info($"Preparing badges for message: {msg.Message}");
             foreach (var badge in msg.Sender.Badges) {
                 if (string.IsNullOrEmpty(badge.Id) || pendingEmoteDownloads.Contains(badge.Id)) {
+                    Logger.Warn($"Badge {badge.Name} was missing from the badge dict! The request to {badge.Uri} may have timed out?");
                     continue;
                 }
 
+                Logger.Info("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
                 if (!font.CharacterLookupTable.ContainsKey(badge.Id)) {
+                    Logger.Info($"characterLookupTable not contains badge {badge.Id}, characterLookupTable: {font.CharacterLookupTable}");
                     pendingEmoteDownloads.Add(badge.Id);
                     var tcs = new TaskCompletionSource<EnhancedImageInfo>();
                     // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
                     CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
                     {
+                        Logger.Info($"try cache image Badge: ID: {badge.Id}, Uri: {badge.Uri}, info: {info}");
                         if (info != null) {
                             if (!font.TryRegisterImageInfo(info, out var character)) {
                                 Logger.Warn($"Failed to register badge \"{badge.Id}\" in font {font.Font.name}.");
                             }
+                            Logger.Info($"register badge \"{badge.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                         }
                         tcs.SetResult(info);
                     }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));
@@ -176,13 +190,23 @@ namespace EnhancedStreamChat.Chat
                             if (msg is BilibiliChatMessage)
                             {
                                 Logger.Info("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
-                                sb.Replace(emote.Name, emote switch
-                                {
-                                    BilibiliChatEmote b when true => char.ConvertFromUtf32((int)character),
-                                    _ => char.ConvertFromUtf32((int)character)
-                                },
-                                emote.StartIndex, emote.EndIndex - emote.StartIndex);
+                                // todo 图片还有问题，暂时注释掉
+                                // sb.Replace(emote.Name, emote switch
+                                // {
+                                //     BilibiliChatEmote b when true => char.ConvertFromUtf32((int)character),
+                                //     _ => char.ConvertFromUtf32((int)character)
+                                // },
+                                // emote.StartIndex, emote.EndIndex - emote.StartIndex);
                                 Logger.Info("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
+                                // 尝试在font的characterLookupTable中找到对应的character 输出找没找到
+                                if (ESCFontManager.instance.MainFont.characterLookupTable.TryGetValue(character, out var tmpCharacter))
+                                {
+                                    Logger.Info($"Font characterLookupTable contains character: {tmpCharacter}, tmpCharacter: {tmpCharacter.unicode}");
+                                }
+                                else
+                                {
+                                    Logger.Warn("Font characterLookupTable not contains character: " + char.ConvertFromUtf32((int)character));
+                                }
                             }
                             else
                             {
@@ -193,6 +217,16 @@ namespace EnhancedStreamChat.Chat
                                 },
                                 emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
                                 Logger.Info("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
+                                // 尝试在font的characterLookupTable中找到对应的character 输出找没找到
+                                if (ESCFontManager.instance.MainFont.characterLookupTable.TryGetValue(character, out var tmpCharacter))
+                                {
+                                    Logger.Info($"Font characterLookupTable contains character: {tmpCharacter.ToString()}, tmpCharacter: {tmpCharacter.unicode}");
+                                }
+                                else
+                                {
+                                    Logger.Warn("Font characterLookupTable not contains character: " + char.ConvertFromUtf32((int)character));
+                                }
+
                             }
                         }
                         catch (Exception ex)

@@ -15,6 +15,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -777,8 +778,71 @@ namespace EnhancedStreamChat.Chat
                 Logger.Info($"New message: {parsedMessage}");
                 var newMsg = this.TextPool.Alloc();
                 newMsg.gameObject.SetActive(true);
+                Logger.Info($"New message font: {newMsg.Text.font}, name: {newMsg.Text.font.name}");
+                newMsg.Text.font = ESCFontManager.instance.MainFont;
                 newMsg.Text.ChatMessage = msg;
-                newMsg.Text.text = parsedMessage;
+                // newMsg.Text.text = parsedMessage;
+                // newMsg.Text.SetText(parsedMessage);
+                try
+                {
+                    newMsg.Text.SetText(parsedMessage);
+                    try
+                    {
+                        var fieldInfo = typeof(TextMeshProUGUI).GetField("m_TextProcessingArray",
+                            BindingFlags.NonPublic | BindingFlags.Instance);
+                        var mTextProcessingArray = fieldInfo.GetValue(newMsg.Text);
+                        Logger.Info($"m_TextProcessingArray is null: {mTextProcessingArray == null}");
+                        if (mTextProcessingArray != null)
+                        {
+                            Logger.Info($"m_TextProcessingArray length: {((Array)mTextProcessingArray).Length}");
+                            for (var i = 0; i < ((Array)mTextProcessingArray).Length; i++)
+                            {
+                                Logger.Info($"m_TextProcessingArray[{i}]: {((Array)mTextProcessingArray).GetValue(i):X}");
+                                // Logger.Info($"m_TextProcessingArray[{i}]: unicode = {((Array)mTextProcessingArray).GetValue(i).unicode:X}, stringIndex = {mTextProcessingArray[i].stringIndex}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Exception while trying to force mesh update. {ex.StackTrace}");
+                    }
+
+                } catch (Exception e)
+                {
+                    Logger.Error($"Error setting text: {e}");
+                }
+
+                try
+                {
+                    // 用反射获取m_fontAsset是否为空
+                    var fieldInfo = typeof(TextMeshProUGUI).GetField("m_fontAsset",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    var mFontAsset = fieldInfo.GetValue(newMsg.Text);
+                    Logger.Info($"m_fontAsset is null: {mFontAsset == null}");
+                    if (mFontAsset != null)
+                    {
+                        Logger.Info($"m_fontAsset name: {mFontAsset.GetType().Name}");
+                    }
+                    _ = newMsg.Text.GetTextInfo(parsedMessage);
+                }
+                catch (NullReferenceException ex)
+                {
+                    Logger.Error($"Error message: {ex.Message}");
+                    Logger.Error($"NullReferenceException in SetArraySizes: {ex.StackTrace}");
+                    if (ex.InnerException != null)
+                    {
+                        Logger.Error($"Inner exception: {ex.InnerException.Message}");
+                        Logger.Error($"Inner exception stack trace: {ex.InnerException.StackTrace}");
+                    }
+                    Logger.Error($"Exception source: {ex.Source}");
+                    Logger.Error($"Exception target site: {ex.TargetSite}");
+
+                }
+                catch (Exception e)
+                {
+                    Logger.Error($"Error getting text info: {e.StackTrace}");
+                }
+
                 newMsg.ReceivedDate = date;
                 // 输出一下textinfo，尤其是characterCount等信息
                 Logger.Info($"TextInfo: {newMsg.Text.textInfo}");
