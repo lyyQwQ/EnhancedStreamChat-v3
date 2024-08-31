@@ -1,6 +1,7 @@
 ﻿using EnhancedStreamChat.Utilities;
 using HMUI;
 using System;
+using EnhancedStreamChat.Interfaces;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -129,11 +130,11 @@ namespace EnhancedStreamChat.Graphics
 
         private void Text_OnLatePreRenderRebuildComplete()
         {
-            Logger.Debug("Text_OnLatePreRenderRebuildComplete");
+            // Logger.Debug("Text_OnLatePreRenderRebuildComplete");
             (this._accent.gameObject.transform as RectTransform).sizeDelta =
                 new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
             OnLatePreRenderRebuildComplete?.Invoke();
-            Logger.Debug("Text_OnLatePreRenderRebuildComplete: Invoke");
+            // Logger.Debug("Text_OnLatePreRenderRebuildComplete: Invoke");
         }
     }
 }

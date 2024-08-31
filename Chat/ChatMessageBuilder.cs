@@ -132,13 +132,13 @@ namespace EnhancedStreamChat.Chat
         public static Task<string> BuildMessage(IChatMessage msg, EnhancedFontInfo font) => Task.Run(() =>
         {
             try {
-                Logger.Debug($"Building message: {msg.Message}");
+                // Logger.Debug($"Building message: {msg.Message}");
 
                 if (!PrepareImages(msg, font)) {
                     Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
                     //return msg.Message;
                 }
-                Logger.Debug($"Images prepared for message: {msg.Message}");
+                // Logger.Debug($"Images prepared for message: {msg.Message}");
 
                 var badges = ImageStackPool.Alloc();
                 try {
@@ -146,7 +146,7 @@ namespace EnhancedStreamChat.Chat
                     {
                         if (badge != null && !string.IsNullOrEmpty(badge.Id))
                         {
-                            Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
+                            // Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
                             if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo))
                             {
                                 Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
@@ -162,13 +162,13 @@ namespace EnhancedStreamChat.Chat
                 }
 
                 var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
-                Logger.Debug($"Message: {msg.Message}");
+                // Logger.Debug($"Message: {msg.Message}");
                 // Escape all html tags in the message
                 sb.Replace("<", "<\u2060");
-                Logger.Debug($"Message sb: {sb.ToString()}");
+                // Logger.Debug($"Message sb: {sb.ToString()}");
                 
                 try{
-                    Logger.Debug("Phase emotes: " + sb.ToString() + ", got " + msg.Emotes.Length + " Emote(s).");
+                    // Logger.Debug("Phase emotes: " + sb.ToString() + ", got " + msg.Emotes.Length + " Emote(s).");
                     foreach (var emote in msg.Emotes)
                     {
                         if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace))
@@ -176,7 +176,7 @@ namespace EnhancedStreamChat.Chat
                             Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
                             continue;
                         }
-                        Logger.Debug($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
+                        // Logger.Debug($"Emote: {emote.Name}, StartIndex: {emote.StartIndex}, EndIndex: {emote.EndIndex}, Len: {sb.Length}");
                         if (!font.TryGetCharacter(replace.ImageId, out var character))
                         {
                             Logger.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
@@ -189,7 +189,7 @@ namespace EnhancedStreamChat.Chat
                              //Replace emotes by index, in reverse order (msg.Emotes is sorted by emote.StartIndex in descending order)
                             if (msg is BilibiliChatMessage)
                             {
-                                Logger.Debug("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
+                                // Logger.Debug("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
                                 // todo 图片还有问题，暂时注释掉
                                 // sb.Replace(emote.Name, emote switch
                                 // {
@@ -197,16 +197,16 @@ namespace EnhancedStreamChat.Chat
                                 //     _ => char.ConvertFromUtf32((int)character)
                                 // },
                                 // emote.StartIndex, emote.EndIndex - emote.StartIndex);
-                                Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
+                                // Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
                                 // 尝试在font的characterLookupTable中找到对应的character 输出找没找到
-                                if (ESCFontManager.instance.MainFont.characterLookupTable.TryGetValue(character, out var tmpCharacter))
-                                {
-                                    Logger.Debug($"Font characterLookupTable contains character: {tmpCharacter}, tmpCharacter: {tmpCharacter.unicode}");
-                                }
-                                else
-                                {
-                                    Logger.Warn("Font characterLookupTable not contains character: " + char.ConvertFromUtf32((int)character));
-                                }
+                                // if (ESCFontManager.instance.MainFont.characterLookupTable.TryGetValue(character, out var tmpCharacter))
+                                // {
+                                //     // Logger.Debug($"Font characterLookupTable contains character: {tmpCharacter}, tmpCharacter: {tmpCharacter.unicode}");
+                                // }
+                                // else
+                                // {
+                                //     Logger.Warn("Font characterLookupTable not contains character: " + char.ConvertFromUtf32((int)character));
+                                // }
                             }
                             else
                             {
@@ -216,16 +216,16 @@ namespace EnhancedStreamChat.Chat
                                     _ => char.ConvertFromUtf32((int)character)
                                 },
                                 emote.StartIndex, emote.EndIndex - emote.StartIndex + 1);
-                                Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
+                                // Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
                                 // 尝试在font的characterLookupTable中找到对应的character 输出找没找到
-                                if (ESCFontManager.instance.MainFont.characterLookupTable.TryGetValue(character, out var tmpCharacter))
-                                {
-                                    Logger.Debug($"Font characterLookupTable contains character: {tmpCharacter.ToString()}, tmpCharacter: {tmpCharacter.unicode}");
-                                }
-                                else
-                                {
-                                    Logger.Warn("Font characterLookupTable not contains character: " + char.ConvertFromUtf32((int)character));
-                                }
+                                // if (ESCFontManager.instance.MainFont.characterLookupTable.TryGetValue(character, out var tmpCharacter))
+                                // {
+                                //     Logger.Debug($"Font characterLookupTable contains character: {tmpCharacter.ToString()}, tmpCharacter: {tmpCharacter.unicode}");
+                                // }
+                                // else
+                                // {
+                                //     Logger.Warn("Font characterLookupTable not contains character: " + char.ConvertFromUtf32((int)character));
+                                // }
 
                             }
                         }
@@ -261,16 +261,16 @@ namespace EnhancedStreamChat.Chat
                         // Message becomes the color of their name if it's an action message
                         sb.Insert(0, $"<color={nameColorCode}><b>{msg.Sender.DisplayName}</b> ");
                         sb.Append("</color>");
-                        Logger.Debug("Action message: " + sb.ToString());
+                        // Logger.Debug("Action message: " + sb.ToString());
                     }
                     else {
                         // Insert username w/ color
                         sb.Insert(0, $"<color={nameColorCode}><b>{msg.Sender.DisplayName}</b></color>: ");
-                        Logger.Debug("Normal message: " + sb.ToString());
+                        // Logger.Debug("Normal message: " + sb.ToString());
                     }
 
                     try {
-                        Logger.Debug("Badges: " + msg.Sender.Badges.Length + " Badge(s).");
+                        // Logger.Debug("Badges: " + msg.Sender.Badges.Length + " Badge(s).");
                         for (var i = 0; i < msg.Sender.Badges.Length; i++)
                         {
                             // Insert user badges at the beginning of the string in reverse order
@@ -280,7 +280,7 @@ namespace EnhancedStreamChat.Chat
                                 if (font.TryGetCharacter(badge.ImageId, out var character))
                                 {
                                     // sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} "); //todo 图片显示有问题，暂时注释掉
-                                    Logger.Debug("Badge: " + sb.ToString());
+                                    // Logger.Debug("Badge: " + sb.ToString());
                                 }
                                 /*if (msg is BilibiliChatMessage)
                                 {
@@ -290,7 +290,7 @@ namespace EnhancedStreamChat.Chat
                                 }*/
                             }
                         }
-                        Logger.Debug("Badges: " + sb.ToString());
+                        // Logger.Debug("Badges: " + sb.ToString());
                     } catch (Exception ex)
                     {
                         Logger.Error($"An exception occurred in ChatMessageBuilder while replace emotes. Msg: \"{msg.Message}\". {ex.ToString()}");
@@ -300,7 +300,7 @@ namespace EnhancedStreamChat.Chat
                 // 在开头插一个a，防止textMeshPro的textinfo计算错误
                 // sb.Insert(0, "aaaaaa ");
 
-                Logger.Debug("Final message: " + sb.ToString());
+                // Logger.Debug("Final message: " + sb.ToString());
                 return sb.ToString();
             }
             catch (Exception ex) {
