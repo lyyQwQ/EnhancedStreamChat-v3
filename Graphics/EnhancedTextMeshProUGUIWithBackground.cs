@@ -1,12 +1,13 @@
 ﻿using EnhancedStreamChat.Utilities;
 using HMUI;
 using System;
+using EnhancedStreamChat.Interfaces;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace EnhancedStreamChat.Graphics
 {
-    public class EnhancedTextMeshProUGUIWithBackground : MonoBehaviour
+    public class EnhancedTextMeshProUGUIWithBackground : MonoBehaviour, ILatePreRenderRebuildReciver
     {
         public EnhancedTextMeshProUGUI Text { get; internal set; }
 
@@ -19,6 +20,7 @@ namespace EnhancedStreamChat.Graphics
         private ImageView _highlight;
         private ImageView _accent;
         private VerticalLayoutGroup _verticalLayoutGroup;
+        private bool _rebuiled = false;
 
         public Vector2 Size
         {
@@ -121,6 +123,11 @@ namespace EnhancedStreamChat.Graphics
             this.Text.rectTransform.SetParent(this.gameObject.transform, false);
         }
 
+        public void LatePreRenderRebuildHandler(object sender, EventArgs e)
+        {
+            (this._accent.gameObject.transform as RectTransform).sizeDelta = new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
+            this._rebuiled = true;
+        }
         private void OnDestroy()
         {
             this.Text.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
@@ -129,11 +136,11 @@ namespace EnhancedStreamChat.Graphics
 
         private void Text_OnLatePreRenderRebuildComplete()
         {
-            Logger.Debug("Text_OnLatePreRenderRebuildComplete");
+            // Logger.Debug("Text_OnLatePreRenderRebuildComplete");
             (this._accent.gameObject.transform as RectTransform).sizeDelta =
                 new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
             OnLatePreRenderRebuildComplete?.Invoke();
-            Logger.Debug("Text_OnLatePreRenderRebuildComplete: Invoke");
+            // Logger.Debug("Text_OnLatePreRenderRebuildComplete: Invoke");
         }
     }
 }
