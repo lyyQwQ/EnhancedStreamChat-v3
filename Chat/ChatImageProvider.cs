@@ -5,7 +5,7 @@ using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using BeatSaberMarkupLanguage.Util;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -126,14 +126,31 @@ namespace EnhancedStreamChat.Chat
             int spriteWidth = 0, spriteHeight = 0;
             AnimationControllerData animControllerData = null;
             if (isAnimated) {
-                AnimationLoader.Process(AnimationType.GIF, bytes, (tex, atlas, delays, width, height) =>
-                {
-                    animControllerData = AnimationController.instance.Register(id, tex, atlas, delays);
-                    sprite = animControllerData.sprite;
-                    spriteWidth = width;
-                    spriteHeight = height;
+                var tcs = new TaskCompletionSource<bool>();
+                
+                // 明确指定Task类型
+                _ = Task.Run<Task>(async () => {
+                    try {
+                        var animData = await AnimationLoader.ProcessGifAsync(bytes);
+                        animControllerData = AnimationController.Instance.Register(id, animData.Atlas, animData.Uvs, animData.Delays);
+                        // 使用第一帧作为sprite
+                        sprite = animControllerData.Sprites[0];
+                        spriteWidth = animData.Width;
+                        spriteHeight = animData.Height;
+                        tcs.SetResult(true);
+                    }
+                    catch (Exception ex) {
+                        Logger.Error($"Error processing animated image: {ex}");
+                        tcs.SetResult(false);
+                    }
                 });
-                yield return new WaitUntil(() => animControllerData != null);
+
+                yield return new WaitUntil(() => tcs.Task.IsCompleted);
+                
+                if (!tcs.Task.Result) {
+                    Finally?.Invoke(null);
+                    yield break;
+                }
             }
             else {
                 try {

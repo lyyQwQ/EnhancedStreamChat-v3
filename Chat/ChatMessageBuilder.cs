@@ -32,6 +32,7 @@ namespace EnhancedStreamChat.Chat
         /// <param name="font">The font to register these images to</param>
         public static bool PrepareImages(IChatMessage msg, EnhancedFontInfo font)
         {
+            return false;
             Logger.Debug($"Preparing images for message: {msg.Message}");
             var tasks = new List<Task<EnhancedImageInfo>>();
             var pendingEmoteDownloads = new HashSet<string>();

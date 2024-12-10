@@ -31,6 +31,12 @@ namespace EnhancedStreamChat.Chat
         "                                                                        ")]
     public class ChatConfig : StreamCoreConfigConverter<ChatConfig>
     {
+        public enum LayerType
+        {
+            Manual,
+            UI = 5,
+            HMDOnly = 6
+        }
         public static ChatConfig instance { get; private set; } = new ChatConfig(Path.Combine(Environment.CurrentDirectory, "UserData"), Assembly.GetExecutingAssembly().GetName().Name);
 
         [ConfigSection("Main")]

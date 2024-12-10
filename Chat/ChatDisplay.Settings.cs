@@ -18,38 +18,119 @@ namespace EnhancedStreamChat.Chat
     {
         private bool SetProperty<T>(ref T oldValue, T newValue, [CallerMemberName] string name = null)
         {
+#if DEBUG
+            Logger.Info($"Change value:{oldValue}, {newValue}");
+#endif
             if (EqualityComparer<T>.Default.Equals(oldValue, newValue)) {
                 return false;
             }
             oldValue = newValue;
-            this.OnPropertyChanged(new PropertyChangedEventArgs(name));
+            MainThreadInvoker.Invoke(() => this.OnPropertyChanged(new PropertyChangedEventArgs(name)));
             return true;
         }
 
-        private void OnPropertyChanged(PropertyChangedEventArgs e) => this.NotifyPropertyChanged(e.PropertyName);
+        private void OnPropertyChanged(PropertyChangedEventArgs e)
+        {
+            this.NotifyPropertyChanged(e.PropertyName);
+#if DEBUG
+            Logger.Info($"property changed:{e.PropertyName}");
+#endif
+            if (e.PropertyName == nameof(this.AccentColor)) {
+                this._chatConfig.AccentColor = this.AccentColor;
+            }
+            else if (e.PropertyName == nameof(this.TextColor)) {
+                this._chatConfig.TextColor = this.TextColor;
+            }
+            else if (e.PropertyName == nameof(this.BackgroundColor)) {
+                this._chatConfig.BackgroundColor = this.BackgroundColor;
+            }
+            else if (e.PropertyName == nameof(this.AllowMovement)) {
+                this._chatConfig.AllowMovement = this.AllowMovement;
+            }
+            else if (e.PropertyName == nameof(this.ChatHeight)) {
+                this._chatConfig.ChatHeight = this.ChatHeight;
+            }
+            else if (e.PropertyName == nameof(this.ChatWidth)) {
+                this._chatConfig.ChatWidth = this.ChatWidth;
+            }
+            else if (e.PropertyName == nameof(this.ChatPosition)) {
+                if (this._chatConfig.SyncOrientation) {
+                    this._chatConfig.Menu_ChatPosition = this.ChatPosition;
+                    this._chatConfig.Song_ChatPosition = this.ChatPosition;
+                }
+                else {
+                    if (this._isInGame) {
+                        this._chatConfig.Song_ChatPosition = this.ChatPosition;
+                    }
+                    else {
+                        this._chatConfig.Menu_ChatPosition = this.ChatPosition;
+                    }
+                }
+            }
+            else if (e.PropertyName == nameof(this.ChatRotation)) {
+                if (this._chatConfig.SyncOrientation) {
+                    this._chatConfig.Menu_ChatRotation = this.ChatRotation;
+                    this._chatConfig.Song_ChatRotation = this.ChatRotation;
+                }
+                else {
+                    if (this._isInGame) {
+                        this._chatConfig.Song_ChatRotation = this.ChatRotation;
+                    }
+                    else {
+                        this._chatConfig.Menu_ChatRotation = this.ChatRotation;
+                    }
+                }
+            }
+            else if (e.PropertyName == nameof(this.FontSize)) {
+                this._chatConfig.FontSize = this.FontSize;
+            }
+            else if (e.PropertyName == nameof(this.HighlightColor)) {
+                this._chatConfig.HighlightColor = this.HighlightColor;
+            }
+            else if (e.PropertyName == nameof(this.PingColor)) {
+                this._chatConfig.PingColor = this.PingColor;
+            }
+            else if (e.PropertyName == nameof(this.ReverseChatOrder)) {
+                this._chatConfig.ReverseChatOrder = this.ReverseChatOrder;
+            }
+            else if (e.PropertyName == nameof(this.SyncOrientation)) {
+                this._chatConfig.SyncOrientation = this.SyncOrientation;
+                if (this._chatConfig.SyncOrientation) {
+                    if (this._isInGame) {
+                        this._chatConfig.Menu_ChatPosition = this._chatConfig.Song_ChatPosition;
+                        this._chatConfig.Menu_ChatRotation = this._chatConfig.Song_ChatRotation;
+                    }
+                    else {
+                        this._chatConfig.Song_ChatPosition = this._chatConfig.Menu_ChatPosition;
+                        this._chatConfig.Song_ChatRotation = this._chatConfig.Menu_ChatRotation;
+                    }
+                }
+            }
+        }
 
         [UIAction("#post-parse")]
-        private void PostParse()
+        protected void PostParse()
         {
+            this.Load();
             // bg
-            this._backgroundColorSetting.editButton.onClick.AddListener(this.HideSettings);
-            this._backgroundColorSetting.modalColorPicker.cancelEvent += this.ShowSettings;
+            this._backgroundColorSetting.EditButton.onClick.AddListener(this.HideSettings);
+            this._backgroundColorSetting.ModalColorPicker.CancelEvent += this.ShowSettings;
             this._backgroundColorSetting.CurrentColor = this._chatConfig.BackgroundColor;
             // accent
-            this._accentColorSetting.editButton.onClick.AddListener(this.HideSettings);
-            this._accentColorSetting.modalColorPicker.cancelEvent += this.ShowSettings;
+            this._accentColorSetting.EditButton.onClick.AddListener(this.HideSettings);
+            this._accentColorSetting.ModalColorPicker.CancelEvent += this.ShowSettings;
             this._accentColorSetting.CurrentColor = this._chatConfig.AccentColor;
             // highlight
-            this._highlightColorSetting.editButton.onClick.AddListener(this.HideSettings);
-            this._highlightColorSetting.modalColorPicker.cancelEvent += this.ShowSettings;
+            this._highlightColorSetting.EditButton.onClick.AddListener(this.HideSettings);
+            this._highlightColorSetting.ModalColorPicker.CancelEvent += this.ShowSettings;
             this._highlightColorSetting.CurrentColor = this._chatConfig.HighlightColor;
             // ping
-            this._pingColorSetting.editButton.onClick.AddListener(this.HideSettings);
-            this._pingColorSetting.modalColorPicker.cancelEvent += this.ShowSettings;
+            this._pingColorSetting.EditButton.onClick.AddListener(this.HideSettings);
+            this._pingColorSetting.ModalColorPicker.CancelEvent += this.ShowSettings;
             this._pingColorSetting.CurrentColor = this._chatConfig.PingColor;
             // text
-            this._textColorSetting.editButton.onClick.AddListener(this.HideSettings);
-            this._textColorSetting.modalColorPicker.cancelEvent += this.ShowSettings;
+            this._textColorSetting.EditButton.onClick.AddListener(this.HideSettings);
+            this._textColorSetting.ModalColorPicker.CancelEvent += this.ShowSettings;
             this._textColorSetting.CurrentColor = this._chatConfig.TextColor;
             // layer
             this.gameObject.layer = (int)this.textLayerVisibility;
@@ -303,5 +384,29 @@ namespace EnhancedStreamChat.Chat
         private void HideSettings() => this.parserParams.EmitEvent("hide-settings");
 
         private void ShowSettings() => this.parserParams.EmitEvent("show-settings");
+        private void Load()
+        {
+            this.AccentColor = this._chatConfig.AccentColor;
+            this.TextColor = this._chatConfig.TextColor;
+            this.BackgroundColor = this._chatConfig.BackgroundColor;
+            this.AllowMovement = this._chatConfig.AllowMovement;
+            this.ChatHeight = this._chatConfig.ChatHeight;
+            this.ChatWidth = this._chatConfig.ChatWidth;
+            this.FontSize = this._chatConfig.FontSize;
+            this.HighlightColor = this._chatConfig.HighlightColor;
+            this.PingColor = this._chatConfig.PingColor;
+            this.ReverseChatOrder = this._chatConfig.ReverseChatOrder;
+            this.SyncOrientation = this._chatConfig.SyncOrientation;
+            if (this._isInGame) {
+                this.ChatPosition = this._chatConfig.Song_ChatPosition;
+                this.ChatRotation = this._chatConfig.Song_ChatRotation;
+            }
+            else {
+                this.ChatPosition = this._chatConfig.Menu_ChatPosition;
+                this.ChatRotation = this._chatConfig.Menu_ChatRotation;
+            }
+        }
     }
+
+
 }

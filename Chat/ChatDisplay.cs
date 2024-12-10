@@ -248,7 +248,10 @@ namespace EnhancedStreamChat.Chat
                 this._chatMoverMaterial.color = Color.clear;
                 // Logger.Debug($"chatMoverMaterial created");
 
-                var renderer = this._chatScreen.handle.gameObject.GetComponent<Renderer>();
+                var handleField = typeof(FloatingScreen).GetField("handle", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var handle = handleField.GetValue(this._chatScreen) as GameObject;
+                var renderer = handle.GetComponent<Renderer>();
                 renderer.material = this._chatMoverMaterial;
                 renderer.material.mainTexture = this._chatMoverMaterial.mainTexture;
                 // Logger.Debug($"Setting up chatScreen handle");
@@ -258,8 +261,9 @@ namespace EnhancedStreamChat.Chat
                 // Logger.Debug($"Setting up chatScreen rotation");
 
                 // this._bg = this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "bg");
-                this._bg = this._chatScreen.GetComponentsInChildren<ImageView>()
-                    .FirstOrDefault(x => x.name == "Background");
+                // this._bg = this._chatScreen.GetComponentsInChildren<ImageView>()
+                //     .FirstOrDefault(x => x.name == "Background");
+                this._bg = this._chatScreen.GetComponentsInChildren<ImageView>().FirstOrDefault(x => x.name == "Background");
                 this._bg.raycastTarget = false;
                 this._bg.material = Instantiate(this._bg.material);
                 this._bg.SetField("_gradient", false);
@@ -441,11 +445,14 @@ namespace EnhancedStreamChat.Chat
             chatContainerTransform.sizeDelta = new Vector2(this.ChatWidth, this.ChatHeight);
             Logger.Debug($"chatContainerTransform.sizeDelta: {chatContainerTransform.sizeDelta}");
 
-            this._chatScreen.handle.transform.localScale = new Vector3(this.ChatWidth, this.ChatHeight * 0.9f, 0.01f);
-            this._chatScreen.handle.transform.localPosition = Vector3.zero;
-            this._chatScreen.handle.transform.localRotation = Quaternion.identity;
+            var handleField = typeof(FloatingScreen).GetField("handle", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var handle = handleField.GetValue(this._chatScreen) as GameObject;
+            handle.transform.localScale = new Vector3(this.ChatWidth, this.ChatHeight * 0.9f, 0.01f);
+            handle.transform.localPosition = Vector3.zero;
+            handle.transform.localRotation = Quaternion.identity;
             Logger.Debug(
-                $"_chatScreen.handle.transform.localScale: {this._chatScreen.handle.transform.localScale}, _chatScreen.handle.transform.localPosition: {this._chatScreen.handle.transform.localPosition}");
+                $"handle.transform.localScale: {handle.transform.localScale}, handle.transform.localPosition: {handle.transform.localPosition}");
 
             this.AllowMovement = this._chatConfig.AllowMovement;
             Logger.Debug($"AllowMovement: {this.AllowMovement}");
@@ -465,7 +472,7 @@ namespace EnhancedStreamChat.Chat
 
         private void UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
         {
-            Logger.Debug("UpdateMessage");
+            // Logger.Debug("UpdateMessage");
             (msg.transform as RectTransform).sizeDelta =
                 new Vector2(this.ChatWidth, (msg.transform as RectTransform).sizeDelta.y);
             msg.Text.font = ESCFontManager.instance.MainFont;
@@ -521,7 +528,7 @@ namespace EnhancedStreamChat.Chat
                 Logger.Debug($"text characterCount: {msg.Text.textInfo.characterCount}");
             }
 
-            Logger.Debug("UpdateMessage complete");
+            // Logger.Debug("UpdateMessage complete");
         }
 
         private bool UpdateMessageContent(string id, string content)

@@ -30,7 +30,7 @@ namespace EnhancedStreamChat.Graphics
                     img.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                     img.rectTransform.pivot = new Vector2(0, 0);
                     img.animStateUpdater = img.gameObject.AddComponent<AnimationStateUpdater>();
-                    img.animStateUpdater.image = img;
+                    img.animStateUpdater.Image = img;
                     img.SetAllDirty();
                     return img;
                 },
@@ -39,7 +39,7 @@ namespace EnhancedStreamChat.Graphics
                     try
                     {
                         img.gameObject.SetActive(false);
-                        img.animStateUpdater.controllerData = null;
+                        img.animStateUpdater.ControllerData = null;
                         img.rectTransform.SetParent(null);
                         img.sprite = null;
                     }
@@ -236,9 +236,9 @@ namespace EnhancedStreamChat.Graphics
                                 // Logger.Debug($"Overlaying sprite for character: {character}");
                                 if (imageInfo.AnimControllerData != null)
                                 {
-                                    img.animStateUpdater.controllerData = imageInfo.AnimControllerData;
+                                    img.animStateUpdater.ControllerData = imageInfo.AnimControllerData;
                                     img.sprite =
-                                        imageInfo.AnimControllerData.sprites[imageInfo.AnimControllerData.uvIndex];
+                                        imageInfo.AnimControllerData.Sprites[imageInfo.AnimControllerData.UvIndex];
                                 }
                                 else
                                 {
