@@ -135,32 +135,32 @@ namespace EnhancedStreamChat.Chat
             try {
                 // Logger.Debug($"Building message: {msg.Message}");
 
-                if (!PrepareImages(msg, font)) {
-                    Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
-                    //return msg.Message;
-                }
+                // if (!PrepareImages(msg, font)) {
+                //     Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
+                //     //return msg.Message;
+                // }
                 // Logger.Debug($"Images prepared for message: {msg.Message}");
 
-                var badges = ImageStackPool.Alloc();
-                try {
-                    foreach (var badge in msg.Sender.Badges)
-                    {
-                        if (badge != null && !string.IsNullOrEmpty(badge.Id))
-                        {
-                            // Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
-                            if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo))
-                            {
-                                Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
-                                continue;
-                            }
-                            badges.Push(badgeInfo);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"An exception occurred in ChatMessageBuilder while parsing badges. Msg: \"{msg.Message}\". {ex.ToString()}");
-                }
+                // var badges = ImageStackPool.Alloc();
+                // try {
+                //     foreach (var badge in msg.Sender.Badges)
+                //     {
+                //         if (badge != null && !string.IsNullOrEmpty(badge.Id))
+                //         {
+                //             // Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
+                //             if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var badgeInfo))
+                //             {
+                //                 Logger.Warn($"Failed to find cached image info for badge \"{badge.Id}\"!");
+                //                 continue;
+                //             }
+                //             badges.Push(badgeInfo);
+                //         }
+                //     }
+                // }
+                // catch (Exception ex)
+                // {
+                //     Logger.Error($"An exception occurred in ChatMessageBuilder while parsing badges. Msg: \"{msg.Message}\". {ex.ToString()}");
+                // }
 
                 var sb = new StringBuilder(msg.Message); // Replace all instances of < with a zero-width non-breaking character
                 // Logger.Debug($"Message: {msg.Message}");
@@ -270,33 +270,33 @@ namespace EnhancedStreamChat.Chat
                         // Logger.Debug("Normal message: " + sb.ToString());
                     }
 
-                    try {
-                        // Logger.Debug("Badges: " + msg.Sender.Badges.Length + " Badge(s).");
-                        for (var i = 0; i < msg.Sender.Badges.Length; i++)
-                        {
-                            // Insert user badges at the beginning of the string in reverse order
-                            // if (badges.TryPop(out var badge) && font.TryGetCharacter(badge.ImageId, out var character)) {
-                            if (badges.TryPop(out var badge))
-                            {
-                                if (font.TryGetCharacter(badge.ImageId, out var character))
-                                {
-                                    // sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} "); //todo 图片显示有问题，暂时注释掉
-                                    // Logger.Debug("Badge: " + sb.ToString());
-                                }
-                                /*if (msg is BilibiliChatMessage)
-                                {
-                                }
-                                else if (font.TryGetCharacter(badge.ImageId, out var character)) {
-                                    sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
-                                }*/
-                            }
-                        }
+                    // try {
+                    //     // Logger.Debug("Badges: " + msg.Sender.Badges.Length + " Badge(s).");
+                    //     for (var i = 0; i < msg.Sender.Badges.Length; i++)
+                    //     {
+                    //         // Insert user badges at the beginning of the string in reverse order
+                    //         // if (badges.TryPop(out var badge) && font.TryGetCharacter(badge.ImageId, out var character)) {
+                    //         if (badges.TryPop(out var badge))
+                    //         {
+                    //             if (font.TryGetCharacter(badge.ImageId, out var character))
+                    //             {
+                    //                 // sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} "); //todo 图片显示有问题，暂时注释掉
+                    //                 // Logger.Debug("Badge: " + sb.ToString());
+                    //             }
+                    //             /*if (msg is BilibiliChatMessage)
+                    //             {
+                    //             }
+                    //             else if (font.TryGetCharacter(badge.ImageId, out var character)) {
+                    //                 sb.Insert(0, $"{char.ConvertFromUtf32((int)character)} ");
+                    //             }*/
+                    //         }
+                    //     }
                         // Logger.Debug("Badges: " + sb.ToString());
-                    } catch (Exception ex)
-                    {
-                        Logger.Error($"An exception occurred in ChatMessageBuilder while replace emotes. Msg: \"{msg.Message}\". {ex.ToString()}");
-                    }
-                    ImageStackPool.Free(badges);
+                        // } catch (Exception ex)
+                        // {
+                        //     Logger.Error($"An exception occurred in ChatMessageBuilder while replace emotes. Msg: \"{msg.Message}\". {ex.ToString()}");
+                        // }
+                    // ImageStackPool.Free(badges);
                 }
                 // 在开头插一个a，防止textMeshPro的textinfo计算错误
                 // sb.Insert(0, "aaaaaa ");

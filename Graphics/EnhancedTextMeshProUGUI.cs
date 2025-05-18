@@ -148,154 +148,154 @@ namespace EnhancedStreamChat.Graphics
         //     Logger.Debug("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");
         // }
         //
-        public override void Rebuild(CanvasUpdate update)
-        {
-            // try
-            // {
-            // Logger.Debug($"Into EnhancedTextMeshProUGUI.Rebuild, update: {update}");
+        // public override void Rebuild(CanvasUpdate update)
+        // {
+        //     // try
+        //     // {
+        //     // Logger.Debug($"Into EnhancedTextMeshProUGUI.Rebuild, update: {update}");
 
-            // 如果是处理图片的阶段
-            if (update == CanvasUpdate.LatePreRender)
-            {
-                MainThreadInvoker.Invoke(() =>
-                {
-                    // Logger.Debug("Clearing images...");
-                    this.ClearImages();
-                    // Logger.Debug("Images cleared.");
+        //     // 如果是处理图片的阶段
+        //     if (update == CanvasUpdate.LatePreRender)
+        //     {
+        //         MainThreadInvoker.Invoke(() =>
+        //         {
+        //             // Logger.Debug("Clearing images...");
+        //             this.ClearImages();
+        //             // Logger.Debug("Images cleared.");
 
 
-                    // Logger.Debug("Rebuilding images...");
-                    // try
-                    // {
-                    //     var fieldInfo = typeof(TextMeshProUGUI).GetField("m_TextProcessingArray",
-                    //         BindingFlags.NonPublic | BindingFlags.Instance);
-                    //     var mTextProcessingArray = fieldInfo.GetValue(this);
-                    //     // Logger.Debug($"m_TextProcessingArray is null: {mTextProcessingArray == null}");
-                    //     if (mTextProcessingArray != null)
-                    //     {
-                    //         // Logger.Debug($"m_TextProcessingArray length: {((Array)mTextProcessingArray).Length}");
-                    //         // for (var i = 0; i < ((Array)mTextProcessingArray).Length; i++)
-                    //         // {
-                    //         //     Logger.Debug($"m_TextProcessingArray[{i}]: {((Array)mTextProcessingArray).GetValue(i)}");
-                    //         // }
-                    //     }
-                    //     // Logger.Debug($"m_havePropertiesChanged: {this.havePropertiesChanged}");
-                    //     // Logger.Debug($"m_text: {this.m_text}");
-                    //     // this.havePropertiesChanged = true;
-                    //
-                    //     // this.ForceMeshUpdate();
-                    // }
-                    // catch (Exception ex)
-                    // {
-                    //     Logger.Error($"Exception while trying to force mesh update. {ex}");
-                    // }
+        //             // Logger.Debug("Rebuilding images...");
+        //             // try
+        //             // {
+        //             //     var fieldInfo = typeof(TextMeshProUGUI).GetField("m_TextProcessingArray",
+        //             //         BindingFlags.NonPublic | BindingFlags.Instance);
+        //             //     var mTextProcessingArray = fieldInfo.GetValue(this);
+        //             //     // Logger.Debug($"m_TextProcessingArray is null: {mTextProcessingArray == null}");
+        //             //     if (mTextProcessingArray != null)
+        //             //     {
+        //             //         // Logger.Debug($"m_TextProcessingArray length: {((Array)mTextProcessingArray).Length}");
+        //             //         // for (var i = 0; i < ((Array)mTextProcessingArray).Length; i++)
+        //             //         // {
+        //             //         //     Logger.Debug($"m_TextProcessingArray[{i}]: {((Array)mTextProcessingArray).GetValue(i)}");
+        //             //         // }
+        //             //     }
+        //             //     // Logger.Debug($"m_havePropertiesChanged: {this.havePropertiesChanged}");
+        //             //     // Logger.Debug($"m_text: {this.m_text}");
+        //             //     // this.havePropertiesChanged = true;
+        //             //
+        //             //     // this.ForceMeshUpdate();
+        //             // }
+        //             // catch (Exception ex)
+        //             // {
+        //             //     Logger.Error($"Exception while trying to force mesh update. {ex}");
+        //             // }
 
-                    // Logger.Debug(
-                    //     $"textInfo is null: {this.textInfo == null}, characterCount: {this.textInfo.characterCount}, text: {this.text}");
-                    for (var i = 0; i < this.textInfo.characterCount; i++)
-                    {
-                        var c = this.textInfo.characterInfo[i];
+        //             // Logger.Debug(
+        //             //     $"textInfo is null: {this.textInfo == null}, characterCount: {this.textInfo.characterCount}, text: {this.text}");
+        //             for (var i = 0; i < this.textInfo.characterCount; i++)
+        //             {
+        //                 var c = this.textInfo.characterInfo[i];
 
-                        // Logger.Debug(
-                        //     $"Processing character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
+        //                 // Logger.Debug(
+        //                 //     $"Processing character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
 
-                        if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
-                        {
-                            // 跳过不可见字符、空字符或索引越界的字符
-                            // Logger.Debug(
-                            //     $"Skipping character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
-                            continue;
-                        }
+        //                 if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
+        //                 {
+        //                     // 跳过不可见字符、空字符或索引越界的字符
+        //                     // Logger.Debug(
+        //                     //     $"Skipping character at index {i}: CharCode={c.character}, Visible={c.isVisible}, Text={this.text}");
+        //                     continue;
+        //                 }
 
-                        uint character = this.text[c.index];
-                        if (c.index + 1 < this.text.Length &&
-                            char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
-                        {
-                            // 处理代理对字符
-                            // Logger.Debug($"Character at index {i} is a surrogate pair.");
-                            character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
-                            // Logger.Debug($"Converted surrogate pair to: {character}");
-                        }
+        //                 uint character = this.text[c.index];
+        //                 if (c.index + 1 < this.text.Length &&
+        //                     char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
+        //                 {
+        //                     // 处理代理对字符
+        //                     // Logger.Debug($"Character at index {i} is a surrogate pair.");
+        //                     character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
+        //                     // Logger.Debug($"Converted surrogate pair to: {character}");
+        //                 }
 
-                        // Logger.Debug($"Processing character: {character}");
+        //                 // Logger.Debug($"Processing character: {character}");
 
-                        if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) ||
-                            imageInfo == null)
-                        {
-                            // Logger.Warn($"No imageInfo found for character: {character:X}");
-                            continue;
-                        }
+        //                 if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) ||
+        //                     imageInfo == null)
+        //                 {
+        //                     // Logger.Warn($"No imageInfo found for character: {character:X}");
+        //                     continue;
+        //                 }
 
-                        // Logger.Debug($"Found imageInfo for character: {character}");
+        //                 // Logger.Debug($"Found imageInfo for character: {character}");
 
-                        MainThreadInvoker.Invoke(() =>
-                        {
-                            var img = _imagePool.Alloc();
-                            try
-                            {
-                                // Logger.Debug($"Overlaying sprite for character: {character}");
-                                if (imageInfo.AnimControllerData != null)
-                                {
-                                    img.animStateUpdater.ControllerData = imageInfo.AnimControllerData;
-                                    img.sprite =
-                                        imageInfo.AnimControllerData.Sprites[imageInfo.AnimControllerData.UvIndex];
-                                }
-                                else
-                                {
-                                    img.sprite = imageInfo.Sprite;
-                                }
+        //                 MainThreadInvoker.Invoke(() =>
+        //                 {
+        //                     var img = _imagePool.Alloc();
+        //                     try
+        //                     {
+        //                         // Logger.Debug($"Overlaying sprite for character: {character}");
+        //                         if (imageInfo.AnimControllerData != null)
+        //                         {
+        //                             img.animStateUpdater.ControllerData = imageInfo.AnimControllerData;
+        //                             img.sprite =
+        //                                 imageInfo.AnimControllerData.Sprites[imageInfo.AnimControllerData.UvIndex];
+        //                         }
+        //                         else
+        //                         {
+        //                             img.sprite = imageInfo.Sprite;
+        //                         }
 
-                                img.material = BeatSaberUtils.UINoGlowMaterial;
-                                img.rectTransform.localScale = new Vector3(this.m_fontScaleMultiplier * 1.08f,
-                                    this.m_fontScaleMultiplier * 1.08f, this.m_fontScaleMultiplier * 1.08f);
-                                img.rectTransform.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
-                                img.rectTransform.SetParent(this.rectTransform, false);
-                                img.rectTransform.localPosition = c.topLeft - new Vector3(0,
-                                    imageInfo.Height * this.m_fontScaleMultiplier * 0.558f / 2);
-                                img.rectTransform.localRotation = Quaternion.identity;
-                                img.gameObject.SetActive(true);
-                                img.SetAllDirty();
-                                this._currentImages.Add(img);
-                                // Logger.Debug($"Sprite overlayed for character: {character}");
-                            }
-                            catch (Exception ex)
-                            {
-                                // Logger.Error($"Exception while trying to overlay sprite. {ex}");
-                                _imagePool.Free(img);
-                            }
-                        });
-                    }
-                });
-            }
+        //                         img.material = BeatSaberUtils.UINoGlowMaterial;
+        //                         img.rectTransform.localScale = new Vector3(this.m_fontScaleMultiplier * 1.08f,
+        //                             this.m_fontScaleMultiplier * 1.08f, this.m_fontScaleMultiplier * 1.08f);
+        //                         img.rectTransform.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
+        //                         img.rectTransform.SetParent(this.rectTransform, false);
+        //                         img.rectTransform.localPosition = c.topLeft - new Vector3(0,
+        //                             imageInfo.Height * this.m_fontScaleMultiplier * 0.558f / 2);
+        //                         img.rectTransform.localRotation = Quaternion.identity;
+        //                         img.gameObject.SetActive(true);
+        //                         img.SetAllDirty();
+        //                         this._currentImages.Add(img);
+        //                         // Logger.Debug($"Sprite overlayed for character: {character}");
+        //                     }
+        //                     catch (Exception ex)
+        //                     {
+        //                         // Logger.Error($"Exception while trying to overlay sprite. {ex}");
+        //                         _imagePool.Free(img);
+        //                     }
+        //                 });
+        //             }
+        //         });
+        //     }
 
-            // 在此处添加日志，检查传递给 SetArraySizes 的 unicodeChars 数组
-            // Logger.Debug("Before calling SetArraySizes.");
-            // Logger.Debug(
-            //     $"textInfo is null: {this.textInfo == null}, characterCount: {this.textInfo.characterCount}, text: {this.text}");
-            // if (this.textInfo != null && this.textInfo.characterCount > 0)
-            // {
-            //     for (var i = 0; i < this.textInfo.characterCount; i++)
-            //     {
-            //         Logger.Debug($"UnicodeChar[{i}]: {this.textInfo.characterInfo[i].character}");
-            //     }
-            // }
+        //     // 在此处添加日志，检查传递给 SetArraySizes 的 unicodeChars 数组
+        //     // Logger.Debug("Before calling SetArraySizes.");
+        //     // Logger.Debug(
+        //     //     $"textInfo is null: {this.textInfo == null}, characterCount: {this.textInfo.characterCount}, text: {this.text}");
+        //     // if (this.textInfo != null && this.textInfo.characterCount > 0)
+        //     // {
+        //     //     for (var i = 0; i < this.textInfo.characterCount; i++)
+        //     //     {
+        //     //         Logger.Debug($"UnicodeChar[{i}]: {this.textInfo.characterInfo[i].character}");
+        //     //     }
+        //     // }
 
-            base.Rebuild(update);
-            // Logger.Debug("Base rebuild complete.");
+        //     base.Rebuild(update);
+        //     // Logger.Debug("Base rebuild complete.");
 
-            if (update == CanvasUpdate.LatePreRender)
-            {
-                // Logger.Debug("Calling OnLatePreRenderRebuildComplete.");
-                MainThreadInvoker.Invoke(OnLatePreRenderRebuildComplete);
-                // Logger.Debug("OnLatePreRenderRebuildComplete called.");
-            }
+        //     if (update == CanvasUpdate.LatePreRender)
+        //     {
+        //         // Logger.Debug("Calling OnLatePreRenderRebuildComplete.");
+        //         MainThreadInvoker.Invoke(OnLatePreRenderRebuildComplete);
+        //         // Logger.Debug("OnLatePreRenderRebuildComplete called.");
+        //     }
 
-            // Logger.Debug("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");
-            // }
-            // catch (Exception ex)
-            // {
-            //     Logger.Error($"Exception in EnhancedTextMeshProUGUI.Rebuild: {ex}");
-            // }
-        }
+        //     // Logger.Debug("Exiting EnhancedTextMeshProUGUI.Rebuild. 2");
+        //     // }
+        //     // catch (Exception ex)
+        //     // {
+        //     //     Logger.Error($"Exception in EnhancedTextMeshProUGUI.Rebuild: {ex}");
+        //     // }
+        // }
     }
 }
