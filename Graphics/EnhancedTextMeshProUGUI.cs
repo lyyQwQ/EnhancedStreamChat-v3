@@ -297,5 +297,67 @@ namespace EnhancedStreamChat.Graphics
         //     //     Logger.Error($"Exception in EnhancedTextMeshProUGUI.Rebuild: {ex}");
         //     // }
         // }
+                public override void Rebuild(CanvasUpdate update)
+        {
+            if (update == CanvasUpdate.LatePreRender)
+            {
+                MainThreadInvoker.Invoke(() =>
+                {
+                    this.ClearImages();
+                    for (var i = 0; i < this.textInfo.characterCount; i++)
+                    {
+                        var c = this.textInfo.characterInfo[i];
+                        if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
+                        {
+                            continue;
+                        }
+
+                        uint character = this.text[c.index];
+                        if (c.index + 1 < this.text.Length && char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
+                        {
+                            character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
+                        }
+
+                        if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) || imageInfo is null)
+                        {
+                            continue;
+                        }
+
+                        var img = _imagePool.Alloc();
+                        try
+                        {
+                            img.rectTransform.SetParent(this.rectTransform, false);
+                            if (imageInfo.AnimControllerData != null)
+                            {
+                                img.animStateUpdater.ControllerData = imageInfo.AnimControllerData;
+                                img.sprite = imageInfo.AnimControllerData.Sprites[imageInfo.AnimControllerData.UvIndex];
+                            }
+                            else
+                            {
+                                img.sprite = imageInfo.Sprite;
+                            }
+
+                            var fontScale = 0.010f * this.fontSize;
+                            img.rectTransform.localScale = new Vector3(fontScale * 1.08f, fontScale * 1.08f, fontScale * 1.08f);
+                            img.rectTransform.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
+                            img.rectTransform.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * fontScale * 0.558f / 2);
+                            img.rectTransform.localRotation = Quaternion.identity;
+                            img.material = BeatSaberUtils.UINoGlowMaterial;
+                            img.gameObject.SetActive(true);
+                            img.SetAllDirty();
+                            this._currentImages.Add(img);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Exception while trying to overlay sprite. {ex}");
+                            _imagePool.Free(img);
+                        }
+                    }
+                    OnLatePreRenderRebuildComplete?.Invoke();
+                });
+            }
+
+            base.Rebuild(update);
+        }
     }
 }

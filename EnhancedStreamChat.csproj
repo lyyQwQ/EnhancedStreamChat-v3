@@ -142,17 +142,22 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="EnhancedStreamChat.csproj.user" />
+    <None Remove="archive\**" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="manifest.json" />
     <EmbeddedResource Include="Chat\ChatDisplay.bsml" />
     <EmbeddedResource Include="Resources\Settings.png" />
     <EmbeddedResource Include="Resources\PizzaDog.jpg" />
+    <EmbeddedResource Remove="archive\**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BeatSaberModdingTools.Tasks" Version="2.0.0-beta4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="archive\**" />
   </ItemGroup>
 </Project>
