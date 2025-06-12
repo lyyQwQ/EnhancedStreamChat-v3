@@ -51,6 +51,25 @@ namespace EnhancedStreamChat.Core.Models
         public bool IsGlobal { get; set; }
         
         /// <summary>
+        /// 表情的URI（兼容属性）
+        /// </summary>
+        public string Uri 
+        { 
+            get => ImageUrl; 
+            set => ImageUrl = value; 
+        }
+        
+        /// <summary>
+        /// 表情类型
+        /// </summary>
+        public ChatEmoteType EmoteType { get; set; } = ChatEmoteType.SingleImage;
+        
+        /// <summary>
+        /// UV坐标（用于精灵表类型的表情）
+        /// </summary>
+        public System.Collections.Generic.List<float[]> UVs { get; set; }
+        
+        /// <summary>
         /// 获取指定尺寸的图片URL
         /// </summary>
         public string GetScaledUrl(int scale)
@@ -68,5 +87,21 @@ namespace EnhancedStreamChat.Core.Models
             
             return ImageUrl;
         }
+    }
+    
+    /// <summary>
+    /// 表情类型枚举
+    /// </summary>
+    public enum ChatEmoteType
+    {
+        /// <summary>
+        /// 单张图片
+        /// </summary>
+        SingleImage,
+        
+        /// <summary>
+        /// 精灵表（多个帧在一张图片中）
+        /// </summary>
+        SpriteSheet
     }
 }

@@ -141,6 +141,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Core.Test.csproj" />
     <None Include="EnhancedStreamChat.csproj.user" />
     <None Remove="archive\**" />
   </ItemGroup>
