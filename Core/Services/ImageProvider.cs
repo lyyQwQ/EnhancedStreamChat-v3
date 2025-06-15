@@ -54,7 +54,7 @@ namespace EnhancedStreamChat.Core.Services
             var tcs = new TaskCompletionSource<Texture2D>();
             
             // 调用旧的下载逻辑
-            CoroutineRunner.Instance.StartCoroutine(DownloadAndCacheTexture(url, tcs));
+            SharedCoroutineStarter.Instance.StartCoroutine(DownloadAndCacheTexture(url, tcs));
             
             return await tcs.Task;
         }

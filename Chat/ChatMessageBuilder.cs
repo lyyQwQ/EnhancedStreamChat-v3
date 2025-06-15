@@ -62,7 +62,7 @@ namespace EnhancedStreamChat.Chat
                             }
                             // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
                             Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | start cache image Emote: ID:" + emote.Id + " Uri: " + emote.Uri);
-                            CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
+                            SharedCoroutineStarter.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
                             {
                                 Logger.Debug($"try cache image Emote: ID: {emote.Id}, Uri: {emote.Uri}, IsAnimated: {IsAnimated}, info: {info}");
                                 if (info != null) {
@@ -77,7 +77,7 @@ namespace EnhancedStreamChat.Chat
                         case EmoteType.SpriteSheet:
                             Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | start cache SpriteSheet Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
                             // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
-                            CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
+                            SharedCoroutineStarter.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
                             {
                                 Logger.Debug($"try cache SpriteSheet Emote: ID: {emote.Id}, Uri: {emote.Uri}, UVs: {emote.UVs}");
                                 if (info != null) {
@@ -111,7 +111,7 @@ namespace EnhancedStreamChat.Chat
                     pendingEmoteDownloads.Add(badge.Id);
                     var tcs = new TaskCompletionSource<EnhancedImageInfo>();
                     // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
-                    CoroutineRunner.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
+                    SharedCoroutineStarter.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
                     {
                         Logger.Debug($"try cache image Badge: ID: {badge.Id}, Uri: {badge.Uri}, info: {info}");
                         if (info != null) {
