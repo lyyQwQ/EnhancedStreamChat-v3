@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
+using Zenject;
 
 
 namespace EnhancedStreamChat.Chat
@@ -19,7 +20,7 @@ namespace EnhancedStreamChat.Chat
         public Action<byte[]> Finally;
     }
 
-    public class ChatImageProvider : Utilities.PersistentSingleton<ChatImageProvider>
+    public class ChatImageProvider : MonoBehaviour, IInitializable
     {
         public enum ESCAnimationType
         {
@@ -32,6 +33,35 @@ namespace EnhancedStreamChat.Chat
         public ConcurrentDictionary<string, EnhancedImageInfo> CachedImageInfo { get; } = new ConcurrentDictionary<string, EnhancedImageInfo>();
         private readonly ConcurrentDictionary<string, ActiveDownload> _activeDownloads = new ConcurrentDictionary<string, ActiveDownload>();
         private readonly ConcurrentDictionary<string, Texture2D> _cachedSpriteSheets = new ConcurrentDictionary<string, Texture2D>();
+        
+        // 单例实例保留用于向后兼容
+        private static ChatImageProvider _instance;
+        public static ChatImageProvider instance 
+        { 
+            get 
+            {
+                if (_instance == null)
+                {
+                    Logger.Warn("ChatImageProvider.instance accessed before initialization. This should be replaced with dependency injection.");
+                }
+                return _instance;
+            }
+        }
+        
+        // Zenject 构造函数
+        [Inject]
+        public void Construct()
+        {
+            // 当前 ChatImageProvider 没有依赖项
+            // 未来可以在这里注入其他服务
+        }
+        
+        // IInitializable 实现
+        public void Initialize()
+        {
+            _instance = this; // 设置单例实例用于向后兼容
+            Logger.Log.Info("ChatImageProvider initialized as Zenject service");
+        }
         /// <summary>
         /// Retrieves the requested content from the provided Uri.
         /// <para>
@@ -229,13 +259,13 @@ namespace EnhancedStreamChat.Chat
             Finally?.Invoke(ret);
         }
 
-        internal static void ClearCache()
+        internal void ClearCache()
         {
-            if (instance.CachedImageInfo.Count > 0) {
-                foreach (var info in instance.CachedImageInfo.Values) {
+            if (CachedImageInfo.Count > 0) {
+                foreach (var info in CachedImageInfo.Values) {
                     GameObject.Destroy(info.Sprite);
                 }
-                instance.CachedImageInfo.Clear();
+                CachedImageInfo.Clear();
             }
         }
     }

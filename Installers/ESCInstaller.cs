@@ -63,6 +63,13 @@ namespace EnhancedStreamChat.Installers
                 .AsSingle()
                 .NonLazy();
             Logger.Log.Info("[ESCInstaller] Bound ESCFontManager as Zenject service");
+            
+            // Bind ChatImageProvider as a Zenject service (迁移自 PersistentSingleton)
+            Container.BindInterfacesAndSelfTo<ChatImageProvider>()
+                .FromNewComponentOnNewGameObject()
+                .AsSingle()
+                .NonLazy();
+            Logger.Log.Info("[ESCInstaller] Bound ChatImageProvider as Zenject service");
 
             // Bind memory pool for RenderableMessage (使用内部 Pool 类)
             Container.BindMemoryPool<RenderableMessage, RenderableMessage.Pool>()

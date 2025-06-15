@@ -34,7 +34,7 @@ namespace EnhancedStreamChat.Chat
             this._chatServiceMultiplexer.OnChatCleared += this.QueueOrSendOnClearChat;
             this._chatServiceMultiplexer.OnMessageCleared += this.QueueOrSendOnClearMessage;
             this._chatServiceMultiplexer.OnChannelResourceDataCached += this.QueueOrSendOnChannelResourceDataCached;
-            ChatImageProvider.TouchInstance();
+            // ChatImageProvider.TouchInstance(); // 已迁移到 Zenject，不再需要 TouchInstance
             _ = this.HandleOverflowMessageQueue();
             BSEvents.lateMenuSceneLoadedFresh += this.BSEvents_menuSceneLoadedFresh;
         }
@@ -75,7 +75,7 @@ namespace EnhancedStreamChat.Chat
             }
 
             MainThreadInvoker.ClearQueue();
-            ChatImageProvider.ClearCache();
+            ChatImageProvider.instance?.ClearCache(); // 使用实例方法代替静态调用
             base.OnDestroy();
         }
         #endregion

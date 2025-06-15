@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using ChatCore.Interfaces;
 using EnhancedStreamChat.Chat;
-using EnhancedStreamChat.Chat;  // For ChatConfig
 using EnhancedStreamChat.Core.Interfaces;
 using EnhancedStreamChat.Core.Models;
 using UnityEngine;
@@ -12,14 +12,15 @@ using Zenject;
 namespace EnhancedStreamChat.Adapters
 {
     /// <summary>
-    /// 适配器类，用于将现有的 ChatDisplay 单例适配到新的依赖注入架构
+    /// 适配器类，用于桥接新的消息渲染系统和配置管理
+    /// 注意：ChatDisplay 在菜单场景中创建，适配器在应用场景中创建，
+    /// 因此不能直接依赖 ChatDisplay 实例
     /// </summary>
     public class ChatDisplayAdapter : IInitializable, IDisposable
     {
         private readonly IMessageRenderer _messageRenderer;
-        private ChatConfig _chatConfig => ChatConfig.instance;
         private readonly RenderableMessage.Pool _messagePool;
-        private ChatDisplay _chatDisplay;
+        private ChatConfig _chatConfig => ChatConfig.instance;
 
         [Inject]
         public ChatDisplayAdapter(
@@ -35,17 +36,15 @@ namespace EnhancedStreamChat.Adapters
 #if DEBUG
             TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(Initialize), "Starting initialization");
 #endif
-            // 监听 ChatDisplay 创建事件
-            // 注意：ChatDisplay 是在 menu scene 加载时创建的
-            Logger.Log.Info("ChatDisplayAdapter initialized, waiting for ChatDisplay...");
+            Logger.Log.Info("ChatDisplayAdapter initialized");
             
             // 订阅配置变更事件
             if (_chatConfig != null)
             {
-                _chatConfig.OnConfigChanged += OnLegacyConfigChanged;
+                _chatConfig.OnConfigChanged += OnConfigChanged;
             }
 #if DEBUG
-            TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(Initialize), "Subscribed to PropertyChanged event");
+            TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(Initialize), "Subscribed to OnConfigChanged event");
             TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(Initialize), 
                 $"Message pool available: {_messagePool != null}");
             TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(Initialize), "Initialization completed");
@@ -59,7 +58,7 @@ namespace EnhancedStreamChat.Adapters
 #endif
             if (_chatConfig != null)
             {
-                _chatConfig.OnConfigChanged -= OnLegacyConfigChanged;
+                _chatConfig.OnConfigChanged -= OnConfigChanged;
             }
 #if DEBUG
             TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(Dispose), "Unsubscribed from PropertyChanged");
@@ -79,46 +78,17 @@ namespace EnhancedStreamChat.Adapters
 #endif
         }
 
-        /// <summary>
-        /// 设置 ChatDisplay 实例（当它被创建时调用）
-        /// </summary>
-        public void SetChatDisplay(ChatDisplay chatDisplay)
-        {
-#if DEBUG
-            TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(SetChatDisplay), 
-                $"Setting ChatDisplay instance: {chatDisplay}");
-#endif
-            _chatDisplay = chatDisplay;
-            if (_chatDisplay != null)
-            {
-                Logger.Log.Info("ChatDisplayAdapter connected to ChatDisplay");
-#if DEBUG
-                TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(SetChatDisplay), 
-                    "ChatDisplay connected successfully");
-#endif
-                
-                // 在这里可以拦截或修改 ChatDisplay 的行为
-                // 例如：替换其渲染逻辑为新的渲染器
-                ApplyConfiguration();
-            }
-#if DEBUG
-            else
-            {
-                TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(SetChatDisplay), 
-                    "ChatDisplay is null, connection failed");
-            }
-#endif
-        }
 
         /// <summary>
-        /// 使用新的渲染器渲染消息
+        /// 预渲染消息（供测试使用）
+        /// 实际的消息渲染仍由 ChatDisplay 处理，这里只是演示新渲染器的能力
         /// </summary>
-        public async void RenderMessage(IChatService service, IChatMessage message, ParsedMessage parsedMessage)
+        public async Task<RenderableMessage> PreRenderMessage(IChatService service, IChatMessage message, ParsedMessage parsedMessage)
         {
             try
             {
 #if DEBUG
-                TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(RenderMessage), 
+                TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(PreRenderMessage), 
                     $"Starting to render message: {message.Id} from {service.DisplayName}");
 #endif
                 // 使用工厂方法创建 ChatMessage 对象
@@ -150,72 +120,60 @@ namespace EnhancedStreamChat.Adapters
                 
                 if (renderableMessage != null)
                 {
-                    Logger.Log.Info($"Rendered message {message.Id} with height {renderableMessage.Height}");
+                    Logger.Log.Info($"Pre-rendered message {message.Id} with height {renderableMessage.Height}");
                     
 #if DEBUG
-                    TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(RenderMessage), 
-                        $"Message rendered successfully - Height: {renderableMessage.Height}, " +
+                    TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(PreRenderMessage), 
+                        $"Message pre-rendered successfully - Height: {renderableMessage.Height}, " +
                         $"HasTextComponent: {renderableMessage.TextComponent != null}, " +
                         $"Images count: {renderableMessage.Images?.Count ?? 0}");
 #endif
-                    
-                    // 在将来，这里可以直接将渲染元素传递给 ChatDisplay
-                    // 目前仍让 ChatDisplay 使用其原有的渲染逻辑
-                    
-                    // 如果需要，可以在这里访问渲染后的消息属性
-                    // renderableMessage.TextComponent, renderableMessage.Images 等
                 }
 #if DEBUG
                 else
                 {
-                    TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(RenderMessage), 
+                    TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(PreRenderMessage), 
                         "RenderableMessage is null");
                 }
 #endif
+                
+                return renderableMessage;
             }
             catch (Exception ex)
             {
-                Logger.Log.Error($"Error rendering message in ChatDisplayAdapter: {ex.Message}");
+                Logger.Log.Error($"Error pre-rendering message in ChatDisplayAdapter: {ex.Message}");
 #if DEBUG
-                TestAdapters.LogAdapterError(nameof(ChatDisplayAdapter), nameof(RenderMessage), ex);
+                TestAdapters.LogAdapterError(nameof(ChatDisplayAdapter), nameof(PreRenderMessage), ex);
 #endif
+                return null;
             }
         }
 
-        private void OnLegacyConfigChanged(ChatConfig config)
+        private void OnConfigChanged(ChatConfig config)
         {
 #if DEBUG
-            TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(OnLegacyConfigChanged), 
+            TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(OnConfigChanged), 
                 "Configuration changed");
 #endif
-            if (_chatDisplay != null)
-            {
-                ApplyConfiguration();
-            }
-#if DEBUG
-            else
-            {
-                TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(OnLegacyConfigChanged), 
-                    "ChatDisplay is null, skipping configuration apply");
-            }
-#endif
+            // 配置变更时的处理逻辑
+            // 由于 ChatDisplay 在不同场景，这里只记录配置变更
+            Logger.Log.Info($"Configuration changed - FontSize: {config.FontSize}, ChatWidth: {config.ChatWidth}");
         }
 
-        private void ApplyConfiguration()
+        /// <summary>
+        /// 获取消息池（供测试使用）
+        /// </summary>
+        public RenderableMessage.Pool GetMessagePool()
         {
-            // 应用配置到 ChatDisplay
-            // 例如：字体大小、消息显示数量等
-            Logger.Log.Info($"Applying configuration to ChatDisplay");
-            
-#if DEBUG
-            TestAdapters.LogAdapterState(nameof(ChatDisplayAdapter), nameof(ApplyConfiguration), 
-                $"Applying configuration - FontSize: {_chatConfig.FontSize}, " +
-                $"ChatWidth: {_chatConfig.ChatWidth}, ChatHeight: {_chatConfig.ChatHeight}, " +
-                $"ReverseChatOrder: {_chatConfig.ReverseChatOrder}");
-#endif
-            
-            // 这里可以根据配置更新 ChatDisplay 的显示参数
-            // 在完全迁移之前，我们保持兼容性
+            return _messagePool;
+        }
+        
+        /// <summary>
+        /// 获取消息渲染器（供测试使用）
+        /// </summary>
+        public IMessageRenderer GetMessageRenderer()
+        {
+            return _messageRenderer;
         }
     }
 }

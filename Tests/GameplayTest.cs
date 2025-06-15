@@ -10,7 +10,6 @@ using ChatCore.Models;
 using ChatCore.Services;
 using ChatCore.Utilities;
 using EnhancedStreamChat.Chat;
-using EnhancedStreamChat.Chat;  // For ChatConfig
 using EnhancedStreamChat.Core.Interfaces;
 using UnityEngine;
 using Zenject;
@@ -170,6 +169,17 @@ namespace EnhancedStreamChat.Tests
 
                 // 记录测试消息
                 Logger.Log.Info($"[TEST] 模拟 Twitch 消息: '{testMessage}' 来自 '{testUser.DisplayName}'");
+                
+                // 测试预渲染功能
+                if (_chatDisplayAdapter != null)
+                {
+                    var mockMessage = CreateMockMessage(testMessage, testUser, mockService);
+                    var renderResult = await _chatDisplayAdapter.PreRenderMessage(mockService, mockMessage, null);
+                    if (renderResult != null)
+                    {
+                        Logger.Log.Info($"[TEST] 预渲染成功，消息高度: {renderResult.Height}");
+                    }
+                }
 
                 LogTestPass(testName, "Twitch 消息流程测试完成");
             }
@@ -382,6 +392,24 @@ namespace EnhancedStreamChat.Tests
         }
 
         /// <summary>
+        /// 创建模拟消息
+        /// </summary>
+        private IChatMessage CreateMockMessage(string text, MockChatUser user, MockChatService service)
+        {
+            return new MockChatMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                Message = text,
+                Sender = user,
+                IsSystemMessage = false,
+                IsActionMessage = false,
+                IsHighlighted = false,
+                IsPing = false,
+                Timestamp = DateTime.UtcNow
+            };
+        }
+
+        /// <summary>
         /// 模拟的聊天服务
         /// </summary>
         private class MockChatService : IChatService
@@ -440,6 +468,38 @@ namespace EnhancedStreamChat.Tests
                 json["IsTurbo"] = IsTurbo;
                 json["IsStaff"] = IsStaff;
                 json["IsPartner"] = IsPartner;
+                return json;
+            }
+        }
+
+        /// <summary>
+        /// 模拟的聊天消息
+        /// </summary>
+        private class MockChatMessage : IChatMessage
+        {
+            public string Id { get; set; }
+            public bool IsSystemMessage { get; set; }
+            public bool IsActionMessage { get; set; }
+            public bool IsHighlighted { get; set; }
+            public bool IsPing { get; set; }
+            public string Message { get; set; }
+            public IChatUser Sender { get; set; }
+            public IChatChannel Channel { get; set; }
+            public IChatEmote[] Emotes { get; set; } = new IChatEmote[0];
+            public IChatBadge[] Badges { get; set; } = new IChatBadge[0];
+            public JSONObject JSONObject { get; set; }
+            public string Type => "Mock";
+            public DateTime Timestamp { get; set; }
+            public System.Collections.ObjectModel.ReadOnlyDictionary<string, string> Metadata { get; set; } = 
+                new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
+
+            public JSONObject ToJson()
+            {
+                var json = new JSONObject();
+                json["id"] = Id;
+                json["message"] = Message;
+                json["type"] = Type;
+                json["timestamp"] = Timestamp.ToString("o");
                 return json;
             }
         }

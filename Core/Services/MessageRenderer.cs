@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using ChatCore.Interfaces;
 using EnhancedStreamChat.Chat;
-using EnhancedStreamChat.Chat;  // For ChatConfig
 using EnhancedStreamChat.Core.Interfaces;
 using EnhancedStreamChat.Core.Models;
 using EnhancedStreamChat.Graphics;
