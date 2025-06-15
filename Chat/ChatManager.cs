@@ -99,14 +99,23 @@ namespace EnhancedStreamChat.Chat
         }
         private void BSEvents_menuSceneLoadedFresh(ScenesTransitionSetupDataSO scenesTransitionSetupDataSo)
         {
-            Logger.Info( "Menu scene loaded fresh.");
-            if (this._chatDisplay) {
-                DestroyImmediate(this._chatDisplay.gameObject);
-                this._chatDisplay = null;
-                MainThreadInvoker.ClearQueue();
+            Logger.Info("Menu scene loaded fresh.");
+            // ChatDisplay 现在由 Zenject 管理，不再手动创建
+            // ChatDisplay 会在初始化时自动注册到 ChatManager
+            MainThreadInvoker.ClearQueue();
+        }
+        
+        /// <summary>
+        /// 设置 ChatDisplay 实例（由 ChatDisplay 在初始化时调用）
+        /// </summary>
+        public void SetChatDisplay(ChatDisplay chatDisplay)
+        {
+            if (_chatDisplay != null && _chatDisplay != chatDisplay)
+            {
+                Logger.Warn("Replacing existing ChatDisplay instance");
             }
-            this._chatDisplay = BeatSaberUI.CreateViewController<ChatDisplay>();
-            this._chatDisplay.gameObject.SetActive(true);
+            _chatDisplay = chatDisplay;
+            Logger.Info($"ChatDisplay registered to ChatManager: {chatDisplay != null}");
         }
 
         private ConcurrentQueue<Action> ActionQueue { get; } = new ConcurrentQueue<Action>();

@@ -8,6 +8,7 @@ using ChatCore.Utilities;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.HarmonyPatches;
 using EnhancedStreamChat.Utilities;
+using EnhancedStreamChat.Core.Interfaces;
 using HMUI;
 using IPA.Utilities;
 using System;
@@ -25,29 +26,162 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using VRUIControls;
+using Zenject;
 using Color = UnityEngine.Color;
 
 namespace EnhancedStreamChat.Chat
 {
     [HotReload]
-    public partial class ChatDisplay : BSMLAutomaticViewController
+    public partial class ChatDisplay : BSMLAutomaticViewController, IChatDisplay, IAsyncInitializable, IDisposable
     {
-        public ObjectMemoryComponentPool<EnhancedTextMeshProUGUIWithBackground> TextPool { get; internal set; }
+        // 单例实例，用于向后兼容
+        private static ChatDisplay _instance;
+        public static ChatDisplay instance => _instance;
 
         private readonly ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground> _messages =
             new ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground>();
 
         private ChatConfig _chatConfig;
+        private ESCFontManager _fontManager;
+        private EnhancedTextMeshProUGUIWithBackground.Pool _textPool;
+        private MemoryPoolContainer<EnhancedTextMeshProUGUIWithBackground> _textPoolContainer;
 
         private bool _isInGame;
+        private bool _isInitialized = false;
+        
+        // IChatDisplay 接口实现
+        public bool IsReady => _isInitialized && _chatScreen != null;
+        
+        // 依赖注入构造方法
+        [Inject]
+        public void Construct(
+            EnhancedTextMeshProUGUIWithBackground.Pool textPool,
+            ESCFontManager fontManager)
+        {
+            _textPool = textPool;
+            _textPoolContainer = new MemoryPoolContainer<EnhancedTextMeshProUGUIWithBackground>(textPool);
+            _fontManager = fontManager;
+            _chatConfig = ChatConfig.instance; // 使用单例，因为 ChatConfig 还未迁移
+        }
 
         private void Awake()
         {
+            _instance = this; // 设置单例实例
             this._waitForEndOfFrame = new WaitForEndOfFrame();
             DontDestroyOnLoad(this.gameObject);
             // Logger.Debug("ChatDisplay Awake");
             // VRPointerOnEnablePatch.OnEnabled += this.PointerOnEnabled;
         }
+        
+        // 实现 IAsyncInitializable 接口
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            Logger.Info("[ChatDisplay] Initializing via Zenject...");
+            
+            // 注册到 ChatManager（临时方案，直到 ChatManager 完全迁移到 Zenject）
+            if (ChatManager.instance != null)
+            {
+                ChatManager.instance.SetChatDisplay(this);
+                Logger.Info("[ChatDisplay] Registered to ChatManager");
+            }
+            else
+            {
+                Logger.Warn("[ChatDisplay] ChatManager instance not found during initialization");
+            }
+            
+            // 执行异步初始化（参考 v3 的 InitializeAsync）
+            await InitializeInternalAsync(cancellationToken);
+        }
+        
+        private async Task InitializeInternalAsync(CancellationToken cancellationToken = default)
+        {
+            // 等待字体管理器初始化（v3: while (!this._fontManager.IsInitialized)）
+            while (_fontManager != null && !_fontManager.IsInitialized && !cancellationToken.IsCancellationRequested)
+            {
+                await Task.Yield();
+            }
+            
+            if (cancellationToken.IsCancellationRequested)
+                return;
+            
+            // 设置屏幕（v3: this.SetupScreens()）
+            this.SetupScreens();
+            
+            // 刷新现有消息（v3: foreach (var msg in this._messages)）
+            foreach (var msg in this._messages.ToArray())
+            {
+                msg.Text.SetAllDirty();
+                if (msg.SubTextEnabled)
+                {
+                    msg.SubText.SetAllDirty();
+                }
+            }
+            
+            // 设置 pivot（v3: (this.transform as RectTransform).pivot = new Vector2(0.5f, 0f)）
+            (this.transform as RectTransform).pivot = new Vector2(0.5f, 0f);
+            
+            // 订阅配置变更事件
+            _chatConfig.OnConfigChanged += this.Instance_OnConfigChanged;
+            
+            // 订阅场景变更事件  
+            SceneManager.activeSceneChanged += this.SceneManager_activeSceneChanged;
+            
+            // 等待屏幕创建完成
+            while (this._chatScreen == null && !cancellationToken.IsCancellationRequested)
+            {
+                await Task.Yield();
+            }
+            
+            if (cancellationToken.IsCancellationRequested)
+                return;
+            
+            // 处理备份消息队列（v3: while (s_backupMessageQueue.TryDequeue(out var msg))）
+            while (_backupMessageQueue.TryDequeue(out var msg))
+            {
+                await this.OnTextMessageReceived(msg.Value, msg.Key);
+            }
+            
+            _isInitialized = true;
+            Logger.Info("[ChatDisplay] Initialization completed");
+        }
+        
+        #region IChatDisplay 接口实现
+        
+        // 创建并显示聊天消息
+        public void CreateMessage(IChatMessage message)
+        {
+            OnTextMessageReceived(message);
+        }
+        
+        // 创建并显示聊天消息（异步版本）
+        public async Task CreateMessageAsync(IChatMessage message)
+        {
+            await OnTextMessageReceived(message, DateTime.Now);
+        }
+        
+        // 清除指定ID的消息
+        public void ClearMessage(string messageId)
+        {
+            OnMessageCleared(messageId);
+        }
+        
+        // 清除指定用户的所有消息
+        public void ClearUserMessages(string userId)
+        {
+            OnChatCleared(userId);
+        }
+        
+        // 更新浮动屏幕位置（菜单/游戏场景切换时）
+        public void UpdateFloatingScreenPosition()
+        {
+            if (_chatScreen != null)
+            {
+                _chatScreen.ScreenPosition = _isInGame ? _chatConfig.Song_ChatPosition : _chatConfig.Menu_ChatPosition;
+                _chatScreen.ScreenRotation = Quaternion.Euler(_isInGame ? _chatConfig.Song_ChatRotation : _chatConfig.Menu_ChatRotation);
+            }
+        }
+        
+        #endregion
 
         // private void PointerOnEnabled(VRPointer obj)
         // {
@@ -71,51 +205,103 @@ namespace EnhancedStreamChat.Chat
 
         protected override void OnDestroy()
         {
-            ChatConfig.instance.OnConfigChanged -= this.Instance_OnConfigChanged;
-            // BSEvents.menuSceneActive -= this.BSEvents_menuSceneActive;
-            // BSEvents.gameSceneActive -= this.BSEvents_gameSceneActive;
-            SceneManager.activeSceneChanged -= this.SceneManager_activeSceneChanged;
-            // VRPointerOnEnablePatch.OnEnabled -= this.PointerOnEnabled;
-            this.StopAllCoroutines();
-            while (this._messages.TryDequeue(out var msg))
-            {
-                msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
-                if (msg.Text.ChatMessage != null)
-                {
-                    _backupMessageQueue.Enqueue(
-                        new KeyValuePair<DateTime, IChatMessage>(msg.ReceivedDate, msg.Text.ChatMessage));
-                }
-
-                if (msg.SubText.ChatMessage != null)
-                {
-                    _backupMessageQueue.Enqueue(
-                        new KeyValuePair<DateTime, IChatMessage>(msg.ReceivedDate, msg.SubText.ChatMessage));
-                }
-
-                Destroy(msg);
-            }
-
-            //_messages.Clear();
-            Destroy(this._rootGameObject);
-            if (this.TextPool != null)
-            {
-                this.TextPool.Dispose();
-                this.TextPool = null;
-            }
-
-            if (this._chatScreen != null)
-            {
-                Destroy(this._chatScreen);
-                this._chatScreen = null;
-            }
-
-            if (this._chatMoverMaterial != null)
-            {
-                Destroy(this._chatMoverMaterial);
-                this._chatMoverMaterial = null;
-            }
-
+            Dispose();
             base.OnDestroy();
+        }
+        
+        // IDisposable 实现（参考 v3）
+        private bool _disposedValue = false;
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    try
+                    {
+                        // 从 ChatManager 注销
+                        if (ChatManager.instance != null && ChatManager.instance._chatDisplay == this)
+                        {
+                            ChatManager.instance.SetChatDisplay(null);
+                            Logger.Info("[ChatDisplay] Unregistered from ChatManager");
+                        }
+                        
+                        // 取消事件订阅
+                        if (_chatConfig != null)
+                        {
+                            _chatConfig.OnConfigChanged -= this.Instance_OnConfigChanged;
+                        }
+                        SceneManager.activeSceneChanged -= this.SceneManager_activeSceneChanged;
+                        
+                        // 停止所有协程
+                        this.StopAllCoroutines();
+                        
+                        // 备份消息并清理
+                        while (this._messages.TryDequeue(out var msg))
+                        {
+                            msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
+                            if (msg.Text.ChatMessage != null)
+                            {
+                                _backupMessageQueue.Enqueue(
+                                    new KeyValuePair<DateTime, IChatMessage>(msg.ReceivedDate, msg.Text.ChatMessage));
+                            }
+                            if (msg.SubText.ChatMessage != null)
+                            {
+                                _backupMessageQueue.Enqueue(
+                                    new KeyValuePair<DateTime, IChatMessage>(msg.ReceivedDate, msg.SubText.ChatMessage));
+                            }
+                            
+                            // 使用池回收而不是销毁
+                            if (_textPoolContainer != null)
+                            {
+                                _textPoolContainer.Despawn(msg);
+                            }
+                            else
+                            {
+                                Destroy(msg);
+                            }
+                        }
+                        
+                        // 清理资源
+                        if (this._rootGameObject != null)
+                        {
+                            Destroy(this._rootGameObject);
+                        }
+                        
+                        if (this._chatScreen != null)
+                        {
+                            this._chatScreen.HandleReleased -= OnHandleReleased;
+                            Destroy(this._chatScreen);
+                            this._chatScreen = null;
+                        }
+                        
+                        if (this._bg != null && this._bg.material != null)
+                        {
+                            Destroy(this._bg.material);
+                        }
+                        
+                        if (this._chatMoverMaterial != null)
+                        {
+                            Destroy(this._chatMoverMaterial);
+                            this._chatMoverMaterial = null;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Error during ChatDisplay disposal: {ex}");
+                    }
+                }
+                
+                _disposedValue = true;
+                _instance = null; // 清除单例引用
+            }
+        }
+        
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
 
         private void Update()
@@ -139,73 +325,9 @@ namespace EnhancedStreamChat.Chat
         private static readonly string s_menu = "MainMenu";
         private static readonly string s_game = "GameCore";
 
-        private IEnumerator Start()
+        // Start 方法保留为空，遵循 v3 设计（所有初始化在 Initialize 中）
+        private void Start()
         {
-            DontDestroyOnLoad(this.gameObject);
-            this._chatConfig = ChatConfig.instance;
-            yield return new WaitWhile(() => !ESCFontManager.instance.IsInitialized);
-            this.SetupScreens();
-            foreach (var msg in this._messages.ToArray())
-            {
-                msg.Text.SetAllDirty();
-                if (msg.SubTextEnabled)
-                {
-                    msg.SubText.SetAllDirty();
-                }
-            }
-
-            (this.transform as RectTransform).pivot = new Vector2(0.5f, 0f);
-            this.TextPool = new ObjectMemoryComponentPool<EnhancedTextMeshProUGUIWithBackground>(64,
-                constructor: () =>
-                {
-                    var go = new GameObject(nameof(EnhancedTextMeshProUGUIWithBackground),
-                        typeof(EnhancedTextMeshProUGUIWithBackground));
-                    DontDestroyOnLoad(go);
-                    go.SetActive(false);
-                    var msg = go.GetComponent<EnhancedTextMeshProUGUIWithBackground>();
-                    msg.Text.enableWordWrapping = true;
-                    msg.Text.autoSizeTextContainer = false;
-                    msg.SubText.enableWordWrapping = true;
-                    msg.SubText.autoSizeTextContainer = false;
-                    (msg.transform as RectTransform).pivot = new Vector2(0.5f, 0);
-                    msg.transform.SetParent(this._chatContainer.transform, false);
-                    this.UpdateMessage(msg);
-                    return msg;
-                },
-                onFree: (msg) =>
-                {
-                    try
-                    {
-                        msg.gameObject.SetActive(false);
-                        (msg.transform as RectTransform).localPosition = Vector3.zero;
-                        msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
-                        msg.HighlightEnabled = false;
-                        msg.AccentEnabled = false;
-                        msg.SubTextEnabled = false;
-                        msg.Text.text = "";
-                        msg.Text.ChatMessage = null;
-                        msg.SubText.text = "";
-                        msg.SubText.ChatMessage = null;
-                        msg.Text.ClearImages();
-                        msg.SubText.ClearImages();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"An exception occurred while trying to free CustomText object. {ex.ToString()}");
-                    }
-                }
-            );
-            ChatConfig.instance.OnConfigChanged += this.Instance_OnConfigChanged;
-            // BSEvents.menuSceneActive += this.BSEvents_menuSceneActive;
-            // BSEvents.gameSceneActive += this.BSEvents_gameSceneActive;
-            SceneManager.activeSceneChanged += this.SceneManager_activeSceneChanged;
-
-            yield return new WaitWhile(() => this._chatScreen == null);
-            while (_backupMessageQueue.TryDequeue(out var msg))
-            {
-                var task = this.OnTextMessageReceived(msg.Value, msg.Key).GetAwaiter();
-                yield return new WaitWhile(() => !task.IsCompleted);
-            }
         }
 
         private void SetupScreens()
@@ -521,11 +643,22 @@ namespace EnhancedStreamChat.Chat
 
             if (msg.Text.ChatMessage is BilibiliChatMessage)
             {
-                Logger.Debug($"is BilibiliChatMessage");
+                Logger.Debug($"[UpdateMessage] is BilibiliChatMessage");
             }
+            
+            // 强制刷新文本信息
+            if (setAllDirty)
+            {
+                msg.Text.ForceMeshUpdate();
+                if (msg.SubTextEnabled)
+                {
+                    msg.SubText.ForceMeshUpdate();
+                }
+            }
+            
             if (msg.Text != null && msg.Text.textInfo != null)
             {
-                Logger.Debug($"text characterCount: {msg.Text.textInfo.characterCount}");
+                Logger.Debug($"[UpdateMessage] After update - characterCount: {msg.Text.textInfo.characterCount}, text: {msg.Text.text}");
             }
 
             // Logger.Debug("UpdateMessage complete");
@@ -584,7 +717,7 @@ namespace EnhancedStreamChat.Chat
             {
                 if (this._messages.TryDequeue(out msg))
                 {
-                    this.TextPool.Free(msg);
+                    _textPoolContainer.Despawn(msg);
                 }
             }
         }
@@ -671,7 +804,7 @@ namespace EnhancedStreamChat.Chat
 
         public void OnJoinChannel(IChatService svc, IChatChannel channel) => MainThreadInvoker.Invoke(() =>
         {
-            var newMsg = this.TextPool.Alloc();
+            var newMsg = _textPoolContainer.Spawn();
             newMsg.Text.text = $"<color=#bbbbbbbb>[{svc.DisplayName}] Success joining {channel.Id}</color>";
             newMsg.HighlightEnabled = true;
             newMsg.HighlightColor = Color.gray.ColorWithAlpha(0.05f);
@@ -721,51 +854,44 @@ namespace EnhancedStreamChat.Chat
                 $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
             var parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo);
             // Logger.Debug($"Build message end: {parsedMessage}");
-            if (this.TextPool == null)
+            if (_textPoolContainer == null)
             {
-                Logger.Warn("TextPool is null, waiting for it to be initialized.");
+                Logger.Warn("_textPoolContainer is null, waiting for it to be initialized.");
             }
 
-            while (this.TextPool == null)
+            while (_textPoolContainer == null)
             {
                 await Task.Delay(100);
             }
 
             // Logger.Debug($"Create message coroutine: {parsedMessage}");
-            // 没有HMMainThreadDispatcher了
-            // HMMainThreadDispatcher.instance.Enqueue(() => this.CreateMessage(msg, dateTime, parsedMessage));
-            this.StartCoroutine(CreateMessageCoroutine(msg, dateTime, parsedMessage));
+            // 确保在主线程上创建消息（参考v3的实现）
+            MainThreadInvoker.Invoke(() => this.CreateMessage(msg, dateTime, parsedMessage));
             // Logger.Debug($"Create message coroutine end: {parsedMessage}");
         }
 
-        private IEnumerator CreateMessageCoroutine(IChatMessage msg, DateTime dateTime, string parsedMessage)
-        {
-            // Logger.Debug($"Into Create message coroutine: {parsedMessage}");
-            this.CreateMessage(msg, dateTime, parsedMessage);
-            // Logger.Debug($"Create message coroutine end 2: {parsedMessage}");
-            yield return null; // 使用yield return null 表示等待一帧
-        }
 
         private void CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
         {
-            // Logger.Debug($"Create message: {parsedMessage}");
+            Logger.Debug($"[CreateMessage] Start - Message: {parsedMessage}, Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+            
             if (this._lastMessage != null && !msg.IsSystemMessage && this._lastMessage.Text.ChatMessage.Id == msg.Id)
             {
                 // If the last message received had the same id and isn't a system message, then this was a sub-message of the original and may need to be highlighted along with the original message
                 this._lastMessage.SubText.text = parsedMessage;
                 this._lastMessage.SubText.ChatMessage = msg;
                 this._lastMessage.SubTextEnabled = true;
-                // Logger.Debug($"Sub message: {parsedMessage}");
+                Logger.Debug($"[CreateMessage] Sub message added: {parsedMessage}");
                 this.UpdateMessage(this._lastMessage, true);
-                // Logger.Debug($"Update message: {parsedMessage}");
             }
             else
             {
-                // parsedMessage = "abcdddac <color=#FFFFFFFF><b>颤抖的方便面说</b></color>: 1";
-                // Logger.Debug($"New message: {parsedMessage}");
-                var newMsg = this.TextPool.Alloc();
+                Logger.Debug($"[CreateMessage] Creating new message");
+                var newMsg = _textPoolContainer.Spawn();
+                newMsg.transform.SetParent(this._chatContainer.transform, false);
                 newMsg.gameObject.SetActive(true);
-                // Logger.Debug($"New message font: {newMsg.Text.font}, name: {newMsg.Text.font.name}");
+                
+                Logger.Debug($"[CreateMessage] Setting font - Main font: {ESCFontManager.instance.MainFont?.name}");
                 newMsg.Text.font = ESCFontManager.instance.MainFont;
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;
@@ -831,44 +957,19 @@ namespace EnhancedStreamChat.Chat
                 // }
 
                 newMsg.ReceivedDate = date;
-                // 输出一下textinfo，尤其是characterCount等信息
-                // Logger.Debug($"TextInfo: {newMsg.Text.textInfo}");
-                // Logger.Debug($"TextInfo textComponent: {newMsg.Text.textInfo.textComponent.text}");
-                // Logger.Debug($"TextInfo characterCount: {newMsg.Text.textInfo.characterCount}");
-                // Logger.Debug($"TextInfo spriteCount: {newMsg.Text.textInfo.spriteCount}");
-                // Logger.Debug($"TextInfo spaceCount: {newMsg.Text.textInfo.spaceCount}");
-                // Logger.Debug($"TextInfo wordCount: {newMsg.Text.textInfo.wordCount}");
-                // Logger.Debug($"TextInfo linkCount: {newMsg.Text.textInfo.linkCount}");
-                // Logger.Debug($"TextInfo lineCount: {newMsg.Text.textInfo.lineCount}");
-                // Logger.Debug($"TextInfo pageCount: {newMsg.Text.textInfo.pageCount}");
-                // Logger.Debug($"TextInfo materialCount: {newMsg.Text.textInfo.materialCount}");
-
-                /*if (msg is BilibiliChatMessage) {
-                   var message = msg.AsBilibiliMessage();
-                   if (message.MessageType == "pk_pre") {
-                       Task.Run(() => {
-                           int tic = message.extra["timer"] - 1;
-                           while (tic > 0) {
-                               Thread.Sleep(1000);
-                               if (UpdateMessageContent(msg.Id, "【大乱斗】距离与" + message.extra["uname"] + "的PK还有" + tic-- + "秒")) break;
-                           }
-                       });
-                   } else if (message.MessageType == "pk_start") {
-                       Task.Run(() => {
-                           int tic = message.extra["timer"] - 1;
-                           while (tic > 0)
-                           {
-                               Thread.Sleep(1000);
-                               if (UpdateMessageContent(msg.Id, "【大乱斗】距离与 " + message.extra["uname"] + " 的PK还有" + tic-- + "秒")) break;
-                           }
-                       });
-                   }
-               }*/
-                // Logger.Debug($"New message: {newMsg.Text.text}");
+                
+                // 输出textinfo信息以调试
+                Logger.Debug($"[CreateMessage] Before AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
+                Logger.Debug($"[CreateMessage] Text content: {newMsg.Text.text}");
+                
+                // 添加消息到显示列表
                 this.AddMessage(newMsg);
-                // Logger.Debug($"Add message: {newMsg.Text.text}");
+                
+                // 再次检查characterCount
+                Logger.Debug($"[CreateMessage] After AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
+                
                 this._lastMessage = newMsg;
-                // Logger.Debug($"Last message: {newMsg.Text.text}");
+                Logger.Debug($"[CreateMessage] Message creation completed");
             }
 
             // Logger.Debug($"Update message positions: {parsedMessage}");
