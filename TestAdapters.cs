@@ -1,38 +1,49 @@
-#if DEBUG
 using System;
-using UnityEngine;
+using System.Collections.Generic;
+using System.Diagnostics;
+using ChatCore.Interfaces;
+using EnhancedStreamChat.Chat;
+using EnhancedStreamChat.Core.Interfaces;
+using EnhancedStreamChat.Core.Models;
 
 namespace EnhancedStreamChat
 {
     /// <summary>
-    /// 用于测试适配器功能的辅助类
+    /// 测试辅助类，用于验证适配器功能
     /// </summary>
+#if DEBUG
     internal static class TestAdapters
     {
+        /// <summary>
+        /// 在插件启动时输出测试模式信息
+        /// </summary>
         public static void AddTestLogs()
         {
-            Logger.Log.Info("=== EnhancedStreamChat Adapter Test Mode Enabled ===");
-            Logger.Log.Info("This build includes additional logging for testing adapters.");
-            Logger.Log.Info("Look for [ADAPTER_TEST] tags in the log file.");
-            Logger.Log.Info("Log location: Beat Saber/Logs/_latest.log");
-            Logger.Log.Info("===================================================");
+            Logger.Log.Warn("======================== TEST MODE ENABLED ========================");
+            Logger.Log.Warn("This build includes testing features. DO NOT use in production!");
+            Logger.Log.Warn("=================================================================");
         }
 
-        public static void LogAdapterState(string adapterName, string method, string state)
+        /// <summary>
+        /// 记录适配器状态日志
+        /// </summary>
+        public static void LogAdapterState(string adapterName, string methodName, string message)
         {
-            Logger.Log.Info($"[ADAPTER_TEST] {adapterName}.{method}: {state}");
+            Logger.Log.Debug($"[TEST][{adapterName}::{methodName}] {message}");
         }
 
-        public static void LogAdapterError(string adapterName, string method, Exception ex)
+        /// <summary>
+        /// 记录适配器错误日志
+        /// </summary>
+        public static void LogAdapterError(string adapterName, string methodName, Exception ex)
         {
-            Logger.Log.Error($"[ADAPTER_TEST] {adapterName}.{method} ERROR: {ex}");
+            Logger.Log.Error($"[TEST][{adapterName}::{methodName}] Error: {ex.GetType().Name} - {ex.Message}");
+            if (ex.StackTrace != null)
+            {
+                Logger.Log.Error($"[TEST][{adapterName}::{methodName}] StackTrace: {ex.StackTrace}");
+            }
         }
 
-        public static void LogAdapterEvent(string adapterName, string eventName, object data = null)
-        {
-            var dataStr = data != null ? $" Data: {data}" : "";
-            Logger.Log.Info($"[ADAPTER_TEST] {adapterName} Event: {eventName}{dataStr}");
-        }
     }
-}
 #endif
+}

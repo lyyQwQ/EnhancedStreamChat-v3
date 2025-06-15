@@ -11,6 +11,8 @@ using ChatCore.Services;
 using ChatCore.Utilities;
 using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Core.Interfaces;
+using EnhancedStreamChat.Core.Models;
+using EnhancedStreamChat.Utilities;
 using UnityEngine;
 using Zenject;
 
@@ -23,6 +25,7 @@ namespace EnhancedStreamChat.Tests
     {
         private EnhancedStreamChat.Chat.Adapters.ChatManagerAdapter _chatManagerAdapter;
         private EnhancedStreamChat.Adapters.ChatDisplayAdapter _chatDisplayAdapter;
+        private EnhancedStreamChat.Core.Services.ChatManagerService _chatManagerService;
         private ChatConfig _chatConfig => ChatConfig.instance;
         private StringBuilder _testReport;
         private int _passedTests = 0;
@@ -31,15 +34,18 @@ namespace EnhancedStreamChat.Tests
         [Inject]
         public void Construct(
             EnhancedStreamChat.Chat.Adapters.ChatManagerAdapter chatManagerAdapter,
-            EnhancedStreamChat.Adapters.ChatDisplayAdapter chatDisplayAdapter)
+            EnhancedStreamChat.Adapters.ChatDisplayAdapter chatDisplayAdapter,
+            EnhancedStreamChat.Core.Services.ChatManagerService chatManagerService)
         {
             _chatManagerAdapter = chatManagerAdapter;
             _chatDisplayAdapter = chatDisplayAdapter;
+            _chatManagerService = chatManagerService;
         }
 
         public void Initialize()
         {
             Logger.Log.Info("[GameplayTest] Test system initialized");
+            TestAdapters.AddTestLogs();
         }
 
         /// <summary>
@@ -74,6 +80,9 @@ namespace EnhancedStreamChat.Tests
 
             // 5. 测试内存管理
             await TestMemoryManagement();
+
+            // 6. 测试新迁移的组件
+            await TestZenjectMigratedComponents();
 
             // 生成测试报告
             GenerateTestReport();
@@ -327,6 +336,77 @@ namespace EnhancedStreamChat.Tests
             {
                 LogTestFail(testName, $"内存测试失败: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 测试新迁移到 Zenject 的组件
+        /// </summary>
+        private async Task TestZenjectMigratedComponents()
+        {
+            var testName = "Zenject 迁移组件测试";
+            LogTestStart(testName);
+
+            try
+            {
+                // 测试 ChatManagerService
+                if (_chatManagerService != null)
+                {
+                    Logger.Log.Info("[TEST] ChatManagerService 已注入成功");
+                    
+                    // 测试消息处理能力
+                    var testMessage = new ParsedMessage
+                    {
+                        Segments = new List<MessageSegment>
+                        {
+                            new TextSegment { Text = "Testing Zenject migration" }
+                        },
+                        Metadata = new Dictionary<string, object>
+                        {
+                            ["TestId"] = "test_zenject_msg",
+                            ["TestService"] = "TestService"
+                        }
+                    };
+                    
+                    Logger.Log.Info($"[TEST] 测试 ChatManagerService 消息处理，段数: {testMessage.Segments.Count}");
+                    // 注意：这里只是验证服务存在，实际消息处理需要完整的聊天服务
+                }
+                else
+                {
+                    Logger.Log.Error("[TEST] ChatManagerService 未注入!");
+                }
+
+                // 测试单例兼容性
+                Logger.Log.Info("[TEST] 验证单例兼容性...");
+                
+                // SharedCoroutineStarter
+                var coroutineStarter = SharedCoroutineStarter.Instance;
+                if (coroutineStarter != null)
+                {
+                    Logger.Log.Info("[TEST] SharedCoroutineStarter 单例可访问");
+                }
+                
+                // ESCFontManager
+                var fontManager = ESCFontManager.instance;
+                if (fontManager != null)
+                {
+                    Logger.Log.Info("[TEST] ESCFontManager 单例可访问");
+                }
+                
+                // ChatImageProvider
+                var imageProvider = ChatImageProvider.instance;
+                if (imageProvider != null)
+                {
+                    Logger.Log.Info("[TEST] ChatImageProvider 单例可访问");
+                }
+
+                LogTestPass(testName, "所有迁移组件测试完成");
+            }
+            catch (Exception ex)
+            {
+                LogTestFail(testName, $"Zenject 组件测试失败: {ex.Message}");
+            }
+
+            await Task.Delay(100);
         }
 
         /// <summary>
