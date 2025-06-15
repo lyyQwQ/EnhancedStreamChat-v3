@@ -5,6 +5,7 @@ using EnhancedStreamChat.Core.Services;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
 using UnityEngine;
+using UnityEngine.UI;
 using Zenject;
 
 namespace EnhancedStreamChat.Installers
@@ -16,6 +17,8 @@ namespace EnhancedStreamChat.Installers
     {
         // Prefab for EnhancedImage memory pool (参考 v3 实现)
         private GameObject _imagePrefab;
+        // Prefab for EnhancedTextMeshProUGUIWithBackground memory pool
+        private GameObject _enhancedTextMeshProUGUIWithBackgroundPrefab;
         
         public override void InstallBindings()
         {
@@ -27,6 +30,14 @@ namespace EnhancedStreamChat.Installers
                 typeof(RectTransform), 
                 typeof(BeatSaberMarkupLanguage.Animations.AnimationStateUpdater), 
                 typeof(EnhancedImage)
+            );
+            
+            // 创建 EnhancedTextMeshProUGUIWithBackground 的 prefab
+            // 注意: ImageView 将在 Awake 中添加，避免重复
+            _enhancedTextMeshProUGUIWithBackgroundPrefab = new GameObject(
+                nameof(EnhancedTextMeshProUGUIWithBackground),
+                typeof(RectTransform),
+                typeof(EnhancedTextMeshProUGUIWithBackground)
             );
 
             // Note: IChatConfiguration will be bound by ChatConfigurationAdapter below
@@ -76,6 +87,13 @@ namespace EnhancedStreamChat.Installers
                 .AsSingle()
                 .NonLazy();
             Logger.Log.Info("[ESCInstaller] Bound ChatImageProvider as Zenject service");
+            
+            // Bind SharedCoroutineStarter as a Zenject service (迁移自 ComponentSingleton)
+            Container.BindInterfacesAndSelfTo<SharedCoroutineStarter>()
+                .FromNewComponentOnNewGameObject()
+                .AsSingle()
+                .NonLazy();
+            Logger.Log.Info("[ESCInstaller] Bound SharedCoroutineStarter as Zenject service");
 
             // Bind memory pool for RenderableMessage (使用内部 Pool 类)
             Container.BindMemoryPool<RenderableMessage, RenderableMessage.Pool>()
@@ -98,11 +116,20 @@ namespace EnhancedStreamChat.Installers
                 .FromComponentInNewPrefab(_imagePrefab);
             Logger.Log.Info("[ESCInstaller] Bound IMemoryPool<EnhancedImage> with initial size 50, max size 500");
             
-            // TODO: Add more memory pools from v3 architecture when needed
-            // Container.BindMemoryPool<EnhancedImageInfo, EnhancedImageInfo.Pool>()
-            //     .WithInitialSize(20);
-            // Container.BindMemoryPool<EnhancedTextMeshProUGUIWithBackground, EnhancedTextMeshProUGUIWithBackground.Pool>()
-            //     .WithInitialSize(64);
+            // Bind memory pool for EnhancedImageInfo
+            Container.BindMemoryPool<EnhancedImageInfo, EnhancedImageInfo.Pool>()
+                .WithInitialSize(20)
+                .WithMaxSize(100)
+                .ExpandByDoubling();
+            Logger.Log.Info("[ESCInstaller] Bound IMemoryPool<EnhancedImageInfo> with initial size 20, max size 100");
+            
+            // Bind memory pool for EnhancedTextMeshProUGUIWithBackground
+            Container.BindMemoryPool<EnhancedTextMeshProUGUIWithBackground, EnhancedTextMeshProUGUIWithBackground.Pool>()
+                .WithInitialSize(64)
+                .WithMaxSize(256)
+                .ExpandByDoubling()
+                .FromComponentInNewPrefab(_enhancedTextMeshProUGUIWithBackgroundPrefab);
+            Logger.Log.Info("[ESCInstaller] Bound IMemoryPool<EnhancedTextMeshProUGUIWithBackground> with initial size 64, max size 256");
 
             // Bind adapters to bridge legacy and new architecture
             Container.BindInterfacesAndSelfTo<Chat.Adapters.ChatManagerAdapter>()
