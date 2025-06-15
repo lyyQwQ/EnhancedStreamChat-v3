@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using EnhancedStreamChat.Graphics;
 using UnityEngine;
 
 namespace EnhancedStreamChat.Core.Interfaces
@@ -30,6 +32,44 @@ namespace EnhancedStreamChat.Core.Interfaces
         /// 获取缓存统计信息
         /// </summary>
         CacheStatistics GetCacheStatistics();
+        
+        /// <summary>
+        /// 异步获取或加载图片信息（包含精灵和动画数据）
+        /// </summary>
+        /// <param name="imageId">图片唯一ID</param>
+        /// <param name="imageUrl">图片URL</param>
+        /// <param name="isAnimated">是否为动画图片</param>
+        /// <param name="forcedHeight">强制高度，-1表示使用原始高度</param>
+        /// <returns>图片信息，如果失败返回null</returns>
+        Task<EnhancedImageInfo> GetOrLoadImageInfoAsync(string imageId, string imageUrl, bool isAnimated = false, int forcedHeight = -1);
+        
+        /// <summary>
+        /// 预加载多个图片信息
+        /// </summary>
+        /// <param name="images">要预加载的图片信息列表</param>
+        Task PreloadImageInfosAsync(IEnumerable<(string id, string url, bool isAnimated)> images);
+        
+        /// <summary>
+        /// 获取缓存的图片信息
+        /// </summary>
+        /// <param name="imageId">图片ID</param>
+        /// <returns>缓存的图片信息，如果不存在返回null</returns>
+        EnhancedImageInfo GetCachedImageInfo(string imageId);
+        
+        /// <summary>
+        /// 检查图片是否已缓存
+        /// </summary>
+        /// <param name="url">图片URL</param>
+        /// <returns>是否已缓存</returns>
+        bool IsImageCached(string url);
+        
+        /// <summary>
+        /// 注册图片到字体
+        /// </summary>
+        /// <param name="imageId">图片ID</param>
+        /// <param name="font">目标字体</param>
+        /// <returns>是否注册成功</returns>
+        bool TryRegisterImageToFont(string imageId, EnhancedFontInfo font);
     }
     
     /// <summary>

@@ -21,6 +21,14 @@ namespace EnhancedStreamChat.Chat
 
     public class ChatImageProvider : Utilities.PersistentSingleton<ChatImageProvider>
     {
+        public enum ESCAnimationType
+        {
+            NONE,
+            GIF,
+            APNG,
+            WEBP,
+            MAYBE_GIF
+        }
         public ConcurrentDictionary<string, EnhancedImageInfo> CachedImageInfo { get; } = new ConcurrentDictionary<string, EnhancedImageInfo>();
         private readonly ConcurrentDictionary<string, ActiveDownload> _activeDownloads = new ConcurrentDictionary<string, ActiveDownload>();
         private readonly ConcurrentDictionary<string, Texture2D> _cachedSpriteSheets = new ConcurrentDictionary<string, Texture2D>();
@@ -58,7 +66,7 @@ namespace EnhancedStreamChat.Chat
                 this._activeDownloads.TryAdd(uri, activeDownload);
 
                 yield return wr.SendWebRequest();
-                if (wr.isHttpError) {
+                if (wr.result == UnityWebRequest.Result.ProtocolError) {
                     // Failed to download due to http error, don't retry
                     Logger.Error($"An http error occurred during request to {uri}. Aborting! {wr.error}");
                     activeDownload.Finally?.Invoke(new byte[0]);
@@ -66,7 +74,7 @@ namespace EnhancedStreamChat.Chat
                     yield break;
                 }
 
-                if (wr.isNetworkError) {
+                if (wr.result == UnityWebRequest.Result.ConnectionError) {
                     if (!isRetry) {
                         Logger.Error($"A network error occurred during request to {uri}. Retrying in 3 seconds... {wr.error}");
                         yield return new WaitForSeconds(3);

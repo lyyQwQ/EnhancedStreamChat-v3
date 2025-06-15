@@ -8,10 +8,12 @@ using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
+using Zenject;
+using IPA.Utilities;
 
 namespace EnhancedStreamChat.Chat
 {
-    public class ESCFontManager : PersistentSingleton<ESCFontManager>
+    public class ESCFontManager : MonoBehaviour, IInitializable
     {
         private static readonly string FontPath = Path.Combine(Environment.CurrentDirectory, "UserData", "ESC");
         private static readonly string FontAssetPath = Path.Combine(Environment.CurrentDirectory, "UserData", "FontAssets");
@@ -52,12 +54,34 @@ namespace EnhancedStreamChat.Chat
             private set => this._fallbackFonts = value;
         }
         public EnhancedFontInfo FontInfo { get; private set; } = null;
-
-        // private void Awake() => HMMainThreadDispatcher.instance.Enqueue(this.CreateChatFont()); // 没有HMMainThreadDispatcher了
-        // private void Awake() => this.StartCoroutine(this.CreateChatFont());
-        private void Awake()
+        
+        // 单例实例保留用于向后兼容
+        private static ESCFontManager _instance;
+        public static ESCFontManager instance 
+        { 
+            get 
+            {
+                if (_instance == null)
+                {
+                    Logger.Warn("ESCFontManager.instance accessed before initialization. This should be replaced with dependency injection.");
+                }
+                return _instance;
+            }
+        }
+        
+        // Zenject 注入的依赖
+        private ChatConfig _chatConfig;
+        
+        [Inject]
+        public void Construct()
         {
-            Logger.Debug("ESCFontManager Awake");
+            _chatConfig = ChatConfig.instance; // 暂时使用单例，直到 ChatConfig 也被迁移
+        }
+        
+        public void Initialize()
+        {
+            _instance = this; // 设置单例实例用于向后兼容
+            Logger.Debug("ESCFontManager Initialize");
             this.StartCoroutine(this.CreateChatFont());
         }
 
@@ -96,7 +120,7 @@ namespace EnhancedStreamChat.Chat
                 Directory.CreateDirectory(FallBackFontPath);
             }
 
-            var fontName = ChatConfig.instance.SystemFontName;
+            var fontName = _chatConfig.SystemFontName;
             TMP_FontAsset? asset = null;
             AssetBundle? bundle = null;
             foreach (var filename in Directory.EnumerateFiles(MainFontPath, "*.assets", SearchOption.TopDirectoryOnly))

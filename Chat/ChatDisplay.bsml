@@ -53,6 +53,24 @@
             <text text="增强直播聊天Enhanced Stream Chat是免费的哟，而且永远免费。如果你想支持原作者，点击披萨狗图片，并在打开的浏览器中给作者打赏。\nB站直播支持以及汉化：B站@包子侯爵" font-size='4.5' word-wrapping='true' align='Center'></text>
           </vertical>
         </tab>
+        <!--#if DEBUG-->
+        <tab tags ='settings-tab' tab-name='测试'>
+          <vertical pad='10' pad-top='10' child-control-height='false' child-expand-height='false' child-align='UpperCenter' pref-width='~settings-width'>
+            <text text='适配器测试工具' font-size='6' align='Center' font-align='Center'></text>
+            <text text='这是一个调试功能，用于验证新的适配器系统是否正常工作。' font-size='4' word-wrapping='true' align='Center' pad-top='5'></text>
+            <horizontal pad-top='10'>
+              <button text='~test-button-text' on-click='run-adapter-tests' interactable='~test-button-interactable' pref-width='80'></button>
+            </horizontal>
+            <text text='测试内容包括：' font-size='4' align='Left' pad-top='10'></text>
+            <text text='• 适配器初始化验证' font-size='3.5' align='Left'></text>
+            <text text='• Twitch 消息模拟' font-size='3.5' align='Left'></text>
+            <text text='• Bilibili 消息模拟' font-size='3.5' align='Left'></text>
+            <text text='• 配置同步测试' font-size='3.5' align='Left'></text>
+            <text text='• 内存管理测试' font-size='3.5' align='Left'></text>
+            <text text='测试结果将保存到 UserData/EnhancedStreamChat/TestReports/' font-size='3.5' word-wrapping='true' align='Center' pad-top='5'></text>
+          </vertical>
+        </tab>
+        <!--#endif-->
       </vertical>
     </modal>
   </vertical>

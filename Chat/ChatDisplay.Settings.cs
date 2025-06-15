@@ -11,11 +11,27 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UI;
+#if DEBUG
+using System.Threading.Tasks;
+using EnhancedStreamChat.Tests;
+using Zenject;
+#endif
 
 namespace EnhancedStreamChat.Chat
 {
     public partial class ChatDisplay : BSMLAutomaticViewController
     {
+#if DEBUG
+        private GameplayTest _gameplayTest;
+        private bool _isRunningTest = false;
+
+        [Inject]
+        public void InjectTestDependencies(GameplayTest gameplayTest)
+        {
+            _gameplayTest = gameplayTest;
+        }
+#endif
+
         private bool SetProperty<T>(ref T oldValue, T newValue, [CallerMemberName] string name = null)
         {
 #if DEBUG
@@ -373,6 +389,48 @@ namespace EnhancedStreamChat.Chat
 
         [UIAction("on-settings-clicked")]
         private void OnSettingsClick() => Logger.Info("Settings clicked!");
+
+#if DEBUG
+        [UIAction("run-adapter-tests")]
+        private async void RunAdapterTests()
+        {
+            if (_isRunningTest)
+            {
+                Logger.Log.Warn("[TEST] 测试已经在运行中，请等待完成");
+                return;
+            }
+
+            _isRunningTest = true;
+            Logger.Log.Info("[TEST] 开始运行适配器测试...");
+
+            try
+            {
+                if (_gameplayTest != null)
+                {
+                    await _gameplayTest.RunAllTests();
+                    Logger.Log.Info("[TEST] 适配器测试完成");
+                }
+                else
+                {
+                    Logger.Log.Error("[TEST] GameplayTest 未注入，无法运行测试");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error($"[TEST] 运行测试时发生错误: {ex}");
+            }
+            finally
+            {
+                _isRunningTest = false;
+            }
+        }
+
+        [UIValue("test-button-interactable")]
+        public bool TestButtonInteractable => !_isRunningTest;
+
+        [UIValue("test-button-text")]
+        public string TestButtonText => _isRunningTest ? "测试运行中..." : "运行适配器测试";
+#endif
 
         [UIAction("#hide-settings")]
         private void OnHideSettings()

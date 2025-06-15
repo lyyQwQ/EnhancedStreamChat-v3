@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EnhancedStreamChat.Chat;
 
 namespace EnhancedStreamChat.Core.Events
 {
@@ -54,13 +55,12 @@ namespace EnhancedStreamChat.Core.Events
         /// </summary>
         public static readonly HashSet<string> UIRefreshProperties = new HashSet<string>
         {
-            nameof(Interfaces.IChatConfiguration.FontSize),
-            nameof(Interfaces.IChatConfiguration.LineSpacing),
-            nameof(Interfaces.IChatConfiguration.ChatWidth),
-            nameof(Interfaces.IChatConfiguration.ChatHeight),
-            nameof(Interfaces.IChatConfiguration.BackgroundColor),
-            nameof(Interfaces.IChatConfiguration.TextColor),
-            nameof(Interfaces.IChatConfiguration.ReverseChatOrder)
+            nameof(ChatConfig.FontSize),
+            nameof(ChatConfig.ChatWidth),
+            nameof(ChatConfig.ChatHeight),
+            nameof(ChatConfig.BackgroundColor),
+            nameof(ChatConfig.TextColor),
+            nameof(ChatConfig.ReverseChatOrder)
         };
         
         /// <summary>
@@ -68,9 +68,8 @@ namespace EnhancedStreamChat.Core.Events
         /// </summary>
         public static readonly HashSet<string> ResourceReloadProperties = new HashSet<string>
         {
-            nameof(Interfaces.IChatConfiguration.FontName),
-            nameof(Interfaces.IChatConfiguration.EnableAnimatedEmotes),
-            nameof(Interfaces.IChatConfiguration.PreloadEmotes)
+            nameof(ChatConfig.SystemFontName),
+            nameof(ChatConfig.PreCacheAnimatedEmotes)
         };
         
         /// <summary>

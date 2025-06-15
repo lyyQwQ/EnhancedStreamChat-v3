@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 using EnhancedStreamChat.Graphics;
+using EnhancedStreamChat.Core.Interfaces;
+using EnhancedStreamChat.Chat;
+using Zenject;
 
 namespace EnhancedStreamChat.Core.Models
 {
@@ -202,6 +206,82 @@ namespace EnhancedStreamChat.Core.Models
                 {
                     RectTransform.sizeDelta = new Vector2(RectTransform.sizeDelta.x, Height);
                 }
+            }
+        }
+        
+        /// <summary>
+        /// 重置对象状态（用于内存池）
+        /// </summary>
+        public void Reset()
+        {
+            OnDespawn();
+        }
+        
+        /// <summary>
+        /// 内存池定义
+        /// </summary>
+        public class Pool : Zenject.MemoryPool<RenderableMessage>
+        {
+            [Inject]
+            private readonly IFontProvider _fontProvider;
+            
+            protected override void Reinitialize(RenderableMessage item)
+            {
+                base.Reinitialize(item);
+                
+                if (item.GameObject == null)
+                {
+                    // 创建 GameObject
+                    var go = new GameObject("ChatMessage");
+                    item.GameObject = go;
+                    
+                    // 添加 RectTransform
+                    var rectTransform = go.AddComponent<RectTransform>();
+                    rectTransform.sizeDelta = new Vector2(ChatConfig.instance.ChatWidth, 0);
+                    rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                    rectTransform.anchorMin = new Vector2(0, 0);
+                    rectTransform.anchorMax = new Vector2(1, 0);
+                    
+                    // 添加 CanvasGroup（用于淡入淡出）
+                    go.AddComponent<CanvasGroup>();
+                    
+                    // 添加 LayoutElement
+                    var layoutElement = go.AddComponent<LayoutElement>();
+                    layoutElement.preferredWidth = ChatConfig.instance.ChatWidth;
+                    
+                    // 添加文本组件
+                    var text = go.AddComponent<EnhancedTextMeshProUGUI>();
+                    text.fontSize = ChatConfig.instance.FontSize;
+                    text.color = ChatConfig.instance.TextColor;
+                    text.enableWordWrapping = true;
+                    text.richText = true;
+                    text.fontStyle = FontStyles.Normal;
+                    text.alignment = TextAlignmentOptions.TopLeft;
+                    text.overflowMode = TextOverflowModes.Overflow;
+                    item.TextComponent = text;
+                    
+                    // 设置字体
+                    var font = _fontProvider.DefaultFont;
+                    if (font != null)
+                    {
+                        text.font = font;
+                    }
+                }
+            }
+            
+            protected override void OnSpawned(RenderableMessage item)
+            {
+                base.OnSpawned(item);
+                item.OnSpawn();
+            }
+            
+            protected override void OnDespawned(RenderableMessage item)
+            {
+                if (item != null)
+                {
+                    item.OnDespawn();
+                }
+                base.OnDespawned(item);
             }
         }
     }

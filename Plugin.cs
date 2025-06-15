@@ -32,12 +32,17 @@ namespace EnhancedStreamChat
             Font.textureRebuilt += this.Font_textureRebuilt;
             this.harmony = new Harmony(HARMONY_ID);
             zenjector.Install<ESCMenuInstaller>(Location.Menu);
+            zenjector.Install<ESCInstaller>(Location.App);
         }
         [OnStart]
         public void OnStart()
         {
-            ChatManager.TouchInstance();
-            ESCFontManager.TouchInstance();
+#if DEBUG
+            TestAdapters.AddTestLogs();
+#endif
+            // 延迟初始化 ChatManager，等待 Zenject 容器准备好
+            // ChatManager 会在第一次被访问时自动创建（通过 OnEnable 中的 ChatManager.instance）
+            // 这样可以确保所有 Zenject 绑定的服务都已经准备好
         }
 
 
@@ -48,6 +53,9 @@ namespace EnhancedStreamChat
         {
             this.harmony.PatchAll(Assembly.GetExecutingAssembly());
             try {
+                // 确保 ChatManager 单例已创建
+                ChatManager.TouchInstance();
+                // 然后启用它
                 ChatManager.instance.enabled = true;
             }
             catch (Exception ex) {
@@ -59,7 +67,10 @@ namespace EnhancedStreamChat
         public void OnDisable()
         {
             this.harmony.UnpatchSelf();
-            ChatManager.instance.enabled = false;
+            // 安全地禁用 ChatManager（如果存在）
+            if (ChatManager.IsSingletonAvailable) {
+                ChatManager.instance.enabled = false;
+            }
         }
 
         [OnExit]
