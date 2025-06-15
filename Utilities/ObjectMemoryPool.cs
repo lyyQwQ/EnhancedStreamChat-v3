@@ -78,13 +78,15 @@ namespace EnhancedStreamChat.Utilities
         {
             if (!this.disposedValue) {
                 if (disposing) {
-                    // TODO: マネージド状態を破棄します (マネージド オブジェクト)
-                    while (this._freeObjects.TryPop(out _)) {
+                    // 清空对象池并释放实现 IDisposable 的对象
+                    while (this._freeObjects.TryPop(out var obj)) {
+                        // 如果对象实现了 IDisposable，调用 Dispose
+                        if (obj is IDisposable disposable) {
+                            disposable.Dispose();
+                        }
                     }
                     this._freeObjects.Clear();
                 }
-                // TODO: アンマネージド リソース (アンマネージド オブジェクト) を解放し、ファイナライザーをオーバーライドします
-                // TODO: 大きなフィールドを null に設定します
                 this.disposedValue = true;
             }
         }

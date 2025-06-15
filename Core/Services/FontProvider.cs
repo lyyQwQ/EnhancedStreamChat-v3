@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BeatSaberMarkupLanguage;
 using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Core.Interfaces;
 using EnhancedStreamChat.Graphics;
+using EnhancedStreamChat.Utilities;
 using TMPro;
 using UnityEngine;
 using Zenject;
@@ -53,9 +55,12 @@ namespace EnhancedStreamChat.Core.Services
                 return GetChatFont();
             }
             
-            // 尝试从系统查找字体
-            // TODO: 需要找到正确的方式获取默认字体
-            // TMP_FontAsset.defaultFontAsset 在当前版本中不可用
+            // 尝试通过 BeatSaberUI 获取字体
+            if (BeatSaberUtils.TryGetTMPFontByFamily(name, out var beatSaberFont))
+            {
+                _fontCache[name] = beatSaberFont;
+                return beatSaberFont;
+            }
             
             // 如果找不到，返回默认字体
             Logger.Warn($"Font '{name}' not found, using default font");
@@ -76,8 +81,25 @@ namespace EnhancedStreamChat.Core.Services
                     return chatFont;
                 }
                 
-                // 如果聊天字体未初始化，返回 null
-                // TODO: 需要找到正确的方式获取默认字体
+                // 如果聊天字体未初始化，尝试获取 Beat Saber 主字体
+                if (BeatSaberUI.MainTextFont != null)
+                {
+                    return BeatSaberUI.MainTextFont;
+                }
+                
+                // 最后尝试从 Resources 查找默认字体
+                var fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+                if (fonts != null && fonts.Length > 0)
+                {
+                    var defaultFont = fonts.FirstOrDefault(f => f.name.Contains("Teko-Medium") || f.name.Contains("Default"));
+                    if (defaultFont != null)
+                    {
+                        Logger.Info($"Using fallback font: {defaultFont.name}");
+                        return defaultFont;
+                    }
+                }
+                
+                Logger.Error("No default font found!");
                 return null;
             }
         }
@@ -118,11 +140,10 @@ namespace EnhancedStreamChat.Core.Services
             }
             
             // 添加系统默认字体
-            // TODO: 需要找到正确的方式获取默认字体
-            // if (TMP_FontAsset.defaultFontAsset != null)
-            // {
-            //     fonts.Add(TMP_FontAsset.defaultFontAsset.name);
-            // }
+            if (BeatSaberUI.MainTextFont != null)
+            {
+                fonts.Add(BeatSaberUI.MainTextFont.name);
+            }
             
             // 添加配置中的系统字体名
             fonts.Add(ChatConfig.instance.SystemFontName);

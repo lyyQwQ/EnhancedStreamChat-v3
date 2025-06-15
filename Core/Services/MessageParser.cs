@@ -57,16 +57,12 @@ namespace EnhancedStreamChat.Core.Services
                 
                 foreach (var emote in sortedEmotes)
                 {
-                    parsed.Emotes.Add(new ChatEmote
+                    // 设置表情类型（如果尚未设置）
+                    if (emote.EmoteType == ChatEmoteType.SingleImage && emote.IsAnimated)
                     {
-                        Id = emote.Id,
-                        Name = emote.Name,
-                        Uri = emote.Uri,
-                        IsAnimated = emote.IsAnimated,
-                        StartIndex = emote.StartIndex,
-                        EndIndex = emote.EndIndex,
-                        // EmoteType = ConvertEmoteType(emote.Type) // TODO: ChatEmote 没有 Type 属性
-                    });
+                        emote.EmoteType = InferEmoteTypeFromChatEmote(emote);
+                    }
+                    parsed.Emotes.Add(emote);
                 }
             }
             
@@ -273,16 +269,72 @@ namespace EnhancedStreamChat.Core.Services
         }
         
         /// <summary>
-        /// 转换表情类型
+        /// 推断表情类型（从 IChatEmote）
         /// </summary>
-        private Core.Models.ChatEmoteType ConvertEmoteType(ChatCore.Models.EmoteType type)
+        private Core.Models.ChatEmoteType InferEmoteType(IChatEmote emote)
         {
-            return type switch
+            if (emote == null)
+                return Core.Models.ChatEmoteType.SingleImage;
+            
+            // 基于 URI 模式推断
+            if (!string.IsNullOrEmpty(emote.Uri))
             {
-                ChatCore.Models.EmoteType.SingleImage => Core.Models.ChatEmoteType.SingleImage,
-                ChatCore.Models.EmoteType.SpriteSheet => Core.Models.ChatEmoteType.SpriteSheet,
-                _ => Core.Models.ChatEmoteType.SingleImage
-            };
+                var uri = emote.Uri.ToLower();
+                
+                // 检查是否包含帧数信息或动画相关的标识
+                if (uri.Contains("_frame") || 
+                    uri.Contains("animated") || 
+                    uri.Contains("sprite") ||
+                    uri.Contains(".gif"))
+                {
+                    return Core.Models.ChatEmoteType.SpriteSheet;
+                }
+                
+                // 检查特定平台的动画表情模式
+                // Twitch 动画表情通常以 .gif 结尾
+                // BTTV/FFZ/7TV 动画表情可能包含特定标识
+                if (emote.IsAnimated)
+                {
+                    return Core.Models.ChatEmoteType.SpriteSheet;
+                }
+            }
+            
+            // 默认为单张图片
+            return Core.Models.ChatEmoteType.SingleImage;
+        }
+        
+        /// <summary>
+        /// 推断表情类型（从 ChatEmote）
+        /// </summary>
+        private Core.Models.ChatEmoteType InferEmoteTypeFromChatEmote(ChatEmote emote)
+        {
+            if (emote == null)
+                return Core.Models.ChatEmoteType.SingleImage;
+            
+            // 基于 URI/ImageUrl 模式推断
+            var url = emote.ImageUrl ?? emote.Uri;
+            if (!string.IsNullOrEmpty(url))
+            {
+                var urlLower = url.ToLower();
+                
+                // 检查是否包含帧数信息或动画相关的标识
+                if (urlLower.Contains("_frame") || 
+                    urlLower.Contains("animated") || 
+                    urlLower.Contains("sprite") ||
+                    urlLower.Contains(".gif"))
+                {
+                    return Core.Models.ChatEmoteType.SpriteSheet;
+                }
+                
+                // 如果标记为动画，则为精灵表
+                if (emote.IsAnimated)
+                {
+                    return Core.Models.ChatEmoteType.SpriteSheet;
+                }
+            }
+            
+            // 默认为单张图片
+            return Core.Models.ChatEmoteType.SingleImage;
         }
         
         /// <summary>

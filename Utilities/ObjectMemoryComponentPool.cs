@@ -78,15 +78,14 @@ namespace EnhancedStreamChat.Utilities
         {
             if (!this.disposedValue) {
                 if (disposing) {
-                    // TODO: マネージド状態を破棄します (マネージド オブジェクト)
+                    // 销毁所有池中的 GameObject
                     while (this._freeObjects.TryPop(out var obj)) {
-                        UnityEngine.Object.Destroy(obj.gameObject);
+                        if (obj != null && obj.gameObject != null) {
+                            UnityEngine.Object.Destroy(obj.gameObject);
+                        }
                     }
                     this._freeObjects.Clear();
                 }
-
-                // TODO: アンマネージド リソース (アンマネージド オブジェクト) を解放し、ファイナライザーをオーバーライドします
-                // TODO: 大きなフィールドを null に設定します
                 this.disposedValue = true;
             }
         }

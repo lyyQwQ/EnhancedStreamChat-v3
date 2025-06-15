@@ -54,9 +54,19 @@ namespace EnhancedStreamChat.Graphics
         protected override void Awake()
         {
             base.Awake();
-            this.FontInfo = ESCFontManager.instance.FontInfo;
+            // 延迟获取 FontInfo，避免在 prefab 创建时访问未初始化的 instance
+            // this.FontInfo = ESCFontManager.instance.FontInfo;
             // Logger.Debug($"FontInfo: {this.FontInfo}");
             this.raycastTarget = false;
+        }
+        
+        // 延迟初始化 FontInfo
+        private void EnsureFontInfo()
+        {
+            if (this.FontInfo == null && ESCFontManager.instance != null)
+            {
+                this.FontInfo = ESCFontManager.instance.FontInfo;
+            }
         }
 
         public void ClearImages()
@@ -318,6 +328,9 @@ namespace EnhancedStreamChat.Graphics
                             character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
                         }
 
+                        // 确保 FontInfo 已初始化
+                        EnsureFontInfo();
+                        
                         if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) || imageInfo is null)
                         {
                             continue;

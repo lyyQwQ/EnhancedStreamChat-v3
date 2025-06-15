@@ -190,14 +190,16 @@ namespace EnhancedStreamChat.Core.Services
                 }
                 
                 // 如果是动画，返回第一帧
-                // TODO: 需要查看 AnimationControllerData 的正确属性
-                // 暂时返回 null
-                // if (imageInfo.AnimControllerData != null && 
-                //     imageInfo.AnimControllerData.Textures != null && 
-                //     imageInfo.AnimControllerData.Textures.Length > 0)
-                // {
-                //     return imageInfo.AnimControllerData.Textures[0];
-                // }
+                if (imageInfo.AnimControllerData != null && 
+                    imageInfo.AnimControllerData.Sprites != null && 
+                    imageInfo.AnimControllerData.Sprites.Length > 0)
+                {
+                    var firstSprite = imageInfo.AnimControllerData.Sprites[0];
+                    if (firstSprite != null && firstSprite.texture != null)
+                    {
+                        return firstSprite.texture;
+                    }
+                }
             }
             
             return null;

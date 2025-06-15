@@ -92,7 +92,7 @@ namespace EnhancedStreamChat.Core.Models
             {
                 foreach (var emote in coreMessage.Emotes)
                 {
-                    message.Emotes.Add(new ChatEmote
+                    var chatEmote = new ChatEmote
                     {
                         Id = emote.Id,
                         Name = emote.Name,
@@ -100,7 +100,23 @@ namespace EnhancedStreamChat.Core.Models
                         IsAnimated = emote.IsAnimated,
                         StartIndex = emote.StartIndex,
                         EndIndex = emote.EndIndex
-                    });
+                    };
+                    
+                    // 推断表情类型
+                    if (emote.IsAnimated || 
+                        (!string.IsNullOrEmpty(emote.Uri) && 
+                         (emote.Uri.ToLower().Contains(".gif") || 
+                          emote.Uri.ToLower().Contains("animated") ||
+                          emote.Uri.ToLower().Contains("_frame"))))
+                    {
+                        chatEmote.EmoteType = ChatEmoteType.SpriteSheet;
+                    }
+                    else
+                    {
+                        chatEmote.EmoteType = ChatEmoteType.SingleImage;
+                    }
+                    
+                    message.Emotes.Add(chatEmote);
                 }
             }
             

@@ -4,6 +4,7 @@ using ChatCore.Interfaces;
 using ChatCore.Models;
 using EnhancedStreamChat.Core.Interfaces;
 using EnhancedStreamChat.Core.Models;
+using EnhancedStreamChat.Adapters;
 using Zenject;
 
 namespace EnhancedStreamChat.Chat.Adapters
@@ -15,15 +16,18 @@ namespace EnhancedStreamChat.Chat.Adapters
     {
         private ChatConfig _chatConfig => ChatConfig.instance;
         private readonly IMessageParser _messageParser;
+        private readonly ChatDisplayAdapter _chatDisplayAdapter;
         
         // Legacy ChatManager instance
         private ChatManager _legacyChatManager;
         
         [Inject]
         public ChatManagerAdapter(
-            IMessageParser messageParser)
+            IMessageParser messageParser,
+            ChatDisplayAdapter chatDisplayAdapter)
         {
             _messageParser = messageParser;
+            _chatDisplayAdapter = chatDisplayAdapter;
         }
         
         public void Initialize()
@@ -70,8 +74,23 @@ namespace EnhancedStreamChat.Chat.Adapters
                 // 使用新的消息解析器（同步方法）
                 var parsedMessage = _messageParser.Parse(chatMessage.Message, chatMessage.Sender);
                 
-                // TODO: 将解析后的消息传递给渲染器
-                // 这将在 ChatDisplayAdapter 中处理
+                // 注意：PreRenderMessage 方法仅供测试使用，可能会导致图形设备错误
+                // 实际的消息渲染仍由 ChatDisplay 通过传统路径处理
+                // 暂时注释掉以避免崩溃
+                /*
+                if (_chatDisplayAdapter != null)
+                {
+                    await _chatDisplayAdapter.PreRenderMessage(service, message, parsedMessage);
+                    Logger.Debug($"Message {message.Id} passed to ChatDisplayAdapter for rendering");
+                }
+                else
+                {
+                    Logger.Warn("ChatDisplayAdapter is null, cannot render message");
+                }
+                */
+                
+                // TODO: 当 ChatDisplay 完全迁移到 Zenject 后，实现正确的消息传递机制
+                // 目前 ChatDisplay 仍通过 ChatManager 的事件接收消息
             }
             catch (Exception ex)
             {
