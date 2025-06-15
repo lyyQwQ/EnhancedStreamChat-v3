@@ -18,11 +18,12 @@ namespace EnhancedStreamChat.Chat
     {
         internal ChatCoreInstance _chatCoreInstance;
         internal ChatServiceMultiplexer _chatServiceMultiplexer;
-        private ChatDisplay _chatDisplay;
+        internal ChatDisplay _chatDisplay;
 
         #region // Unity message
         private void Awake()
         {
+            Logger.Info("[ChatManager] Initializing ChatCore instance...");
             this._chatCoreInstance = ChatCoreInstance.Create();
 #if DEBUG
             this._chatCoreInstance.OnLogReceived += this._sc_OnLogReceived;
@@ -37,6 +38,7 @@ namespace EnhancedStreamChat.Chat
             // ChatImageProvider.TouchInstance(); // 已迁移到 Zenject，不再需要 TouchInstance
             _ = this.HandleOverflowMessageQueue();
             BSEvents.lateMenuSceneLoadedFresh += this.BSEvents_menuSceneLoadedFresh;
+            Logger.Info("[ChatManager] ChatCore initialization completed");
         }
 
 
@@ -108,6 +110,21 @@ namespace EnhancedStreamChat.Chat
         }
 
         private ConcurrentQueue<Action> ActionQueue { get; } = new ConcurrentQueue<Action>();
+        
+        /// <summary>
+        /// 为 ChatManagerService 提供的公开队列处理方法
+        /// </summary>
+        public void QueueOrSendMessage(Action action)
+        {
+            if (this._chatDisplay == null)
+            {
+                this.ActionQueue.Enqueue(action);
+            }
+            else
+            {
+                action?.Invoke();
+            }
+        }
         //private readonly SemaphoreSlim _msgLock = new SemaphoreSlim(1, 1);
         private async Task HandleOverflowMessageQueue()
         {
@@ -172,10 +189,18 @@ namespace EnhancedStreamChat.Chat
         private void OnChannelResourceDataCached(IChatService svc, IChatChannel channel, Dictionary<string, IChatResourceData> resources) => this._chatDisplay.OnChannelResourceDataCached(channel, resources);
 
         private void QueueOrSendOnTextMessageReceived(IChatService svc, IChatMessage msg) => this.QueueOrSendMessage(svc, msg, this.OnTextMesssageReceived);
-        private void OnTextMesssageReceived(IChatService svc, IChatMessage msg) => this._chatDisplay.OnTextMessageReceived(msg);
+        private void OnTextMesssageReceived(IChatService svc, IChatMessage msg)
+        {
+            Logger.Debug($"[ChatManager] Processing message from {svc.DisplayName}: {msg.Sender.UserName}");
+            this._chatDisplay.OnTextMessageReceived(msg);
+        }
 
         private void QueueOrSendOnJoinChannel(IChatService svc, IChatChannel channel) => this.QueueOrSendMessage(svc, channel, this.OnJoinChannel);
-        private void OnJoinChannel(IChatService svc, IChatChannel channel) => this._chatDisplay.OnJoinChannel(svc, channel);
+        private void OnJoinChannel(IChatService svc, IChatChannel channel)
+        {
+            Logger.Debug($"[ChatManager] Joined channel: {channel.Id} on {svc.DisplayName}");
+            this._chatDisplay.OnJoinChannel(svc, channel);
+        }
 
         private void QueueOrSendOnClearMessage(IChatService svc, string messageId) => this.QueueOrSendMessage(svc, messageId, this.OnClearMessage);
         private void OnClearMessage(IChatService svc, string messageId) => this._chatDisplay.OnMessageCleared(messageId);

@@ -56,6 +56,12 @@ namespace EnhancedStreamChat.Installers
                 .To<FontProvider>()
                 .AsSingle();
             Logger.Log.Info("[ESCInstaller] Bound IFontProvider to FontProvider");
+            
+            // Bind ChatManagerService
+            Container.BindInterfacesAndSelfTo<ChatManagerService>()
+                .AsSingle()
+                .NonLazy();
+            Logger.Log.Info("[ESCInstaller] Bound IChatManager to ChatManagerService");
 
             // Bind ESCFontManager as a Zenject service
             Container.BindInterfacesAndSelfTo<ESCFontManager>()
