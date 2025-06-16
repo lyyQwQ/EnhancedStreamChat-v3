@@ -79,6 +79,9 @@ namespace EnhancedStreamChat.Chat
                 yield break;
             }
             
+            // 处理特殊的URL路径（参考v3版本）
+            uri = uri.Replace(@"static/dark/3.0", @"default/dark/3.0");
+            
             // 将 HTTP URL 转换为 HTTPS 以避免 Unity 的安全限制
             if (uri.StartsWith("http://") && !uri.StartsWith("http://localhost") && !uri.StartsWith("http://127.0.0.1")) {
                 uri = uri.Replace("http://", "https://");

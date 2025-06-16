@@ -21,8 +21,8 @@ namespace EnhancedStreamChat.Graphics
             new ObjectMemoryComponentPool<EnhancedImage>(64,
                 constructor: () =>
                 {
-                    var img = new GameObject().AddComponent<EnhancedImage>();
-                    DontDestroyOnLoad(img.gameObject);
+                    var img = new GameObject("EnhancedImage").AddComponent<EnhancedImage>();
+                    // 不在这里调用DontDestroyOnLoad，避免在错误的时机访问Unity资源
                     img.gameObject.SetActive(false);
                     img.raycastTarget = false;
                     img.color = Color.white;
@@ -38,10 +38,14 @@ namespace EnhancedStreamChat.Graphics
                 {
                     try
                     {
-                        img.gameObject.SetActive(false);
-                        img.animStateUpdater.ControllerData = null;
-                        img.rectTransform.SetParent(null);
-                        img.sprite = null;
+                        // 确保在主线程释放资源
+                        if (img != null && img.gameObject != null)
+                        {
+                            img.gameObject.SetActive(false);
+                            img.animStateUpdater.ControllerData = null;
+                            img.rectTransform.SetParent(null);
+                            img.sprite = null;
+                        }
                     }
                     catch (Exception ex)
                     {
