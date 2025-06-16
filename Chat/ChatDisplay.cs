@@ -838,6 +838,8 @@ namespace EnhancedStreamChat.Chat
             }
         });
 
+        // TODO: 移除 _lastMessage - 新的消息处理逻辑不再需要跟踪最后一条消息
+        // 保留此字段仅为了向后兼容的 CreateMessage 方法
         private EnhancedTextMeshProUGUIWithBackground _lastMessage;
 
         // public void OnTextMessageReceived(IChatMessage msg) => _ = this.OnTextMessageReceived(msg, DateTime.Now);
@@ -852,8 +854,12 @@ namespace EnhancedStreamChat.Chat
         {
             Logger.Debug(
                 $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
-            var parsedMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo);
-            // Logger.Debug($"Build message end: {parsedMessage}");
+            
+            // 分别构建主消息和子消息（参考v3的实现）
+            var mainMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Main);
+            var subMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Sub);
+            
+            // Logger.Debug($"Build message end - main: {mainMessage}, sub: {subMessage}");
             if (_textPoolContainer == null)
             {
                 Logger.Warn("_textPoolContainer is null, waiting for it to be initialized.");
@@ -864,13 +870,59 @@ namespace EnhancedStreamChat.Chat
                 await Task.Delay(100);
             }
 
-            // Logger.Debug($"Create message coroutine: {parsedMessage}");
-            // 确保在主线程上创建消息（参考v3的实现）
-            MainThreadInvoker.Invoke(() => this.CreateMessage(msg, dateTime, parsedMessage));
-            // Logger.Debug($"Create message coroutine end: {parsedMessage}");
+            // Logger.Debug($"Create message coroutine: main={mainMessage}, sub={subMessage}");
+            // 在主线程上创建消息，使用 await 确保消息按顺序创建
+            await MainThreadInvoker.InvokeAsync(() => this.CreateMessage(msg, dateTime, mainMessage, subMessage));
+            // Logger.Debug($"Create message coroutine end");
         }
 
 
+        /// <summary>
+        /// 创建消息（支持主消息和子消息）
+        /// </summary>
+        private void CreateMessage(IChatMessage msg, DateTime date, string mainMessage, string subMessage)
+        {
+            Logger.Debug($"[CreateMessage] Start - Main: {mainMessage}, Sub: {subMessage}, Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+            
+            var newMsg = _textPoolContainer.Spawn();
+            newMsg.transform.SetParent(this._chatContainer.transform, false);
+            newMsg.gameObject.SetActive(true);
+            
+            Logger.Debug($"[CreateMessage] Setting font - Main font: {ESCFontManager.instance.MainFont?.name}");
+            newMsg.Text.font = ESCFontManager.instance.MainFont;
+            newMsg.Text.ChatMessage = msg;
+            newMsg.Text.text = mainMessage;
+            
+            // 直接设置子消息，不依赖 _lastMessage
+            if (!string.IsNullOrEmpty(subMessage))
+            {
+                newMsg.SubText.text = subMessage;
+                newMsg.SubText.ChatMessage = msg;
+                newMsg.SubTextEnabled = true;
+            }
+            else
+            {
+                newMsg.SubTextEnabled = false;
+            }
+            
+            newMsg.ReceivedDate = date;
+            
+            // 输出textinfo信息以调试
+            Logger.Debug($"[CreateMessage] Before AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
+            Logger.Debug($"[CreateMessage] Text content: {newMsg.Text.text}");
+            
+            // 添加消息到显示列表
+            this.AddMessage(newMsg);
+            
+            // 再次检查characterCount
+            Logger.Debug($"[CreateMessage] After AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
+            
+            Logger.Debug($"[CreateMessage] Message creation completed");
+        }
+        
+        /// <summary>
+        /// 创建消息（向后兼容的方法）
+        /// </summary>
         private void CreateMessage(IChatMessage msg, DateTime date, string parsedMessage)
         {
             Logger.Debug($"[CreateMessage] Start - Message: {parsedMessage}, Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
