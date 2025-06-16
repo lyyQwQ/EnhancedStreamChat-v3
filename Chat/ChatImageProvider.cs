@@ -78,6 +78,12 @@ namespace EnhancedStreamChat.Chat
                 Finally?.Invoke(null);
                 yield break;
             }
+            
+            // 将 HTTP URL 转换为 HTTPS 以避免 Unity 的安全限制
+            if (uri.StartsWith("http://") && !uri.StartsWith("http://localhost") && !uri.StartsWith("http://127.0.0.1")) {
+                uri = uri.Replace("http://", "https://");
+                Logger.Debug($"Converted HTTP to HTTPS: {uri}");
+            }
 
             if (!isRetry && this._activeDownloads.TryGetValue(uri, out var activeDownload)) {
                 Logger.Info($"Request already active for {uri}");
