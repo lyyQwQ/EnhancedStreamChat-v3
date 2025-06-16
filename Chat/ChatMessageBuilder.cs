@@ -34,12 +34,15 @@ namespace EnhancedStreamChat.Chat
         /// <param name="font">The font to register these images to</param>
         public static bool PrepareImages(IChatMessage msg, EnhancedFontInfo font)
         {
-            return false;
+            // 暂时启用表情准备功能进行测试
+            // return false;
             Logger.Debug($"Preparing images for message: {msg.Message}");
+            Logger.Debug($"Message has {msg.Emotes.Length} emotes");
             var tasks = new List<Task<EnhancedImageInfo>>();
             var pendingEmoteDownloads = new HashSet<string>();
 
             foreach (var emote in msg.Emotes) {
+                Logger.Debug($"Processing emote: {emote.Name}, ID: {emote.Id}, URL: {emote.Uri}");
                 if (string.IsNullOrEmpty(emote.Id) || pendingEmoteDownloads.Contains(emote.Id)) {
                     Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
                     continue;
@@ -173,7 +176,8 @@ namespace EnhancedStreamChat.Chat
 
                         try {
                             if (msg is BilibiliChatMessage) {
-                                // bilibili表情暂时不支持
+                                // 支持 Bilibili 表情
+                                sb.Replace(emote.Name, char.ConvertFromUtf32((int)character));
                             }
                             else if (emote is TwitchEmote)
                             {
@@ -294,11 +298,11 @@ namespace EnhancedStreamChat.Chat
             try {
                 // Logger.Debug($"Building message: {msg.Message}");
 
-                // if (!PrepareImages(msg, font)) {
-                //     Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
-                //     //return msg.Message;
-                // }
-                // Logger.Debug($"Images prepared for message: {msg.Message}");
+                if (!PrepareImages(msg, font)) {
+                    Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
+                    //return msg.Message;
+                }
+                Logger.Debug($"Images prepared for message: {msg.Message}");
 
                 // var badges = ImageStackPool.Alloc();
                 // try {
@@ -349,15 +353,15 @@ namespace EnhancedStreamChat.Chat
                              //Replace emotes by index, in reverse order (msg.Emotes is sorted by emote.StartIndex in descending order)
                             if (msg is BilibiliChatMessage)
                             {
-                                // Logger.Debug("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
-                                // todo 图片还有问题，暂时注释掉
-                                // sb.Replace(emote.Name, emote switch
-                                // {
-                                //     BilibiliChatEmote b when true => char.ConvertFromUtf32((int)character),
-                                //     _ => char.ConvertFromUtf32((int)character)
-                                // },
-                                // emote.StartIndex, emote.EndIndex - emote.StartIndex);
-                                // Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
+                                Logger.Debug("Emote: ID: " + emote.Id + " NAME: " + emote.Name + " URL: " + emote.Uri);
+                                // 恢复 Bilibili 表情替换功能
+                                sb.Replace(emote.Name, emote switch
+                                {
+                                    BilibiliChatEmote b when true => char.ConvertFromUtf32((int)character),
+                                    _ => char.ConvertFromUtf32((int)character)
+                                },
+                                emote.StartIndex, emote.EndIndex - emote.StartIndex);
+                                Logger.Debug("Replace " + emote.Name.ToString() + " ==> " + sb.ToString());
                                 // 尝试在font的characterLookupTable中找到对应的character 输出找没找到
                                 // if (ESCFontManager.instance.MainFont.characterLookupTable.TryGetValue(character, out var tmpCharacter))
                                 // {

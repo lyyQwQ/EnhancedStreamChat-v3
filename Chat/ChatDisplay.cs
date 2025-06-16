@@ -855,6 +855,12 @@ namespace EnhancedStreamChat.Chat
             Logger.Debug(
                 $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
             
+            // 在构建消息之前先准备图片资源（包括表情和徽章）
+            if (!ChatMessageBuilder.PrepareImages(msg, ESCFontManager.instance.FontInfo))
+            {
+                Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
+            }
+            
             // 分别构建主消息和子消息（参考v3的实现）
             var mainMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Main);
             var subMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Sub);
