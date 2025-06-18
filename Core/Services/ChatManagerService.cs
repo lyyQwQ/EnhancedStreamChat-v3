@@ -177,13 +177,13 @@ namespace EnhancedStreamChat.Core.Services
         
         private void BridgeOnTextMessageReceived(IChatService svc, IChatMessage msg)
         {
-            Logger.Debug($"[ChatManagerService] Bridging text message from {svc.DisplayName}: {msg.Sender.UserName}");
+            // Logger.Debug($"[ChatManagerService] Bridging text message from {svc.DisplayName}: {msg.Sender.UserName}");
             OnTextMessageReceived?.Invoke(svc, msg);
         }
         
         private void BridgeOnMessageCleared(IChatService svc, string messageId)
         {
-            Logger.Debug($"[ChatManagerService] Bridging message cleared: {messageId}");
+            // Logger.Debug($"[ChatManagerService] Bridging message cleared: {messageId}");
             OnMessageCleared?.Invoke(svc, messageId);
         }
         

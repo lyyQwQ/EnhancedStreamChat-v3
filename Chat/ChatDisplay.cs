@@ -532,21 +532,21 @@ namespace EnhancedStreamChat.Chat
 
         private void UpdateChatUI()
         {
-            Logger.Debug("UpdateChatUI");
+            // Logger.Debug("UpdateChatUI");
             this.ChatWidth = this._chatConfig.ChatWidth;
             this.ChatHeight = this._chatConfig.ChatHeight;
             this.FontSize = this._chatConfig.FontSize;
-            Logger.Debug($"ChatWidth: {this.ChatWidth}, ChatHeight: {this.ChatHeight}, FontSize: {this.FontSize}");
+            // Logger.Debug($"ChatWidth: {this.ChatWidth}, ChatHeight: {this.ChatHeight}, FontSize: {this.FontSize}");
             this.AccentColor = this._chatConfig.AccentColor;
             this.HighlightColor = this._chatConfig.HighlightColor;
             this.BackgroundColor = this._chatConfig.BackgroundColor;
-            Logger.Debug(
-                $"AccentColor: {this.AccentColor}, HighlightColor: {this.HighlightColor}, BackgroundColor: {this.BackgroundColor}");
+            // Logger.Debug(
+            //     $"AccentColor: {this.AccentColor}, HighlightColor: {this.HighlightColor}, BackgroundColor: {this.BackgroundColor}");
             this.PingColor = this._chatConfig.PingColor;
             this.TextColor = this._chatConfig.TextColor;
             this.ReverseChatOrder = this._chatConfig.ReverseChatOrder;
-            Logger.Debug(
-                $"PingColor: {this.PingColor}, TextColor: {this.TextColor}, ReverseChatOrder: {this.ReverseChatOrder}");
+            // Logger.Debug(
+            //     $"PingColor: {this.PingColor}, TextColor: {this.TextColor}, ReverseChatOrder: {this.ReverseChatOrder}");
             if (this._isInGame)
             {
                 this.ChatPosition = this._chatConfig.Song_ChatPosition;
@@ -560,12 +560,12 @@ namespace EnhancedStreamChat.Chat
                 this.gameObject.layer = this._chatConfig.Menu_ChatLayer;
             }
 
-            Logger.Debug(
-                $"ChatPosition: {this.ChatPosition}, ChatRotation: {this.ChatRotation}, gameObject.layer: {this.gameObject.layer}");
+            // Logger.Debug(
+            //     $"ChatPosition: {this.ChatPosition}, ChatRotation: {this.ChatRotation}, gameObject.layer: {this.gameObject.layer}");
             var chatContainerTransform = this._chatContainer.GetComponent<RectMask2D>().rectTransform!;
-            Logger.Debug($"chatContainerTransform: {chatContainerTransform}");
+            // Logger.Debug($"chatContainerTransform: {chatContainerTransform}");
             chatContainerTransform.sizeDelta = new Vector2(this.ChatWidth, this.ChatHeight);
-            Logger.Debug($"chatContainerTransform.sizeDelta: {chatContainerTransform.sizeDelta}");
+            // Logger.Debug($"chatContainerTransform.sizeDelta: {chatContainerTransform.sizeDelta}");
 
             var handleField = typeof(FloatingScreen).GetField("handle", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -573,13 +573,13 @@ namespace EnhancedStreamChat.Chat
             handle.transform.localScale = new Vector3(this.ChatWidth, this.ChatHeight * 0.9f, 0.01f);
             handle.transform.localPosition = Vector3.zero;
             handle.transform.localRotation = Quaternion.identity;
-            Logger.Debug(
-                $"handle.transform.localScale: {handle.transform.localScale}, handle.transform.localPosition: {handle.transform.localPosition}");
+            // Logger.Debug(
+            //     $"handle.transform.localScale: {handle.transform.localScale}, handle.transform.localPosition: {handle.transform.localPosition}");
 
             this.AllowMovement = this._chatConfig.AllowMovement;
-            Logger.Debug($"AllowMovement: {this.AllowMovement}");
+            // Logger.Debug($"AllowMovement: {this.AllowMovement}");
             this.UpdateMessages();
-            Logger.Debug("UpdateChatUI complete");
+            // Logger.Debug("UpdateChatUI complete");
         }
 
         private void UpdateMessages()
@@ -643,7 +643,7 @@ namespace EnhancedStreamChat.Chat
 
             if (msg.Text.ChatMessage is BilibiliChatMessage)
             {
-                Logger.Debug($"[UpdateMessage] is BilibiliChatMessage");
+                // Logger.Debug($"[UpdateMessage] is BilibiliChatMessage");
             }
             
             // 强制刷新文本信息
@@ -658,7 +658,7 @@ namespace EnhancedStreamChat.Chat
             
             if (msg.Text != null && msg.Text.textInfo != null)
             {
-                Logger.Debug($"[UpdateMessage] After update - characterCount: {msg.Text.textInfo.characterCount}, text: {msg.Text.text}");
+                // Logger.Debug($"[UpdateMessage] After update - characterCount: {msg.Text.textInfo.characterCount}, text: {msg.Text.text}");
             }
 
             // Logger.Debug("UpdateMessage complete");
@@ -852,8 +852,8 @@ namespace EnhancedStreamChat.Chat
 
         public async Task OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
         {
-            Logger.Debug(
-                $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
+            // Logger.Debug(
+            //     $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
             
             // 在构建消息之前先准备图片资源（包括表情和徽章）
             if (!ChatMessageBuilder.PrepareImages(msg, ESCFontManager.instance.FontInfo))
@@ -888,13 +888,13 @@ namespace EnhancedStreamChat.Chat
         /// </summary>
         private void CreateMessage(IChatMessage msg, DateTime date, string mainMessage, string subMessage)
         {
-            Logger.Debug($"[CreateMessage] Start - Main: {mainMessage}, Sub: {subMessage}, Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+            // Logger.Debug($"[CreateMessage] Start - Main: {mainMessage}, Sub: {subMessage}, Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
             
             var newMsg = _textPoolContainer.Spawn();
             newMsg.transform.SetParent(this._chatContainer.transform, false);
             newMsg.gameObject.SetActive(true);
             
-            Logger.Debug($"[CreateMessage] Setting font - Main font: {ESCFontManager.instance.MainFont?.name}");
+            // Logger.Debug($"[CreateMessage] Setting font - Main font: {ESCFontManager.instance.MainFont?.name}");
             newMsg.Text.font = ESCFontManager.instance.MainFont;
             newMsg.Text.ChatMessage = msg;
             newMsg.Text.text = mainMessage;
@@ -914,16 +914,16 @@ namespace EnhancedStreamChat.Chat
             newMsg.ReceivedDate = date;
             
             // 输出textinfo信息以调试
-            Logger.Debug($"[CreateMessage] Before AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
-            Logger.Debug($"[CreateMessage] Text content: {newMsg.Text.text}");
+            // Logger.Debug($"[CreateMessage] Before AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
+            // Logger.Debug($"[CreateMessage] Text content: {newMsg.Text.text}");
             
             // 添加消息到显示列表
             this.AddMessage(newMsg);
             
             // 再次检查characterCount
-            Logger.Debug($"[CreateMessage] After AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
+            // Logger.Debug($"[CreateMessage] After AddMessage - TextInfo characterCount: {newMsg.Text.textInfo?.characterCount ?? -1}");
             
-            Logger.Debug($"[CreateMessage] Message creation completed");
+            // Logger.Debug($"[CreateMessage] Message creation completed");
         }
         
         /// <summary>
@@ -949,7 +949,7 @@ namespace EnhancedStreamChat.Chat
                 newMsg.transform.SetParent(this._chatContainer.transform, false);
                 newMsg.gameObject.SetActive(true);
                 
-                Logger.Debug($"[CreateMessage] Setting font - Main font: {ESCFontManager.instance.MainFont?.name}");
+                // Logger.Debug($"[CreateMessage] Setting font - Main font: {ESCFontManager.instance.MainFont?.name}");
                 newMsg.Text.font = ESCFontManager.instance.MainFont;
                 newMsg.Text.ChatMessage = msg;
                 newMsg.Text.text = parsedMessage;

@@ -36,13 +36,13 @@ namespace EnhancedStreamChat.Chat
         {
             // 暂时启用表情准备功能进行测试
             // return false;
-            Logger.Debug($"Preparing images for message: {msg.Message}");
-            Logger.Debug($"Message has {msg.Emotes.Length} emotes");
+            // Logger.Debug($"Preparing images for message: {msg.Message}");
+            // Logger.Debug($"Message has {msg.Emotes.Length} emotes");
             var tasks = new List<Task<EnhancedImageInfo>>();
             var pendingEmoteDownloads = new HashSet<string>();
 
             foreach (var emote in msg.Emotes) {
-                Logger.Debug($"Processing emote: {emote.Name}, ID: {emote.Id}, URL: {emote.Uri}");
+                // Logger.Debug($"Processing emote: {emote.Name}, ID: {emote.Id}, URL: {emote.Uri}");
                 if (string.IsNullOrEmpty(emote.Id) || pendingEmoteDownloads.Contains(emote.Id)) {
                     Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
                     continue;
@@ -53,7 +53,7 @@ namespace EnhancedStreamChat.Chat
                     var tcs = new TaskCompletionSource<EnhancedImageInfo>();
                     switch (emote.Type) {
                         case EmoteType.SingleImage:
-                            Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri + " IsAnimated: " + emote.IsAnimated);
+                            // Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | Emote: ID: " + emote.Id + " Uri: " + emote.Uri + " IsAnimated: " + emote.IsAnimated);
                             var IsAnimated = emote.IsAnimated;
                             switch (Path.GetExtension(emote.Uri)) {
                                 case ".jpg":
@@ -66,30 +66,30 @@ namespace EnhancedStreamChat.Chat
                                     break;
                             }
                             // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
-                            Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | start cache image Emote: ID:" + emote.Id + " Uri: " + emote.Uri);
+                            // Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SingleImage] | start cache image Emote: ID:" + emote.Id + " Uri: " + emote.Uri);
                             SharedCoroutineStarter.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(emote.Id, emote.Uri, IsAnimated, (info) =>
                             {
-                                Logger.Debug($"try cache image Emote: ID: {emote.Id}, Uri: {emote.Uri}, IsAnimated: {IsAnimated}, info: {info}");
+                                // Logger.Debug($"try cache image Emote: ID: {emote.Id}, Uri: {emote.Uri}, IsAnimated: {IsAnimated}, info: {info}");
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
                                         Logger.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
                                     }
-                                    Logger.Debug($"register emote \"{emote.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
+                                    // Logger.Debug($"register emote \"{emote.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                                 }
                                 tcs.SetResult(info);
                             }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));
                             break;
                         case EmoteType.SpriteSheet:
-                            Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | start cache SpriteSheet Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
+                            // Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | start cache SpriteSheet Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
                             // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
                             SharedCoroutineStarter.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSpriteSheetImage(emote.Id, emote.Uri, emote.UVs, (info) =>
                             {
-                                Logger.Debug($"try cache SpriteSheet Emote: ID: {emote.Id}, Uri: {emote.Uri}, UVs: {emote.UVs}");
+                                // Logger.Debug($"try cache SpriteSheet Emote: ID: {emote.Id}, Uri: {emote.Uri}, UVs: {emote.UVs}");
                                 if (info != null) {
                                     if (!font.TryRegisterImageInfo(info, out var character)) {
                                         Logger.Warn($"Failed to register emote \"{emote.Id}\" in font {font.Font.name}.");
                                     }
-                                    Logger.Debug($"register emote \"{emote.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
+                                    // Logger.Debug($"register emote \"{emote.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                                 }
                                 tcs.SetResult(info);
                             }, forcedHeight: 110));
@@ -112,18 +112,18 @@ namespace EnhancedStreamChat.Chat
 
                 Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
                 if (!font.CharacterLookupTable.ContainsKey(badge.Id)) {
-                    Logger.Debug($"characterLookupTable not contains badge {badge.Id}, characterLookupTable: {font.CharacterLookupTable}");
+                    // Logger.Debug($"characterLookupTable not contains badge {badge.Id}, characterLookupTable: {font.CharacterLookupTable}");
                     pendingEmoteDownloads.Add(badge.Id);
                     var tcs = new TaskCompletionSource<EnhancedImageInfo>();
                     // SharedCoroutineStarter.instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
                     SharedCoroutineStarter.Instance.StartCoroutine(ChatImageProvider.instance.TryCacheSingleImage(badge.Id, badge.Uri, false, (info) =>
                     {
-                        Logger.Debug($"try cache image Badge: ID: {badge.Id}, Uri: {badge.Uri}, info: {info}");
+                        // Logger.Debug($"try cache image Badge: ID: {badge.Id}, Uri: {badge.Uri}, info: {info}");
                         if (info != null) {
                             if (!font.TryRegisterImageInfo(info, out var character)) {
                                 Logger.Warn($"Failed to register badge \"{badge.Id}\" in font {font.Font.name}.");
                             }
-                            Logger.Debug($"register badge \"{badge.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
+                            // Logger.Debug($"register badge \"{badge.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                         }
                         tcs.SetResult(info);
                     }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));

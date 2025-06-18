@@ -57,21 +57,21 @@ namespace EnhancedStreamChat.Graphics
         {
             Logger.Info($"Registering image info for {imageInfo.ImageId}, sprite: {imageInfo.Sprite}, width: {imageInfo.Width*0.7}, height: {imageInfo.Height}");
             if (!this.CharacterLookupTable.ContainsKey(imageInfo.ImageId)) {
-                Logger.Debug("Character not found, registering...");
+                // Logger.Debug("Character not found, registering...");
                 uint next;
                 do {
                     next = this.GetNextReplaceChar();
-                    Logger.Debug($"Trying character {next:X}");
+                    // Logger.Debug($"Trying character {next:X}");
                 }
                 while (this.Font.characterLookupTable.ContainsKey(next));
-                Logger.Debug($"Character {next:X} is available, registering...");
+                // Logger.Debug($"Character {next:X} is available, registering...");
                 // 修复 TMP_Character 构造函数调用 - v3 版本需要传入 font 参数
                 this.Font.characterLookupTable.Add(next, new TMP_Character(next, this.Font, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width*0.7f), new GlyphRect(0, 0, 0, 0))));
                 this.CharacterLookupTable.TryAdd(imageInfo.ImageId, next);
                 this.ImageInfoLookupTable.TryAdd(next, imageInfo);
-                Logger.Debug($"Registered image info for {imageInfo.ImageId} at character {next:X}, font name: {this.Font.name}");
+                // Logger.Debug($"Registered image info for {imageInfo.ImageId} at character {next:X}, font name: {this.Font.name}");
                 replaceCharacter = next;
-                Logger.Debug($"Returning character {replaceCharacter:X}");
+                // Logger.Debug($"Returning character {replaceCharacter:X}");
                 return true;
             }
             replaceCharacter = 0;

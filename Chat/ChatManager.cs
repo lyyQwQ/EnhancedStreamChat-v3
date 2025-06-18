@@ -200,7 +200,7 @@ namespace EnhancedStreamChat.Chat
         private void QueueOrSendOnTextMessageReceived(IChatService svc, IChatMessage msg) => this.QueueOrSendMessage(svc, msg, this.OnTextMesssageReceived);
         private void OnTextMesssageReceived(IChatService svc, IChatMessage msg)
         {
-            Logger.Debug($"[ChatManager] Processing message from {svc.DisplayName}: {msg.Sender.UserName}");
+            // Logger.Debug($"[ChatManager] Processing message from {svc.DisplayName}: {msg.Sender.UserName}");
             this._chatDisplay.OnTextMessageReceived(msg);
         }
 
