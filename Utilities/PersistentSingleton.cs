@@ -78,5 +78,15 @@ namespace EnhancedStreamChat.Utilities
         {
             _applicationIsQuitting = true;
         }
+        
+        /// <summary>
+        /// 重置单例状态，用于软重启支持
+        /// </summary>
+        public static void ResetSingleton()
+        {
+            _applicationIsQuitting = false;
+            _instance = null;
+            Logger.Log.Debug($"[PersistentSingleton<{typeof(T).Name}>] Singleton state reset");
+        }
     }
 }

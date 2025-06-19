@@ -14,6 +14,27 @@ namespace EnhancedStreamChat.Utilities
             s_cancellationToken.Cancel();
             s_cancellationToken = new CancellationTokenSource();
         }
+        
+        /// <summary>
+        /// 完全重置 MainThreadInvoker 状态，用于软重启
+        /// </summary>
+        public static void Reset()
+        {
+            try
+            {
+                s_cancellationToken?.Cancel();
+                s_cancellationToken?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[MainThreadInvoker] Error during reset: {ex}");
+            }
+            finally
+            {
+                s_cancellationToken = new CancellationTokenSource();
+                Logger.Info("[MainThreadInvoker] State reset for soft restart");
+            }
+        }
 
         #region Void Methods (Fire-and-Forget) - 保持向后兼容
 

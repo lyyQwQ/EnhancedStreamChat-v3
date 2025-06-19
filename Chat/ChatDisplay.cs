@@ -38,11 +38,15 @@ namespace EnhancedStreamChat.Chat
         // 单例实例，用于向后兼容
         private static ChatDisplay _instance;
         public static ChatDisplay instance => _instance;
+        
+        // 软重启检测标志
+        private static bool _hasBeenInitialized = false;
 
         private readonly ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground> _messages =
             new ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground>();
 
-        private ChatConfig _chatConfig;
+        private IChatConfiguration _chatConfig;
+        private ChatConfig _chatConfigInstance; // 保留对 ChatConfig 实例的引用，用于设置界面
         private ESCFontManager _fontManager;
         private EnhancedTextMeshProUGUIWithBackground.Pool _textPool;
         private MemoryPoolContainer<EnhancedTextMeshProUGUIWithBackground> _textPoolContainer;
@@ -59,16 +63,39 @@ namespace EnhancedStreamChat.Chat
         [Inject]
         public void Construct(
             EnhancedTextMeshProUGUIWithBackground.Pool textPool,
-            ESCFontManager fontManager)
+            ESCFontManager fontManager,
+            IChatConfiguration chatConfig)
         {
             _textPool = textPool;
             _textPoolContainer = new MemoryPoolContainer<EnhancedTextMeshProUGUIWithBackground>(textPool);
             _fontManager = fontManager;
-            _chatConfig = ChatConfig.instance; // 使用单例，因为 ChatConfig 还未迁移
+            _chatConfig = chatConfig;
+            _chatConfigInstance = ChatConfig.instance; // 保留实例引用用于设置界面
         }
 
         private void Awake()
         {
+            // 检测软重启
+            if (_hasBeenInitialized)
+            {
+                Logger.Info("[ChatDisplay] Soft restart detected in Awake, clearing static states");
+                // 清空备份消息队列
+                ClearBackupMessageQueue();
+                // 重置 MainThreadInvoker
+                MainThreadInvoker.Reset();
+            }
+            _hasBeenInitialized = true;
+            
+            // 软重启时清理旧实例
+            if (_instance != null && _instance != this)
+            {
+                Logger.Warn("[ChatDisplay] Existing instance found during Awake, replacing it");
+                if (_instance.gameObject != null)
+                {
+                    Destroy(_instance.gameObject);
+                }
+            }
+            
             _instance = this; // 设置单例实例
             this._waitForEndOfFrame = new WaitForEndOfFrame();
             DontDestroyOnLoad(this.gameObject);
@@ -98,14 +125,28 @@ namespace EnhancedStreamChat.Chat
         
         private async Task InitializeInternalAsync(CancellationToken cancellationToken = default)
         {
-            // 等待字体管理器初始化（v3: while (!this._fontManager.IsInitialized)）
-            while (_fontManager != null && !_fontManager.IsInitialized && !cancellationToken.IsCancellationRequested)
+            try
             {
-                await Task.Yield();
-            }
-            
-            if (cancellationToken.IsCancellationRequested)
-                return;
+                // 等待字体管理器初始化，添加超时保护
+                var fontInitTimeout = TimeSpan.FromSeconds(10);
+                var fontInitStartTime = DateTime.UtcNow;
+                
+                while (_fontManager != null && !_fontManager.IsInitialized && !cancellationToken.IsCancellationRequested)
+                {
+                    if (DateTime.UtcNow - fontInitStartTime > fontInitTimeout)
+                    {
+                        Logger.Warn("[ChatDisplay] Font manager initialization timeout after 10 seconds, proceeding anyway");
+                        break;
+                    }
+                    
+                    await Task.Delay(100, cancellationToken);
+                }
+                
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Logger.Info("[ChatDisplay] Initialization cancelled");
+                    return;
+                }
             
             // 设置屏幕（v3: this.SetupScreens()）
             this.SetupScreens();
@@ -139,13 +180,67 @@ namespace EnhancedStreamChat.Chat
                 return;
             
             // 处理备份消息队列（v3: while (s_backupMessageQueue.TryDequeue(out var msg))）
-            while (_backupMessageQueue.TryDequeue(out var msg))
+            // 检查取消令牌并添加保护
+            if (!cancellationToken.IsCancellationRequested)
             {
-                await this.OnTextMessageReceived(msg.Value, msg.Key);
+                try
+                {
+                    var messagesToProcess = new List<KeyValuePair<DateTime, IChatMessage>>();
+                    while (_backupMessageQueue.TryDequeue(out var msg))
+                    {
+                        messagesToProcess.Add(msg);
+                    }
+                    
+                    Logger.Info($"[ChatDisplay] Processing {messagesToProcess.Count} backup messages");
+                    
+                    foreach (var msg in messagesToProcess)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            Logger.Info("[ChatDisplay] Cancellation requested during backup message processing");
+                            // 将未处理的消息放回队列
+                            _backupMessageQueue.Enqueue(msg);
+                            break;
+                        }
+                        
+                        try
+                        {
+                            await this.OnTextMessageReceived(msg.Value, msg.Key);
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            Logger.Info("[ChatDisplay] Task cancelled during message processing");
+                            _backupMessageQueue.Enqueue(msg);
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"[ChatDisplay] Error processing backup message: {ex.Message}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"[ChatDisplay] Error processing backup message queue: {ex}");
+                }
             }
             
-            _isInitialized = true;
-            Logger.Info("[ChatDisplay] Initialization completed");
+                _isInitialized = true;
+                Logger.Info("[ChatDisplay] Initialization completed");
+                
+                // 延迟处理初始化期间可能收到的消息
+                _ = Task.Run(async () => 
+                {
+                    await Task.Delay(100);
+                    await ProcessPendingBackupMessages();
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[ChatDisplay] Error during initialization: {ex}");
+                _isInitialized = false;
+                throw;
+            }
         }
         
         #region IChatDisplay 接口实现
@@ -205,6 +300,49 @@ namespace EnhancedStreamChat.Chat
         // TODO: eventually figure out a way to make this more modular incase we want to create multiple instances of ChatDisplay
         private static readonly ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>> _backupMessageQueue =
             new ConcurrentQueue<KeyValuePair<DateTime, IChatMessage>>();
+            
+        /// <summary>
+        /// 清空备份消息队列，用于软重启
+        /// </summary>
+        public static void ClearBackupMessageQueue()
+        {
+            while (_backupMessageQueue.TryDequeue(out _)) { }
+            Logger.Info("[ChatDisplay] Backup message queue cleared");
+        }
+        
+        /// <summary>
+        /// 处理初始化后的备份消息
+        /// </summary>
+        private async Task ProcessPendingBackupMessages()
+        {
+            if (!_isInitialized)
+            {
+                Logger.Warn("[ProcessPendingBackupMessages] ChatDisplay not initialized, skipping");
+                return;
+            }
+            
+            var messages = new List<KeyValuePair<DateTime, IChatMessage>>();
+            while (_backupMessageQueue.TryDequeue(out var msg))
+            {
+                messages.Add(msg);
+            }
+            
+            if (messages.Count > 0)
+            {
+                Logger.Info($"[ProcessPendingBackupMessages] Processing {messages.Count} pending messages");
+                foreach (var msg in messages)
+                {
+                    try
+                    {
+                        await this.OnTextMessageReceived(msg.Value, msg.Key);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"[ProcessPendingBackupMessages] Error processing message: {ex.Message}");
+                    }
+                }
+            }
+        }
 
         protected override void OnDestroy()
         {
@@ -445,7 +583,7 @@ namespace EnhancedStreamChat.Chat
             }
         }
 
-        private void Instance_OnConfigChanged(ChatConfig obj) => this.UpdateChatUI();
+        private void Instance_OnConfigChanged() => this.UpdateChatUI();
 
         private void OnHandleReleased(object sender, FloatingScreenHandleEventArgs e) =>
             this.FloatingScreenOnRelease(e.Position, e.Rotation);
@@ -454,16 +592,16 @@ namespace EnhancedStreamChat.Chat
         {
             if (this._isInGame)
             {
-                this._chatConfig.Song_ChatPosition = pos;
-                this._chatConfig.Song_ChatRotation = rot.eulerAngles;
+                this._chatConfigInstance.Song_ChatPosition = pos;
+                this._chatConfigInstance.Song_ChatRotation = rot.eulerAngles;
             }
             else
             {
-                this._chatConfig.Menu_ChatPosition = pos;
-                this._chatConfig.Menu_ChatRotation = rot.eulerAngles;
+                this._chatConfigInstance.Menu_ChatPosition = pos;
+                this._chatConfigInstance.Menu_ChatRotation = rot.eulerAngles;
             }
 
-            this._chatConfig.Save();
+            this._chatConfigInstance.Save();
         }
 
         private void BSEvents_gameSceneActive()
@@ -680,31 +818,31 @@ namespace EnhancedStreamChat.Chat
         private void UpdateChatUI()
         {
             // Logger.Debug("UpdateChatUI");
-            this.ChatWidth = this._chatConfig.ChatWidth;
-            this.ChatHeight = this._chatConfig.ChatHeight;
-            this.FontSize = this._chatConfig.FontSize;
+            this.ChatWidth = this._chatConfigInstance.ChatWidth;
+            this.ChatHeight = this._chatConfigInstance.ChatHeight;
+            this.FontSize = this._chatConfigInstance.FontSize;
             // Logger.Debug($"ChatWidth: {this.ChatWidth}, ChatHeight: {this.ChatHeight}, FontSize: {this.FontSize}");
-            this.AccentColor = this._chatConfig.AccentColor;
-            this.HighlightColor = this._chatConfig.HighlightColor;
-            this.BackgroundColor = this._chatConfig.BackgroundColor;
+            this.AccentColor = this._chatConfigInstance.AccentColor;
+            this.HighlightColor = this._chatConfigInstance.HighlightColor;
+            this.BackgroundColor = this._chatConfigInstance.BackgroundColor;
             // Logger.Debug(
             //     $"AccentColor: {this.AccentColor}, HighlightColor: {this.HighlightColor}, BackgroundColor: {this.BackgroundColor}");
-            this.PingColor = this._chatConfig.PingColor;
-            this.TextColor = this._chatConfig.TextColor;
-            this.ReverseChatOrder = this._chatConfig.ReverseChatOrder;
+            this.PingColor = this._chatConfigInstance.PingColor;
+            this.TextColor = this._chatConfigInstance.TextColor;
+            this.ReverseChatOrder = this._chatConfigInstance.ReverseChatOrder;
             // Logger.Debug(
             //     $"PingColor: {this.PingColor}, TextColor: {this.TextColor}, ReverseChatOrder: {this.ReverseChatOrder}");
             if (this._isInGame)
             {
-                this.ChatPosition = this._chatConfig.Song_ChatPosition;
-                this.ChatRotation = this._chatConfig.Song_ChatRotation;
-                this.gameObject.layer = this._chatConfig.Song_ChatLayer;
+                this.ChatPosition = this._chatConfigInstance.Song_ChatPosition;
+                this.ChatRotation = this._chatConfigInstance.Song_ChatRotation;
+                this.gameObject.layer = this._chatConfigInstance.Song_ChatLayer;
             }
             else
             {
-                this.ChatPosition = this._chatConfig.Menu_ChatPosition;
-                this.ChatRotation = this._chatConfig.Menu_ChatRotation;
-                this.gameObject.layer = this._chatConfig.Menu_ChatLayer;
+                this.ChatPosition = this._chatConfigInstance.Menu_ChatPosition;
+                this.ChatRotation = this._chatConfigInstance.Menu_ChatRotation;
+                this.gameObject.layer = this._chatConfigInstance.Menu_ChatLayer;
             }
 
             // Logger.Debug(
@@ -723,7 +861,7 @@ namespace EnhancedStreamChat.Chat
             // Logger.Debug(
             //     $"handle.transform.localScale: {handle.transform.localScale}, handle.transform.localPosition: {handle.transform.localPosition}");
 
-            this.AllowMovement = this._chatConfig.AllowMovement;
+            this.AllowMovement = this._chatConfigInstance.AllowMovement;
             // Logger.Debug($"AllowMovement: {this.AllowMovement}");
             
             // 确保拖动手柄在最上层
@@ -1012,9 +1150,9 @@ namespace EnhancedStreamChat.Chat
                         return;
                     }
                     
-                    if (ChatConfig.instance == null)
+                    if (_chatConfig == null)
                     {
-                        Logger.Error("[ClearOldMessages] ChatConfig instance is null");
+                        Logger.Error("[ClearOldMessages] ChatConfig is null");
                         return;
                     }
                     
@@ -1058,7 +1196,7 @@ namespace EnhancedStreamChat.Chat
                             // 检查消息是否超出可见范围
                             var shouldRemove = this.ReverseChatOrder
                                 ? msg.transform.localPosition.y < 0 - rectTransform.sizeDelta.y
-                                : msg.transform.localPosition.y >= ChatConfig.instance.ChatHeight;
+                                : msg.transform.localPosition.y >= _chatConfig.ChatHeight;
                             
                             if (shouldRemove)
                             {
@@ -1192,7 +1330,7 @@ namespace EnhancedStreamChat.Chat
             Dictionary<string, IChatResourceData> resources) => MainThreadInvoker.Invoke(() =>
         {
             var count = 0;
-            if (this._chatConfig.PreCacheAnimatedEmotes)
+            if (this._chatConfigInstance.PreCacheAnimatedEmotes)
             {
                 foreach (var emote in resources)
                 {
@@ -1232,6 +1370,14 @@ namespace EnhancedStreamChat.Chat
             // Logger.Debug(
             //     $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
             
+            // 检查是否已初始化
+            if (!_isInitialized)
+            {
+                Logger.Warn($"[OnTextMessageReceived] ChatDisplay not initialized, queueing message: {msg.Message}");
+                _backupMessageQueue.Enqueue(new KeyValuePair<DateTime, IChatMessage>(dateTime, msg));
+                return;
+            }
+            
             // 在构建消息之前先准备图片资源（包括表情和徽章）
             if (!ChatMessageBuilder.PrepareImages(msg, ESCFontManager.instance.FontInfo))
             {
@@ -1248,8 +1394,16 @@ namespace EnhancedStreamChat.Chat
                 Logger.Warn("_textPoolContainer is null, waiting for it to be initialized.");
             }
 
+            // 添加超时保护
+            var startTime = DateTime.UtcNow;
+            var timeout = TimeSpan.FromSeconds(5);
             while (_textPoolContainer == null)
             {
+                if (DateTime.UtcNow - startTime > timeout)
+                {
+                    Logger.Error("[OnTextMessageReceived] Timeout waiting for text pool container");
+                    return;
+                }
                 await Task.Delay(100);
             }
 

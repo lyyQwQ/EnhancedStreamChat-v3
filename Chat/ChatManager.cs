@@ -19,10 +19,25 @@ namespace EnhancedStreamChat.Chat
         internal ChatCoreInstance _chatCoreInstance;
         internal ChatServiceMultiplexer _chatServiceMultiplexer;
         internal ChatDisplay _chatDisplay;
+        private bool _isDestroyed = false;
+        
+        // 软重启检测标志
+        private static bool _hasBeenInitialized = false;
 
         #region // Unity message
         private void Awake()
         {
+            // 检测软重启
+            if (_hasBeenInitialized)
+            {
+                Logger.Info("[ChatManager] Soft restart detected in Awake, resetting states");
+                // 清空消息队列
+                while (this.ActionQueue.TryDequeue(out _)) { }
+                // 重置状态
+                _applicationIsQuitting = false;
+            }
+            _hasBeenInitialized = true;
+            
             Logger.Info("[ChatManager] Initializing ChatCore instance...");
             this._chatCoreInstance = ChatCoreInstance.Create();
 #if DEBUG
@@ -51,6 +66,8 @@ namespace EnhancedStreamChat.Chat
 
         protected override void OnDestroy()
         {
+            _isDestroyed = true;
+            
             if (this._chatServiceMultiplexer != null) {
                 try {
                     this._chatServiceMultiplexer.OnJoinChannel -= this.QueueOrSendOnJoinChannel;
@@ -137,7 +154,7 @@ namespace EnhancedStreamChat.Chat
         //private readonly SemaphoreSlim _msgLock = new SemaphoreSlim(1, 1);
         private async Task HandleOverflowMessageQueue()
         {
-            while (!_applicationIsQuitting) {
+            while (!_isDestroyed) {
                 try {
                     if (this._chatDisplay == null) {
                         // If _chatViewController isn't instantiated yet, lock the semaphore and wait until it is.

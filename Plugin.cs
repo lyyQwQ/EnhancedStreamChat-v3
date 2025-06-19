@@ -1,4 +1,5 @@
 ﻿using EnhancedStreamChat.Chat;
+using EnhancedStreamChat.Utilities;
 using HarmonyLib;
 using IPA;
 using IPA.Loader;
@@ -21,6 +22,7 @@ namespace EnhancedStreamChat
         public const string HARMONY_ID = "EnhancedStreamChat.denpadokei.com.github";
         private Harmony harmony;
         private static PluginMetadata _meta;
+        private static bool _hasBeenInitialized = false;
         [Init]
         public void Init(IPALogger logger, PluginMetadata meta, Zenjector zenjector)
         {
@@ -37,6 +39,7 @@ namespace EnhancedStreamChat
         [OnStart]
         public void OnStart()
         {
+            Logger.Info("[Plugin] OnStart called");
 #if DEBUG
             TestAdapters.AddTestLogs();
 #endif
@@ -51,15 +54,56 @@ namespace EnhancedStreamChat
         [OnEnable]
         public void OnEnable()
         {
+            Logger.Info($"[Plugin] OnEnable called, _hasBeenInitialized = {_hasBeenInitialized}");
+            
+            // 检测软重启
+            if (_hasBeenInitialized)
+            {
+                Logger.Info("[Plugin] Soft restart detected, resetting static states");
+                ResetStaticStates();
+            }
+            _hasBeenInitialized = true;
+            
             this.harmony.PatchAll(Assembly.GetExecutingAssembly());
             try {
                 // 确保 ChatManager 单例已创建
                 ChatManager.TouchInstance();
                 // 然后启用它
-                ChatManager.instance.enabled = true;
+                if (ChatManager.instance != null)
+                {
+                    ChatManager.instance.enabled = true;
+                }
+                else
+                {
+                    Logger.Error("[Plugin] Failed to create ChatManager instance");
+                }
             }
             catch (Exception ex) {
-                Logger.Error(ex);
+                Logger.Error($"[Plugin] Error during OnEnable: {ex}");
+            }
+        }
+        
+        private void ResetStaticStates()
+        {
+            try
+            {
+                // 重置 ChatManager 的 PersistentSingleton 状态
+                ChatManager.ResetSingleton();
+                
+                // 重置 MainThreadInvoker
+                MainThreadInvoker.Reset();
+                
+                // 清空 ChatDisplay 的静态消息队列
+                ChatDisplay.ClearBackupMessageQueue();
+                
+                // 重置其他可能的 PersistentSingleton 实例
+                // 注意：ChatImageProvider 和 ESCFontManager 现在由 Zenject 管理，不需要手动重置
+                
+                Logger.Info("[Plugin] Static states reset completed");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[Plugin] Error during static state reset: {ex}");
             }
         }
 
