@@ -26,7 +26,8 @@ namespace EnhancedStreamChat.Graphics
                 {
                     img.animStateUpdater.Image = img;
                 }
-                img.SetAllDirty();
+                // 移除 SetAllDirty() 调用，避免在对象创建时触发重建循环
+                // img.SetAllDirty();
             }
 
             protected override void OnDespawned(EnhancedImage img)
@@ -42,7 +43,8 @@ namespace EnhancedStreamChat.Graphics
                         img.animStateUpdater.ControllerData = null;
                     }
                     img.sprite = null;
-                    img.SetAllDirty();
+                    // 移除 SetAllDirty() 调用，避免在对象回收时触发重建循环
+                    // img.SetAllDirty();
                     base.OnDespawned(img);
                 }
                 catch (Exception ex) 

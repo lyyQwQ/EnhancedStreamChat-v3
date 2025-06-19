@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using ChatCore.Interfaces;
 using EnhancedStreamChat.Chat;
@@ -9,6 +10,7 @@ using EnhancedStreamChat.Core.Interfaces;
 using EnhancedStreamChat.Core.Models;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
+using EnhancedStream_139.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -49,6 +51,12 @@ namespace EnhancedStreamChat.Core.Services
         {
             if (message == null) throw new ArgumentNullException(nameof(message));
             
+            // 确保在主线程执行所有 Unity 相关操作
+            if (!MainThreadDispatcher.IsMainThread)
+            {
+                return await MainThreadDispatcher.InvokeAsync(() => RenderAsync(message));
+            }
+            
             // 从池中获取可渲染消息对象
             var renderableMessage = _messagePool.Spawn();
             renderableMessage.Id = message.Id;
@@ -63,22 +71,8 @@ namespace EnhancedStreamChat.Core.Services
                 // 构建富文本
                 var richText = await BuildRichTextAsync(parsedMessage, message);
                 
-                // 设置文本
-                if (renderableMessage.TextComponent != null)
-                {
-                    renderableMessage.TextComponent.text = richText;
-                    renderableMessage.TextComponent.fontSize = _chatConfig.FontSize;
-                    renderableMessage.TextComponent.color = _chatConfig.TextColor;
-                    
-                    // 如果是系统消息，使用不同的颜色
-                    if (message.IsSystemMessage)
-                    {
-                        renderableMessage.TextComponent.color = new Color(0.7f, 0.7f, 0.7f, 1f);
-                    }
-                    
-                    // 更新高度
-                    renderableMessage.UpdateHeight();
-                }
+                // 设置文本（确保在主线程）
+                await SetMessageTextAsync(renderableMessage, richText, message.IsSystemMessage);
                 
                 // 检查是否包含动画元素
                 renderableMessage.IsAnimated = parsedMessage.Emotes.Any(e => e.IsAnimated);
@@ -95,10 +89,45 @@ namespace EnhancedStreamChat.Core.Services
         }
         
         /// <summary>
+        /// 线程安全地设置消息文本
+        /// </summary>
+        private async Task SetMessageTextAsync(RenderableMessage renderableMessage, string richText, bool isSystemMessage)
+        {
+            // 确保在主线程
+            if (!MainThreadDispatcher.IsMainThread)
+            {
+                await MainThreadDispatcher.InvokeAsync(() => SetMessageTextAsync(renderableMessage, richText, isSystemMessage));
+                return;
+            }
+            
+            if (renderableMessage.TextComponent != null)
+            {
+                renderableMessage.TextComponent.text = richText;
+                renderableMessage.TextComponent.fontSize = _chatConfig.FontSize;
+                renderableMessage.TextComponent.color = _chatConfig.TextColor;
+                
+                // 如果是系统消息，使用不同的颜色
+                if (isSystemMessage)
+                {
+                    renderableMessage.TextComponent.color = new Color(0.7f, 0.7f, 0.7f, 1f);
+                }
+                
+                // 更新高度
+                renderableMessage.UpdateHeight();
+            }
+        }
+        
+        /// <summary>
         /// 批量渲染消息
         /// </summary>
         public async Task<IReadOnlyList<RenderableMessage>> RenderBatchAsync(IEnumerable<ChatMessage> messages)
         {
+            // 确保在主线程执行批量渲染
+            if (!MainThreadDispatcher.IsMainThread)
+            {
+                return await MainThreadDispatcher.InvokeAsync(() => RenderBatchAsync(messages));
+            }
+            
             var tasks = messages.Select(RenderAsync).ToList();
             var results = await Task.WhenAll(tasks);
             return results;
@@ -110,6 +139,13 @@ namespace EnhancedStreamChat.Core.Services
         public void UpdateRenderedMessage(RenderableMessage message, float deltaTime)
         {
             if (message == null) return;
+            
+            // 确保在主线程更新 UI
+            if (!MainThreadDispatcher.IsMainThread)
+            {
+                MainThreadDispatcher.Enqueue(() => UpdateRenderedMessage(message, deltaTime));
+                return;
+            }
             
             // 更新淡出动画
             if (message.IsFadingOut)
@@ -141,6 +177,13 @@ namespace EnhancedStreamChat.Core.Services
         public void ReleaseMessage(RenderableMessage message)
         {
             if (message == null) return;
+            
+            // 确保在主线程释放资源
+            if (!MainThreadDispatcher.IsMainThread)
+            {
+                MainThreadDispatcher.Enqueue(() => ReleaseMessage(message));
+                return;
+            }
             
             // 回收到对象池
             _messagePool.Despawn(message);

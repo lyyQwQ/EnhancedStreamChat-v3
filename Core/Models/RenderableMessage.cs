@@ -128,7 +128,9 @@ namespace EnhancedStreamChat.Core.Models
             if (TextComponent != null)
             {
                 TextComponent.text = string.Empty;
-                TextComponent.SetAllDirty();
+                // 避免在对象回收时调用 SetAllDirty()，可能导致重建循环
+                // 清空文本已经足够，Unity 会自动处理必要的更新
+                // TextComponent.SetAllDirty();
             }
             
             // 释放图片资源

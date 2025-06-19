@@ -4,6 +4,7 @@ using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
@@ -22,7 +23,7 @@ namespace EnhancedStreamChat.Graphics
                 constructor: () =>
                 {
                     var img = new GameObject("EnhancedImage").AddComponent<EnhancedImage>();
-                    // 不在这里调用DontDestroyOnLoad，避免在错误的时机访问Unity资源
+                    // 创建时设置为不激活，避免触发重建
                     img.gameObject.SetActive(false);
                     img.raycastTarget = false;
                     img.color = Color.white;
@@ -31,26 +32,30 @@ namespace EnhancedStreamChat.Graphics
                     img.rectTransform.pivot = new Vector2(0, 0);
                     img.animStateUpdater = img.gameObject.AddComponent<AnimationStateUpdater>();
                     img.animStateUpdater.Image = img;
-                    img.SetAllDirty();
                     return img;
                 },
                 onFree: img =>
                 {
                     try
                     {
-                        // 确保在主线程释放资源
                         if (img != null && img.gameObject != null)
                         {
-                            img.gameObject.SetActive(false);
-                            img.animStateUpdater.ControllerData = null;
-                            img.rectTransform.SetParent(null);
-                            img.sprite = null;
+                            // 延迟到下一帧处理状态变更
+                            MainThreadInvoker.Invoke(() =>
+                            {
+                                if (img != null && img.gameObject != null)
+                                {
+                                    img.gameObject.SetActive(false);
+                                    img.rectTransform.SetParent(null);
+                                    img.animStateUpdater.ControllerData = null;
+                                    img.sprite = null;
+                                }
+                            });
                         }
                     }
                     catch (Exception ex)
                     {
-                        Logger.Error(
-                            $"Exception while freeing EnhancedImage in EnhancedTextMeshProUGUI. {ex.ToString()}");
+                        Logger.Error($"Exception while freeing EnhancedImage. {ex}");
                     }
                 }
             );
@@ -75,9 +80,26 @@ namespace EnhancedStreamChat.Graphics
 
         public void ClearImages()
         {
+            // 在重建循环中不能直接释放对象，需要延迟处理
+            var imagesToFree = new List<EnhancedImage>();
             while (this._currentImages.TryTake(out var image))
             {
-                _imagePool.Free(image);
+                imagesToFree.Add(image);
+            }
+            
+            // 延迟到下一帧释放，避免在重建循环中修改对象
+            if (imagesToFree.Count > 0)
+            {
+                MainThreadInvoker.Invoke(() =>
+                {
+                    foreach (var img in imagesToFree)
+                    {
+                        if (img != null)
+                        {
+                            _imagePool.Free(img);
+                        }
+                    }
+                });
             }
         }
 
@@ -311,13 +333,36 @@ namespace EnhancedStreamChat.Graphics
         //     //     Logger.Error($"Exception in EnhancedTextMeshProUGUI.Rebuild: {ex}");
         //     // }
         // }
-                public override void Rebuild(CanvasUpdate update)
+        private bool _isRebuilding = false;
+        
+        public override void Rebuild(CanvasUpdate update)
         {
             if (update == CanvasUpdate.LatePreRender)
             {
+                // 避免重复调用
+                if (_isRebuilding) return;
+                _isRebuilding = true;
+                
+                // 直接调用 RebuildImages，它内部会使用 MainThreadInvoker 延迟执行
+                RebuildImages();
+            }
+
+            base.Rebuild(update);
+        }
+        
+        private void RebuildImages()
+        {
+            try
+            {
+                // 使用 MainThreadInvoker 延迟到下一帧执行所有操作
                 MainThreadInvoker.Invoke(() =>
                 {
+                    // 清理旧图片
                     this.ClearImages();
+                    
+                    // 确保 FontInfo 已初始化
+                    EnsureFontInfo();
+                    
                     for (var i = 0; i < this.textInfo.characterCount; i++)
                     {
                         var c = this.textInfo.characterInfo[i];
@@ -331,9 +376,6 @@ namespace EnhancedStreamChat.Graphics
                         {
                             character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
                         }
-
-                        // 确保 FontInfo 已初始化
-                        EnsureFontInfo();
                         
                         if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) || imageInfo is null)
                         {
@@ -343,7 +385,9 @@ namespace EnhancedStreamChat.Graphics
                         var img = _imagePool.Alloc();
                         try
                         {
+                            img.gameObject.SetActive(true);
                             img.rectTransform.SetParent(this.rectTransform, false);
+                            
                             if (imageInfo.AnimControllerData != null)
                             {
                                 img.animStateUpdater.ControllerData = imageInfo.AnimControllerData;
@@ -360,8 +404,7 @@ namespace EnhancedStreamChat.Graphics
                             img.rectTransform.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * fontScale * 0.558f / 2);
                             img.rectTransform.localRotation = Quaternion.identity;
                             img.material = BeatSaberUtils.UINoGlowMaterial;
-                            img.gameObject.SetActive(true);
-                            img.SetAllDirty();
+                            
                             this._currentImages.Add(img);
                         }
                         catch (Exception ex)
@@ -370,11 +413,14 @@ namespace EnhancedStreamChat.Graphics
                             _imagePool.Free(img);
                         }
                     }
+                    
                     OnLatePreRenderRebuildComplete?.Invoke();
                 });
             }
-
-            base.Rebuild(update);
+            finally
+            {
+                _isRebuilding = false;
+            }
         }
     }
 }
