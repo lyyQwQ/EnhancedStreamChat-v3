@@ -5,6 +5,7 @@ using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -173,28 +174,44 @@ namespace EnhancedStreamChat.Chat
             int spriteWidth = 0, spriteHeight = 0;
             AnimationControllerData animControllerData = null;
             if (isAnimated) {
-                var tcs = new TaskCompletionSource<bool>();
+                // 参考 v3 实现，直接使用 AnimationLoader，不需要 Task.Run 包装
+                // AnimationLoader 内部已经正确处理了线程安全问题
+                AnimationData animData = null;
+                Task<AnimationData> task = null;
                 
-                // 明确指定Task类型
-                _ = Task.Run<Task>(async () => {
-                    try {
-                        var animData = await AnimationLoader.ProcessGifAsync(bytes);
-                        animControllerData = AnimationController.Instance.Register(id, animData.Atlas, animData.Uvs, animData.Delays);
-                        // 使用第一帧作为sprite
-                        sprite = animControllerData.Sprites[0];
-                        spriteWidth = animData.Width;
-                        spriteHeight = animData.Height;
-                        tcs.SetResult(true);
-                    }
-                    catch (Exception ex) {
-                        Logger.Error($"Error processing animated image: {ex}");
-                        tcs.SetResult(false);
-                    }
-                });
-
-                yield return new WaitUntil(() => tcs.Task.IsCompleted);
+                // 将 try-catch 移到 yield 之外
+                try {
+                    // 直接调用 AnimationLoader.ProcessGifAsync
+                    task = AnimationLoader.ProcessGifAsync(bytes);
+                }
+                catch (Exception ex) {
+                    Logger.Error($"Exception starting animation processing: {ex}");
+                    Finally?.Invoke(null);
+                    yield break;
+                }
                 
-                if (!tcs.Task.Result) {
+                // 使用协程等待任务完成
+                yield return new WaitUntil(() => task.IsCompleted);
+                
+                if (task.IsFaulted) {
+                    Logger.Error($"Error processing animated image: {task.Exception?.GetBaseException()}");
+                    Finally?.Invoke(null);
+                    yield break;
+                }
+                
+                try {
+                    animData = task.Result;
+                    
+                    // 注册动画到 AnimationController
+                    animControllerData = AnimationController.Instance.Register(id, animData);
+                    
+                    // 使用第一帧作为预览 sprite
+                    sprite = animControllerData.Sprites.FirstOrDefault();
+                    spriteWidth = animData.Width;
+                    spriteHeight = animData.Height;
+                }
+                catch (Exception ex) {
+                    Logger.Error($"Exception registering animation: {ex}");
                     Finally?.Invoke(null);
                     yield break;
                 }

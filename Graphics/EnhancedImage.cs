@@ -29,6 +29,14 @@ namespace EnhancedStreamChat.Graphics
                 // 移除 SetAllDirty() 调用，避免在对象创建时触发重建循环
                 // img.SetAllDirty();
             }
+            
+            protected override void OnSpawned(EnhancedImage img)
+            {
+                base.OnSpawned(img);
+                // 确保图片在分配时是启用状态
+                img.enabled = true;
+                img.gameObject.SetActive(true);
+            }
 
             protected override void OnDespawned(EnhancedImage img)
             {

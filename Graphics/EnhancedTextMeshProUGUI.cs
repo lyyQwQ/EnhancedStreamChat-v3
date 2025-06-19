@@ -80,26 +80,13 @@ namespace EnhancedStreamChat.Graphics
 
         public void ClearImages()
         {
-            // 在重建循环中不能直接释放对象，需要延迟处理
-            var imagesToFree = new List<EnhancedImage>();
+            // 直接清理，不需要延迟
             while (this._currentImages.TryTake(out var image))
             {
-                imagesToFree.Add(image);
-            }
-            
-            // 延迟到下一帧释放，避免在重建循环中修改对象
-            if (imagesToFree.Count > 0)
-            {
-                MainThreadInvoker.Invoke(() =>
+                if (image != null)
                 {
-                    foreach (var img in imagesToFree)
-                    {
-                        if (img != null)
-                        {
-                            _imagePool.Free(img);
-                        }
-                    }
-                });
+                    _imagePool.Free(image);
+                }
             }
         }
 
@@ -334,6 +321,8 @@ namespace EnhancedStreamChat.Graphics
         //     // }
         // }
         private bool _isRebuilding = false;
+        private float _lastRebuildTime = 0f;
+        private const float REBUILD_COOLDOWN = 0.1f; // 100ms 冷却时间
         
         public override void Rebuild(CanvasUpdate update)
         {
@@ -341,7 +330,13 @@ namespace EnhancedStreamChat.Graphics
             {
                 // 避免重复调用
                 if (_isRebuilding) return;
+                
+                // 添加时间检查，避免频繁重建
+                var currentTime = Time.time;
+                if (currentTime - _lastRebuildTime < REBUILD_COOLDOWN) return;
+                
                 _isRebuilding = true;
+                _lastRebuildTime = currentTime;
                 
                 // 直接调用 RebuildImages，它内部会使用 MainThreadInvoker 延迟执行
                 RebuildImages();
@@ -357,8 +352,83 @@ namespace EnhancedStreamChat.Graphics
                 // 使用 MainThreadInvoker 延迟到下一帧执行所有操作
                 MainThreadInvoker.Invoke(() =>
                 {
-                    // 清理旧图片
-                    this.ClearImages();
+                    // 优化：只在文本内容改变时才清理图片
+                    var needsClear = false;
+                    
+                    // 确保 FontInfo 已初始化
+                    EnsureFontInfo();
+                    
+                    // 检查需要显示图片的字符数
+                    var currentImageCount = 0;
+                    for (var i = 0; i < this.textInfo.characterCount; i++)
+                    {
+                        var c = this.textInfo.characterInfo[i];
+                        if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
+                        {
+                            continue;
+                        }
+                        
+                        uint character = this.text[c.index];
+                        if (c.index + 1 < this.text.Length && char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
+                        {
+                            character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
+                        }
+                        
+                        if (this.FontInfo != null && this.FontInfo.TryGetImageInfo(character, out var imageInfo) && imageInfo != null)
+                        {
+                            currentImageCount++;
+                        }
+                    }
+                    
+                    // 如果图片数量不匹配，需要重建
+                    if (_currentImages.Count != currentImageCount)
+                    {
+                        needsClear = true;
+                    }
+                    
+                    if (needsClear)
+                    {
+                        // 清理旧图片
+                        this.ClearImages();
+                    }
+                    else
+                    {
+                        // 不清理，只更新位置
+                        var imageIndex = 0;
+                        var imageList = _currentImages.ToArray();
+                        
+                        for (var i = 0; i < this.textInfo.characterCount; i++)
+                        {
+                            var c = this.textInfo.characterInfo[i];
+                            if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
+                            {
+                                continue;
+                            }
+
+                            uint character = this.text[c.index];
+                            if (c.index + 1 < this.text.Length && char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
+                            {
+                                character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
+                            }
+                            
+                            if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) || imageInfo is null)
+                            {
+                                continue;
+                            }
+                            
+                            if (imageIndex < imageList.Length)
+                            {
+                                // 只更新现有图片的位置
+                                var img = imageList[imageIndex];
+                                var fontScale = 0.010f * this.fontSize;
+                                img.rectTransform.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * fontScale * 0.558f / 2);
+                                imageIndex++;
+                            }
+                        }
+                        
+                        OnLatePreRenderRebuildComplete?.Invoke();
+                        return;
+                    }
                     
                     // 确保 FontInfo 已初始化
                     EnsureFontInfo();
