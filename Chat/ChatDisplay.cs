@@ -9,6 +9,7 @@ using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.HarmonyPatches;
 using EnhancedStreamChat.Utilities;
 using EnhancedStreamChat.Core.Interfaces;
+using EnhancedStream_139.Interfaces;
 using HMUI;
 using IPA.Utilities;
 using System;
@@ -32,7 +33,7 @@ using Color = UnityEngine.Color;
 namespace EnhancedStreamChat.Chat
 {
     [HotReload]
-    public partial class ChatDisplay : BSMLAutomaticViewController, IChatDisplay, IAsyncInitializable, IDisposable
+    public partial class ChatDisplay : BSMLAutomaticViewController, IChatDisplay, IAsyncInitializable, IDisposable, ILatePreRenderRebuildReceiver
     {
         // 单例实例，用于向后兼容
         private static ChatDisplay _instance;
@@ -49,6 +50,7 @@ namespace EnhancedStreamChat.Chat
         private bool _isInGame;
         private bool _isInitialized = false;
         private bool _isUpdatingLayout = false;
+        private bool _updateMessagePositions = false;
         
         // IChatDisplay 接口实现
         public bool IsReady => _isInitialized && _chatScreen != null;
@@ -242,6 +244,9 @@ namespace EnhancedStreamChat.Chat
                         while (this._messages.TryDequeue(out var msg))
                         {
                             msg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
+                            // 移除 receiver 注册
+                            msg.Text?.RemoveReceiver(this);
+                            msg.SubText?.RemoveReceiver(this);
                             if (msg.Text.ChatMessage != null)
                             {
                                 _backupMessageQueue.Enqueue(
@@ -297,6 +302,11 @@ namespace EnhancedStreamChat.Chat
                 _disposedValue = true;
                 _instance = null; // 清除单例引用
             }
+        }
+        
+        public void LatePreRenderRebuildHandler(object sender, EventArgs e)
+        {
+            _updateMessagePositions = true;
         }
         
         public void Dispose()
@@ -519,7 +529,6 @@ namespace EnhancedStreamChat.Chat
         //     }
         // }
 
-        private bool _updateMessagePositions = false;
         private WaitForEndOfFrame _waitForEndOfFrame;
 
 
@@ -644,6 +653,13 @@ namespace EnhancedStreamChat.Chat
                 // 安全地移除和添加事件监听器
                 newMsg.OnLatePreRenderRebuildComplete -= this.OnRenderRebuildComplete;
                 newMsg.OnLatePreRenderRebuildComplete += this.OnRenderRebuildComplete;
+                
+                // 注册为 receiver 以接收 rebuild 事件
+                if (newMsg is ILatePreRenderRebuildReceiver receiver)
+                {
+                    newMsg.Text?.AddReceiver(this);
+                    newMsg.SubText?.AddReceiver(this);
+                }
                 
                 // 更新消息样式
                 this.UpdateMessage(newMsg, true);

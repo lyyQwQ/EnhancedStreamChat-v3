@@ -2,6 +2,7 @@
 using ChatCore.Interfaces;
 using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Utilities;
+using EnhancedStream_139.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -17,6 +18,9 @@ namespace EnhancedStreamChat.Graphics
         public IChatMessage ChatMessage { get; set; } = null;
         public EnhancedFontInfo FontInfo { get; private set; }
         public event Action OnLatePreRenderRebuildComplete;
+        
+        private readonly HashSet<ILatePreRenderRebuildReceiver> _receivers = new HashSet<ILatePreRenderRebuildReceiver>();
+        private bool _rebuilt = false;
 
         private static readonly ObjectMemoryComponentPool<EnhancedImage> _imagePool =
             new ObjectMemoryComponentPool<EnhancedImage>(64,
@@ -27,6 +31,7 @@ namespace EnhancedStreamChat.Graphics
                     img.gameObject.SetActive(false);
                     img.raycastTarget = false;
                     img.color = Color.white;
+                    // 恢复原来的 anchor 和 pivot 设置
                     img.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                     img.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                     img.rectTransform.pivot = new Vector2(0, 0);
@@ -40,17 +45,11 @@ namespace EnhancedStreamChat.Graphics
                     {
                         if (img != null && img.gameObject != null)
                         {
-                            // 延迟到下一帧处理状态变更
-                            MainThreadInvoker.Invoke(() =>
-                            {
-                                if (img != null && img.gameObject != null)
-                                {
-                                    img.gameObject.SetActive(false);
-                                    img.rectTransform.SetParent(null);
-                                    img.animStateUpdater.ControllerData = null;
-                                    img.sprite = null;
-                                }
-                            });
+                            // 直接同步执行，避免时序问题
+                            img.gameObject.SetActive(false);
+                            img.rectTransform.SetParent(null);
+                            img.animStateUpdater.ControllerData = null;
+                            img.sprite = null;
                         }
                     }
                     catch (Exception ex)
@@ -323,20 +322,32 @@ namespace EnhancedStreamChat.Graphics
         private bool _isRebuilding = false;
         private float _lastRebuildTime = 0f;
         private const float REBUILD_COOLDOWN = 0.1f; // 100ms 冷却时间
+        private bool _needsRebuild = false; // 标记是否需要重建
         
         public override void Rebuild(CanvasUpdate update)
         {
             if (update == CanvasUpdate.LatePreRender)
             {
-                // 避免重复调用
-                if (_isRebuilding) return;
+                // 如果正在重建中，标记需要重建并返回
+                if (_isRebuilding)
+                {
+                    _needsRebuild = true;
+                    base.Rebuild(update);
+                    return;
+                }
                 
                 // 添加时间检查，避免频繁重建
                 var currentTime = Time.time;
-                if (currentTime - _lastRebuildTime < REBUILD_COOLDOWN) return;
+                if (currentTime - _lastRebuildTime < REBUILD_COOLDOWN)
+                {
+                    _needsRebuild = true;
+                    base.Rebuild(update);
+                    return;
+                }
                 
                 _isRebuilding = true;
                 _lastRebuildTime = currentTime;
+                _needsRebuild = false;
                 
                 // 直接调用 RebuildImages，它内部会使用 MainThreadInvoker 延迟执行
                 RebuildImages();
@@ -347,88 +358,14 @@ namespace EnhancedStreamChat.Graphics
         
         private void RebuildImages()
         {
-            try
+            // 使用 MainThreadInvoker 延迟到下一帧执行所有操作
+            MainThreadInvoker.Invoke(() =>
             {
-                // 使用 MainThreadInvoker 延迟到下一帧执行所有操作
-                MainThreadInvoker.Invoke(() =>
+                try
                 {
-                    // 优化：只在文本内容改变时才清理图片
-                    var needsClear = false;
-                    
-                    // 确保 FontInfo 已初始化
-                    EnsureFontInfo();
-                    
-                    // 检查需要显示图片的字符数
-                    var currentImageCount = 0;
-                    for (var i = 0; i < this.textInfo.characterCount; i++)
-                    {
-                        var c = this.textInfo.characterInfo[i];
-                        if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
-                        {
-                            continue;
-                        }
-                        
-                        uint character = this.text[c.index];
-                        if (c.index + 1 < this.text.Length && char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
-                        {
-                            character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
-                        }
-                        
-                        if (this.FontInfo != null && this.FontInfo.TryGetImageInfo(character, out var imageInfo) && imageInfo != null)
-                        {
-                            currentImageCount++;
-                        }
-                    }
-                    
-                    // 如果图片数量不匹配，需要重建
-                    if (_currentImages.Count != currentImageCount)
-                    {
-                        needsClear = true;
-                    }
-                    
-                    if (needsClear)
-                    {
-                        // 清理旧图片
-                        this.ClearImages();
-                    }
-                    else
-                    {
-                        // 不清理，只更新位置
-                        var imageIndex = 0;
-                        var imageList = _currentImages.ToArray();
-                        
-                        for (var i = 0; i < this.textInfo.characterCount; i++)
-                        {
-                            var c = this.textInfo.characterInfo[i];
-                            if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length)
-                            {
-                                continue;
-                            }
-
-                            uint character = this.text[c.index];
-                            if (c.index + 1 < this.text.Length && char.IsSurrogatePair(this.text[c.index], this.text[c.index + 1]))
-                            {
-                                character = (uint)char.ConvertToUtf32(this.text[c.index], this.text[c.index + 1]);
-                            }
-                            
-                            if (this.FontInfo == null || !this.FontInfo.TryGetImageInfo(character, out var imageInfo) || imageInfo is null)
-                            {
-                                continue;
-                            }
-                            
-                            if (imageIndex < imageList.Length)
-                            {
-                                // 只更新现有图片的位置
-                                var img = imageList[imageIndex];
-                                var fontScale = 0.010f * this.fontSize;
-                                img.rectTransform.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * fontScale * 0.558f / 2);
-                                imageIndex++;
-                            }
-                        }
-                        
-                        OnLatePreRenderRebuildComplete?.Invoke();
-                        return;
-                    }
+                    // 采用 v3 的简单方法：总是完全重建
+                    // 这样可以避免 ConcurrentBag 无序导致的位置错乱问题
+                    this.ClearImages();
                     
                     // 确保 FontInfo 已初始化
                     EnsureFontInfo();
@@ -471,6 +408,7 @@ namespace EnhancedStreamChat.Graphics
                             var fontScale = 0.010f * this.fontSize;
                             img.rectTransform.localScale = new Vector3(fontScale * 1.08f, fontScale * 1.08f, fontScale * 1.08f);
                             img.rectTransform.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
+                            // 恢复原来的位置计算
                             img.rectTransform.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * fontScale * 0.558f / 2);
                             img.rectTransform.localRotation = Quaternion.identity;
                             img.material = BeatSaberUtils.UINoGlowMaterial;
@@ -485,12 +423,51 @@ namespace EnhancedStreamChat.Graphics
                     }
                     
                     OnLatePreRenderRebuildComplete?.Invoke();
-                });
-            }
-            finally
+                    _rebuilt = true;
+                }
+                finally
+                {
+                    // 在实际重建完成后才重置标志
+                    _isRebuilding = false;
+                    
+                    // 如果在重建期间有新的重建请求，立即处理
+                    if (_needsRebuild)
+                    {
+                        _needsRebuild = false;
+                        // 标记需要重建，下一帧会自动调用
+                        this.SetVerticesDirty();
+                    }
+                }
+            });
+        }
+        
+        public void AddReceiver(ILatePreRenderRebuildReceiver receiver)
+        {
+            if (receiver != null)
             {
-                _isRebuilding = false;
+                _receivers.Add(receiver);
             }
         }
+        
+        public void RemoveReceiver(ILatePreRenderRebuildReceiver receiver)
+        {
+            if (receiver != null)
+            {
+                _receivers.Remove(receiver);
+            }
+        }
+        
+        protected void LateUpdate()
+        {
+            if (_rebuilt)
+            {
+                foreach (var receiver in _receivers)
+                {
+                    receiver?.LatePreRenderRebuildHandler(this, EventArgs.Empty);
+                }
+                _rebuilt = false;
+            }
+        }
+        
     }
 }

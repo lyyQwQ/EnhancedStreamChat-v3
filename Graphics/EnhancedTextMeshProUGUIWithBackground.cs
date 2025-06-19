@@ -2,13 +2,14 @@
 using HMUI;
 using System;
 using EnhancedStreamChat.Interfaces;
+using EnhancedStream_139.Interfaces;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 
 namespace EnhancedStreamChat.Graphics
 {
-    public class EnhancedTextMeshProUGUIWithBackground : MonoBehaviour, ILatePreRenderRebuildReciver
+    public class EnhancedTextMeshProUGUIWithBackground : MonoBehaviour, ILatePreRenderRebuildReceiver
     {
         public EnhancedTextMeshProUGUI Text { get; internal set; }
 
@@ -103,6 +104,7 @@ namespace EnhancedStreamChat.Graphics
                 DontDestroyOnLoad(this.Text.gameObject);
             }
             this.Text.OnLatePreRenderRebuildComplete += this.Text_OnLatePreRenderRebuildComplete;
+            this.Text.AddReceiver(this);
 
             if (this.SubText == null)
             {
@@ -110,6 +112,7 @@ namespace EnhancedStreamChat.Graphics
                 DontDestroyOnLoad(this.SubText.gameObject);
             }
             this.SubText.OnLatePreRenderRebuildComplete += this.Text_OnLatePreRenderRebuildComplete;
+            this.SubText.AddReceiver(this);
 
             // 创建强调色组件
             this._accent = new GameObject().AddComponent<ImageView>();
@@ -158,6 +161,16 @@ namespace EnhancedStreamChat.Graphics
             (this._accent.gameObject.transform as RectTransform).sizeDelta = new Vector2(1, (this.transform as RectTransform).sizeDelta.y);
             this._rebuiled = true;
         }
+        
+        protected void Update()
+        {
+            if (this._rebuiled)
+            {
+                OnLatePreRenderRebuildComplete?.Invoke();
+                this._rebuiled = false;
+            }
+        }
+        
         private void OnDestroy()
         {
             try
@@ -166,11 +179,13 @@ namespace EnhancedStreamChat.Graphics
                 if (this.Text != null)
                 {
                     this.Text.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
+                    this.Text.RemoveReceiver(this);
                 }
                 
                 if (this.SubText != null)
                 {
                     this.SubText.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
+                    this.SubText.RemoveReceiver(this);
                 }
                 
                 // 清除所有事件订阅者，防止在销毁后被调用
