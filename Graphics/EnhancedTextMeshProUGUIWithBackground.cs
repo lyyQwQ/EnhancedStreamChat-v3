@@ -160,8 +160,42 @@ namespace EnhancedStreamChat.Graphics
         }
         private void OnDestroy()
         {
-            this.Text.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
-            this.SubText.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
+            try
+            {
+                // 移除事件监听器
+                if (this.Text != null)
+                {
+                    this.Text.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
+                }
+                
+                if (this.SubText != null)
+                {
+                    this.SubText.OnLatePreRenderRebuildComplete -= this.Text_OnLatePreRenderRebuildComplete;
+                }
+                
+                // 清除所有事件订阅者，防止在销毁后被调用
+                OnLatePreRenderRebuildComplete = null;
+                
+                // 确保子对象不会在父对象销毁后继续存在
+                if (this._accent != null && this._accent.gameObject != null)
+                {
+                    this._accent.gameObject.transform.SetParent(null);
+                }
+                
+                if (this.Text != null && this.Text.gameObject != null)
+                {
+                    this.Text.rectTransform.SetParent(null);
+                }
+                
+                if (this.SubText != null && this.SubText.gameObject != null)
+                {
+                    this.SubText.rectTransform.SetParent(null);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[OnDestroy] Error during cleanup: {ex}");
+            }
         }
 
         private void Text_OnLatePreRenderRebuildComplete()
@@ -288,32 +322,90 @@ namespace EnhancedStreamChat.Graphics
                 return;
             }
             
-            base.OnDespawned(msg);
-            
-            // 重置状态
-            msg.HighlightEnabled = false;
-            msg.AccentEnabled = false;
-            msg.SubTextEnabled = false;
-            
-            // 清理文本内容
-            if (msg.Text != null)
+            try
             {
-                msg.Text.text = "";
-                if (msg.Text is EnhancedTextMeshProUGUI enhancedText)
+                base.OnDespawned(msg);
+                
+                // 移除事件监听器，防止内存泄漏
+                msg.OnLatePreRenderRebuildComplete = null;
+                
+                // 重置状态 - 添加异常处理
+                try
                 {
-                    enhancedText.ChatMessage = null;
+                    msg.HighlightEnabled = false;
+                    msg.AccentEnabled = false;
+                    msg.SubTextEnabled = false;
                 }
-                msg.Text.SetAllDirty();
+                catch (Exception ex)
+                {
+                    Logger.Warn($"[OnDespawned] Failed to reset message states: {ex.Message}");
+                }
+                
+                // 清理文本内容
+                if (msg.Text != null)
+                {
+                    try
+                    {
+                        // 先清除聊天消息引用
+                        if (msg.Text is EnhancedTextMeshProUGUI enhancedText)
+                        {
+                            enhancedText.ChatMessage = null;
+                        }
+                        
+                        // 再清空文本
+                        msg.Text.text = "";
+                        
+                        // 最后更新渲染
+                        if (msg.Text.gameObject != null && msg.Text.enabled)
+                        {
+                            msg.Text.SetAllDirty();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn($"[OnDespawned] Failed to clean main text: {ex.Message}");
+                    }
+                }
+                
+                if (msg.SubText != null)
+                {
+                    try
+                    {
+                        // 先清除聊天消息引用
+                        if (msg.SubText is EnhancedTextMeshProUGUI enhancedSubText)
+                        {
+                            enhancedSubText.ChatMessage = null;
+                        }
+                        
+                        // 再清空文本
+                        msg.SubText.text = "";
+                        
+                        // 最后更新渲染
+                        if (msg.SubText.gameObject != null && msg.SubText.enabled)
+                        {
+                            msg.SubText.SetAllDirty();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn($"[OnDespawned] Failed to clean sub text: {ex.Message}");
+                    }
+                }
+                
+                // 重置 Transform
+                if (msg.transform != null)
+                {
+                    msg.transform.SetParent(null, false);
+                    msg.transform.localPosition = Vector3.zero;
+                    msg.transform.localScale = Vector3.one;
+                }
+                
+                // 禁用 GameObject，防止渲染
+                msg.gameObject.SetActive(false);
             }
-            
-            if (msg.SubText != null)
+            catch (Exception ex)
             {
-                msg.SubText.text = "";
-                if (msg.SubText is EnhancedTextMeshProUGUI enhancedSubText)
-                {
-                    enhancedSubText.ChatMessage = null;
-                }
-                msg.SubText.SetAllDirty();
+                Logger.Error($"[OnDespawned] Unexpected error during cleanup: {ex}");
             }
         }
     }

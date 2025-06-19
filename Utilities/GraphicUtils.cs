@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -13,8 +14,27 @@ namespace EnhancedStreamChat.Utilities
                 return null;
             }
 
-            var tex2D = new Texture2D(2, 2);
-            return tex2D.LoadImage(file) ? tex2D : null;
+            try {
+                // 检查图形设备是否可用
+                if (UnityEngine.SystemInfo.graphicsDeviceID == 0) {
+                    Logger.Warn("Graphics device not available, skipping texture creation");
+                    return null;
+                }
+                
+                var tex2D = new Texture2D(2, 2);
+                if (tex2D.LoadImage(file)) {
+                    return tex2D;
+                }
+                else {
+                    Logger.Error("Failed to load image data into texture");
+                    UnityEngine.Object.Destroy(tex2D);
+                    return null;
+                }
+            }
+            catch (Exception ex) {
+                Logger.Error($"Exception in LoadTextureRaw: {ex}");
+                return null;
+            }
         }
 
         public static Texture2D? LoadTextureFromFile(string filePath) => File.Exists(filePath) ? LoadTextureRaw(File.ReadAllBytes(filePath)) : null;

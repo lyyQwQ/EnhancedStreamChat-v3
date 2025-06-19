@@ -200,13 +200,55 @@ namespace EnhancedStreamChat.Chat
                 }
             }
             else {
-                try {
-                    sprite = GraphicUtils.LoadSpriteRaw(bytes);
-                    spriteWidth = sprite.texture.width;
-                    spriteHeight = sprite.texture.height;
+                // 确保在主线程上创建纹理，并添加重试机制
+                var maxRetries = 3;
+                var retryCount = 0;
+                var success = false;
+                
+                while (retryCount < maxRetries && !success) {
+                    var tcs = new TaskCompletionSource<bool>();
+                    MainThreadInvoker.Invoke(() => {
+                        try {
+                            // 检查图形设备是否可用
+                            if (UnityEngine.SystemInfo.graphicsDeviceID == 0) {
+                                Logger.Warn($"Graphics device not available, retry {retryCount + 1}/{maxRetries}");
+                                tcs.SetResult(false);
+                                return;
+                            }
+                            
+                            sprite = GraphicUtils.LoadSpriteRaw(bytes);
+                            if (sprite != null && sprite.texture != null) {
+                                spriteWidth = sprite.texture.width;
+                                spriteHeight = sprite.texture.height;
+                                tcs.SetResult(true);
+                            }
+                            else {
+                                Logger.Error("Failed to load sprite from bytes - sprite or texture is null");
+                                sprite = null;
+                                tcs.SetResult(false);
+                            }
+                        }
+                        catch (Exception ex) {
+                            Logger.Error($"Exception loading sprite: {ex}");
+                            sprite = null;
+                            tcs.SetResult(false);
+                        }
+                    });
+                    
+                    yield return new WaitUntil(() => tcs.Task.IsCompleted);
+                    success = tcs.Task.Result;
+                    
+                    if (!success) {
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            // 等待一小段时间再重试
+                            yield return new WaitForSeconds(0.1f);
+                        }
+                    }
                 }
-                catch (Exception ex) {
-                    Logger.Error(ex);
+                
+                if (!success) {
+                    Logger.Error($"Failed to load sprite after {maxRetries} attempts");
                     sprite = null;
                 }
             }
@@ -235,8 +277,54 @@ namespace EnhancedStreamChat.Chat
                 yield break;
             }
             if (!this._cachedSpriteSheets.TryGetValue(uri, out var tex) || tex == null) {
-                yield return this.DownloadContent(uri, (bytes) => tex = GraphicUtils.LoadTextureRaw(bytes));
-                this._cachedSpriteSheets[uri] = tex;
+                byte[] downloadedBytes = null;
+                yield return this.DownloadContent(uri, (bytes) => downloadedBytes = bytes);
+                
+                if (downloadedBytes != null) {
+                    // 确保在主线程上创建纹理，并添加重试机制
+                    var maxRetries = 3;
+                    var retryCount = 0;
+                    var success = false;
+                    
+                    while (retryCount < maxRetries && !success) {
+                        var tcs = new TaskCompletionSource<bool>();
+                        MainThreadInvoker.Invoke(() => {
+                            try {
+                                // 检查图形设备是否可用
+                                if (UnityEngine.SystemInfo.graphicsDeviceID == 0) {
+                                    Logger.Warn($"Graphics device not available for sprite sheet, retry {retryCount + 1}/{maxRetries}");
+                                    tcs.SetResult(false);
+                                    return;
+                                }
+                                
+                                tex = GraphicUtils.LoadTextureRaw(downloadedBytes);
+                                tcs.SetResult(tex != null);
+                            }
+                            catch (Exception ex) {
+                                Logger.Error($"Failed to load texture: {ex}");
+                                tex = null;
+                                tcs.SetResult(false);
+                            }
+                        });
+                        
+                        yield return new WaitUntil(() => tcs.Task.IsCompleted);
+                        success = tcs.Task.Result;
+                        
+                        if (!success) {
+                            retryCount++;
+                            if (retryCount < maxRetries) {
+                                yield return new WaitForSeconds(0.1f);
+                            }
+                        }
+                    }
+                    
+                    if (success && tex != null) {
+                        this._cachedSpriteSheets[uri] = tex;
+                    }
+                    else {
+                        Logger.Error($"Failed to load sprite sheet after {maxRetries} attempts");
+                    }
+                }
             }
             this.CacheSpriteSheetImage(id, rect, tex, Finally, forcedHeight);
         }
