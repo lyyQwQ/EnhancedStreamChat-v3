@@ -432,6 +432,43 @@ namespace EnhancedStreamChat.Chat
         public string TestButtonText => _isRunningTest ? "测试运行中..." : "运行适配器测试";
 #endif
 
+        [UIAction("reset-chat-position")]
+        private void ResetChatPosition()
+        {
+            // 重置位置和旋转到默认值
+            Vector3 defaultPosition = new Vector3(0, 3.75f, 2.5f);
+            Vector3 defaultRotation = new Vector3(325, 0, 0);
+            
+            if (this.SyncOrientation)
+            {
+                // 如果同步方向开启，同时重置菜单和游戏中的位置
+                this.ChatPosition = defaultPosition;
+                this.ChatRotation = defaultRotation;
+            }
+            else
+            {
+                // 根据当前是在游戏中还是菜单中，重置对应的位置
+                if (this._isInGame)
+                {
+                    this._chatConfig.Song_ChatPosition = defaultPosition;
+                    this._chatConfig.Song_ChatRotation = defaultRotation;
+                    this.ChatPosition = defaultPosition;
+                    this.ChatRotation = defaultRotation;
+                }
+                else
+                {
+                    this._chatConfig.Menu_ChatPosition = defaultPosition;
+                    this._chatConfig.Menu_ChatRotation = defaultRotation;
+                    this.ChatPosition = defaultPosition;
+                    this.ChatRotation = defaultRotation;
+                }
+            }
+            
+            // 立即保存配置
+            this._chatConfig.Save();
+            Logger.Info("Chat position and rotation reset to default values");
+        }
+
         [UIAction("#hide-settings")]
         private void OnHideSettings()
         {
