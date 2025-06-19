@@ -26,7 +26,7 @@ namespace EnhancedStreamChat.Core.Services
         private readonly IMessageParser _messageParser;
         private readonly IImageProvider _imageProvider;
         private readonly IFontProvider _fontProvider;
-        private readonly ChatConfig _chatConfig = ChatConfig.instance;
+        private readonly IChatConfiguration _chatConfig;
         private readonly Chat.Adapters.Rendering.ChatMessageBuilderAdapter _messageBuilderAdapter;
         private readonly RenderableMessage.Pool _messagePool;
         
@@ -34,12 +34,14 @@ namespace EnhancedStreamChat.Core.Services
             IMessageParser messageParser,
             IImageProvider imageProvider,
             IFontProvider fontProvider,
+            IChatConfiguration chatConfig,
             Chat.Adapters.Rendering.ChatMessageBuilderAdapter messageBuilderAdapter,
             RenderableMessage.Pool messagePool)
         {
             _messageParser = messageParser ?? throw new ArgumentNullException(nameof(messageParser));
             _imageProvider = imageProvider ?? throw new ArgumentNullException(nameof(imageProvider));
             _fontProvider = fontProvider ?? throw new ArgumentNullException(nameof(fontProvider));
+            _chatConfig = chatConfig ?? throw new ArgumentNullException(nameof(chatConfig));
             _messageBuilderAdapter = messageBuilderAdapter ?? throw new ArgumentNullException(nameof(messageBuilderAdapter));
             _messagePool = messagePool ?? throw new ArgumentNullException(nameof(messagePool));
         }

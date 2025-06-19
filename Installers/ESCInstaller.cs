@@ -42,12 +42,12 @@ namespace EnhancedStreamChat.Installers
                 typeof(EnhancedTextMeshProUGUIWithBackground)
             );
 
-            // Note: IChatConfiguration will be bound by ChatConfigurationAdapter below
-            // Container.Bind<IChatConfiguration>()
-            //     .To<ChatConfiguration>()
-            //     .AsSingle()
-            //     .NonLazy();
-            // Logger.Log.Info("[ESCInstaller] Bound IChatConfiguration to ChatConfiguration");
+            // Bind IChatConfiguration using ChatConfigurationAdapter
+            Container.Bind<IChatConfiguration>()
+                .To<Chat.Adapters.ChatConfigurationAdapter>()
+                .AsSingle()
+                .NonLazy();
+            Logger.Log.Info("[ESCInstaller] Bound IChatConfiguration to ChatConfigurationAdapter");
 
             // Bind core services
             Container.Bind<IMessageParser>()

@@ -88,7 +88,7 @@ namespace EnhancedStreamChat.Chat
         public int Song_ChatLayer = 5;
 
 
-        private ChatConfig(string configDirectory, string configName) : base(configDirectory, configName, Path.Combine(Environment.CurrentDirectory, "UserData", "StreamCore", "TwitchLoginInfo.ini"))
+        private ChatConfig(string configDirectory, string configName) : base(configDirectory, configName, Path.Combine(Environment.CurrentDirectory, "UserData", "StreamCore", "TwitchLoginInfo.ini"), true)
         {
             Logger.Info("Config initialized.");
         }

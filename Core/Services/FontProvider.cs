@@ -18,12 +18,14 @@ namespace EnhancedStreamChat.Core.Services
     public class FontProvider : IFontProvider
     {
         private readonly ESCFontManager _legacyFontManager;
+        private readonly IChatConfiguration _chatConfig;
         private readonly Dictionary<string, TMP_FontAsset> _fontCache;
         
         [Inject]
-        public FontProvider(ESCFontManager fontManager)
+        public FontProvider(ESCFontManager fontManager, IChatConfiguration chatConfig)
         {
             _legacyFontManager = fontManager;
+            _chatConfig = chatConfig;
             _fontCache = new Dictionary<string, TMP_FontAsset>();
             
             // 等待字体管理器初始化
@@ -50,7 +52,7 @@ namespace EnhancedStreamChat.Core.Services
             }
             
             // 如果请求的是主字体名称，返回主字体
-            if (name == ChatConfig.instance.SystemFontName)
+            if (name == _chatConfig.SystemFontName)
             {
                 return GetChatFont();
             }
@@ -117,7 +119,7 @@ namespace EnhancedStreamChat.Core.Services
         /// </summary>
         public TMP_FontAsset GetSystemFont()
         {
-            return GetFont(ChatConfig.instance.SystemFontName);
+            return GetFont(_chatConfig.SystemFontName);
         }
         
         /// <summary>
@@ -146,7 +148,7 @@ namespace EnhancedStreamChat.Core.Services
             }
             
             // 添加配置中的系统字体名
-            fonts.Add(ChatConfig.instance.SystemFontName);
+            fonts.Add(_chatConfig.SystemFontName);
             
             // 去重
             return fonts.Distinct();
