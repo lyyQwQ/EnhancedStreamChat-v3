@@ -77,7 +77,7 @@ namespace EnhancedStreamChat.Chat
                                     // Logger.Debug($"register emote \"{emote.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                                 }
                                 tcs.SetResult(info);
-                            }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));
+                            }, forcedHeight: 110));
                             break;
                         case EmoteType.SpriteSheet:
                             // Logger.Debug("[ChatMessageBuilder] | [PrepareImages] | [SpriteSheet] | start cache SpriteSheet Emote: ID: " + emote.Id + " Uri: " + emote.Uri);
@@ -126,7 +126,7 @@ namespace EnhancedStreamChat.Chat
                             // Logger.Debug($"register badge \"{badge.Id}\" in font {font.Font.name}, character: {character}, character: {char.ConvertFromUtf32((int)character)}, character int: {(int)character}, info: {info}");
                         }
                         tcs.SetResult(info);
-                    }, forcedHeight: (int)Math.Ceiling(ChatConfig.instance.FontSize * 15)));
+                    }, forcedHeight: 110));
                     tasks.Add(tcs.Task);
                 }
             }
@@ -136,7 +136,186 @@ namespace EnhancedStreamChat.Chat
         }
 
         /// <summary>
-        /// 构建消息文本，支持主消息和子消息的选择
+        /// 构建消息文本，支持主消息和子消息的选择（同步版本，v3风格）
+        /// </summary>
+        /// <param name="msg">聊天消息</param>
+        /// <param name="font">字体信息</param>
+        /// <param name="buildTarget">构建目标（主消息或子消息）</param>
+        /// <returns>格式化后的消息文本</returns>
+        public static string BuildMessageSync(IChatMessage msg, EnhancedFontInfo font, BuildMessageTarget buildTarget)
+        {
+            try {
+                // 当前版本的 IChatMessage 没有 SubMessage 属性
+                // 子消息功能暂时返回空字符串，等待 ChatCore 支持
+                if (buildTarget == BuildMessageTarget.Sub)
+                {
+                    return string.Empty;
+                }
+                
+                // 使用主消息内容
+                var messageContent = msg.Message;
+
+                var sb = new StringBuilder(messageContent);
+                // Escape all html tags in the message
+                sb.Replace("<", "<\u2060");
+                
+                try{
+                    foreach (var emote in msg.Emotes)
+                    {
+                        if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace))
+                        {
+                            Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
+                            continue;
+                        }
+
+                        if (!font.TryGetCharacter(replace.ImageId, out var character))
+                        {
+                            Logger.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
+                            continue;
+                        }
+
+                        try {
+                            if (msg is BilibiliChatMessage) {
+                                // 支持 Bilibili 表情
+                                sb.Replace(emote.Name, char.ConvertFromUtf32((int)character));
+                            }
+                            else if (emote is TwitchEmote)
+                            {
+                                if (emote is TwitchEmote twitchEmote && twitchEmote.Bits > 0)
+                                {
+                                    // 暂时跳过 Bits 表情，稍后处理
+                                    continue;
+                                }
+                                sb.Replace(emote.Name, char.ConvertFromUtf32((int)character));
+                            }
+                            else if (Regex.IsMatch(emote.Id, "^Emoji_"))
+                            {
+                                var charIndexText = Regex.Replace(emote.Id, "^Emoji_", "");
+                                var emojiChars = charIndexText.Split('-').Select(x => char.ConvertFromUtf32(Convert.ToInt32($"0x{x}", 16)));
+                                var emojiBuilder = new StringBuilder();
+                                foreach (var emojiChar in emojiChars)
+                                {
+                                    emojiBuilder.Append(emojiChar);
+                                }
+                                sb.Replace(emojiBuilder.ToString(), char.ConvertFromUtf32((int)character));
+                            }
+                        }
+                        catch (Exception ex) {
+                            Logger.Error($"An unknown error occurred while trying to swap emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})\r\n{ex.ToString()}");
+                        }
+                    }
+                    
+                    // 处理 Twitch Bits 表情
+                    foreach (var emote in msg.Emotes)
+                    {
+                        if (emote is TwitchEmote twitchEmote && twitchEmote.Bits > 0)
+                        {
+                            if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(emote.Id, out var replace))
+                            {
+                                Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
+                                continue;
+                            }
+
+                            if (!font.TryGetCharacter(replace.ImageId, out var character))
+                            {
+                                Logger.Warn($"Emote {emote.Name} was missing from the character dict! Font hay have run out of usable characters.");
+                                continue;
+                            }
+
+                            try {
+                                sb.Replace($"{emote.Name}{twitchEmote.Bits}", char.ConvertFromUtf32((int)character));
+                            }
+                            catch (Exception ex) {
+                                Logger.Error($"An unknown error occurred while trying to swap bits emote {emote.Name} into string of length {sb.Length} at location ({emote.StartIndex}, {emote.EndIndex})\r\n{ex.ToString()}");
+                            }
+                        }
+                    }
+                } catch (Exception ex)
+                {
+                    Logger.Error($"An exception occurred in ChatMessageBuilder:BuildMessageSync parsing emotes. Msg: \"{messageContent}\". {ex.ToString()}");
+                }
+
+                // 系统消息处理
+                if (msg.IsSystemMessage)
+                {
+                    sb.Insert(0, $"<color=#bbbbbbbb>");
+                    sb.Append("</color>");
+                }
+                else if (!msg.IsActionMessage && buildTarget == BuildMessageTarget.Main)
+                {
+                    // 普通消息：显示用户名
+                    var nameColorString = msg.Sender.Color;
+                    if (ColorUtility.TryParseHtmlString(nameColorString, out var color))
+                    {
+                        Color.RGBToHSV(color, out var h, out var s, out var v);
+                        v = Mathf.Max(0.85f, v);
+                        nameColorString = ColorUtility.ToHtmlStringRGB(Color.HSVToRGB(h, s, v));
+                    }
+                    else
+                    {
+                        nameColorString = "FFFFFF";
+                    }
+
+                    sb.Insert(0, $"<b><color=#{nameColorString}>{msg.Sender.DisplayName}</color></b> ");
+
+                    // 处理徽章
+                    var badges = ImageStackPool.Alloc();
+                    try
+                    {
+                        foreach (var badge in msg.Sender.Badges)
+                        {
+                            if (!ChatImageProvider.instance.CachedImageInfo.TryGetValue(badge.Id, out var replace))
+                            {
+                                Logger.Warn($"Badge {badge.Name} was missing from the cached image info!");
+                                continue;
+                            }
+
+                            if (!font.TryGetCharacter(replace.ImageId, out var character))
+                            {
+                                Logger.Warn($"Badge {badge.Name} was missing from the character dict!");
+                                continue;
+                            }
+                            else
+                            {
+                                sb.Insert(0, $"{char.ConvertFromUtf32((int)character)}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"An exception occurred while inserting badges in BuildMessageSync. {ex.ToString()}");
+                    }
+                    ImageStackPool.Free(badges);
+                }
+                else if (msg.IsActionMessage && buildTarget == BuildMessageTarget.Main)
+                {
+                    // 动作消息：整条消息使用用户名颜色
+                    var nameColorString = msg.Sender.Color;
+                    if (ColorUtility.TryParseHtmlString(nameColorString, out var color))
+                    {
+                        Color.RGBToHSV(color, out var h, out var s, out var v);
+                        v = Mathf.Max(0.85f, v);
+                        nameColorString = ColorUtility.ToHtmlStringRGB(Color.HSVToRGB(h, s, v));
+                    }
+                    else
+                    {
+                        nameColorString = "FFFFFF";
+                    }
+
+                    sb.Insert(0, $"<b><color=#{nameColorString}>");
+                    sb.Append($"</color></b>");
+                }
+
+                return sb.ToString();
+            }
+            catch (Exception ex) {
+                Logger.Error($"An exception occurred in ChatMessageBuilder:BuildMessageSync. Msg: \"{msg.Message}\". {ex.ToString()}");
+            }
+            return msg.Message;
+        }
+
+        /// <summary>
+        /// 构建消息文本，支持主消息和子消息的选择（异步版本）
         /// </summary>
         /// <param name="msg">聊天消息</param>
         /// <param name="font">字体信息</param>

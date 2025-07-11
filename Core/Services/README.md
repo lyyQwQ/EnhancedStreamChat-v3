@@ -2,12 +2,11 @@
 
 这个目录将包含以下服务的实现：
 
-1. **EventAggregator** - 事件聚合器，用于组件间的解耦通信
-2. **ChatConfiguration** - 配置管理器，支持运行时配置更新
-3. **MessageParser** - 消息解析器，将ChatCore消息转换为可渲染格式
-4. **MessageRenderer** - 消息渲染器，负责消息的异步渲染
-5. **ImageProvider** - 图片提供者，管理图片加载和缓存
-6. **FontProvider** - 字体提供者，管理字体资源
+1. **ChatConfiguration** - 配置管理器，支持运行时配置更新（使用标准 C# 事件）
+2. **MessageParser** - 消息解析器，将ChatCore消息转换为可渲染格式
+3. **MessageRenderer** - 消息渲染器，负责消息的异步渲染
+4. **ImageProvider** - 图片提供者，管理图片加载和缓存
+5. **FontProvider** - 字体提供者，管理字体资源
 
 ## 实现策略
 
@@ -23,4 +22,4 @@
 - 所有服务都应该是可测试的
 - 避免使用单例模式
 - 通过依赖注入传递依赖
-- 使用事件聚合器进行组件通信
+- 使用标准 C# 事件进行组件通信

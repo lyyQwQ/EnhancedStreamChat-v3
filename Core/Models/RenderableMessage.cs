@@ -227,6 +227,9 @@ namespace EnhancedStreamChat.Core.Models
             [Inject]
             private readonly IFontProvider _fontProvider;
             
+            [Inject]
+            private readonly IChatConfiguration _chatConfig;
+            
             protected override void Reinitialize(RenderableMessage item)
             {
                 base.Reinitialize(item);
@@ -239,7 +242,7 @@ namespace EnhancedStreamChat.Core.Models
                     
                     // 添加 RectTransform
                     var rectTransform = go.AddComponent<RectTransform>();
-                    rectTransform.sizeDelta = new Vector2(ChatConfig.instance.ChatWidth, 0);
+                    rectTransform.sizeDelta = new Vector2(_chatConfig.ChatWidth, 0);
                     rectTransform.pivot = new Vector2(0.5f, 0.5f);
                     rectTransform.anchorMin = new Vector2(0, 0);
                     rectTransform.anchorMax = new Vector2(1, 0);
@@ -249,12 +252,12 @@ namespace EnhancedStreamChat.Core.Models
                     
                     // 添加 LayoutElement
                     var layoutElement = go.AddComponent<LayoutElement>();
-                    layoutElement.preferredWidth = ChatConfig.instance.ChatWidth;
+                    layoutElement.preferredWidth = _chatConfig.ChatWidth;
                     
                     // 添加文本组件
                     var text = go.AddComponent<EnhancedTextMeshProUGUI>();
-                    text.fontSize = ChatConfig.instance.FontSize;
-                    text.color = ChatConfig.instance.TextColor;
+                    text.fontSize = _chatConfig.FontSize;
+                    text.color = _chatConfig.TextColor;
                     text.enableWordWrapping = true;
                     text.richText = true;
                     text.fontStyle = FontStyles.Normal;

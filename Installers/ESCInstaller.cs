@@ -4,7 +4,6 @@ using EnhancedStreamChat.Core.Models;
 using EnhancedStreamChat.Core.Services;
 using EnhancedStreamChat.Graphics;
 using EnhancedStreamChat.Utilities;
-using EnhancedStream_139.Core.Services;
 using EnhancedStream_139.Utils;
 using UnityEngine;
 using UnityEngine.UI;
@@ -104,11 +103,6 @@ namespace EnhancedStreamChat.Installers
                 .NonLazy();
             Logger.Log.Info("[ESCInstaller] Bound MainThreadDispatcher");
             
-            // Bind MessageRenderQueue for async message processing
-            Container.BindInterfacesAndSelfTo<MessageRenderQueue>()
-                .AsSingle()
-                .NonLazy();
-            Logger.Log.Info("[ESCInstaller] Bound MessageRenderQueue");
 
             // Bind memory pool for RenderableMessage (使用内部 Pool 类)
             Container.BindMemoryPool<RenderableMessage, RenderableMessage.Pool>()

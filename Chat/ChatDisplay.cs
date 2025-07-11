@@ -97,7 +97,6 @@ namespace EnhancedStreamChat.Chat
             }
             
             _instance = this; // 设置单例实例
-            this._waitForEndOfFrame = new WaitForEndOfFrame();
             DontDestroyOnLoad(this.gameObject);
             // Logger.Debug("ChatDisplay Awake");
             // VRPointerOnEnablePatch.OnEnabled += this.PointerOnEnabled;
@@ -205,13 +204,7 @@ namespace EnhancedStreamChat.Chat
                         
                         try
                         {
-                            await this.OnTextMessageReceived(msg.Value, msg.Key);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            Logger.Info("[ChatDisplay] Task cancelled during message processing");
-                            _backupMessageQueue.Enqueue(msg);
-                            break;
+                            this.OnTextMessageReceived(msg.Value, msg.Key);
                         }
                         catch (Exception ex)
                         {
@@ -252,9 +245,9 @@ namespace EnhancedStreamChat.Chat
         }
         
         // 创建并显示聊天消息（异步版本）
-        public async Task CreateMessageAsync(IChatMessage message)
+        public void CreateMessageAsync(IChatMessage message)
         {
-            await OnTextMessageReceived(message, DateTime.Now);
+            OnTextMessageReceived(message, DateTime.Now);
         }
         
         // 清除指定ID的消息
@@ -334,7 +327,7 @@ namespace EnhancedStreamChat.Chat
                 {
                     try
                     {
-                        await this.OnTextMessageReceived(msg.Value, msg.Key);
+                        this.OnTextMessageReceived(msg.Value, msg.Key);
                     }
                     catch (Exception ex)
                     {
@@ -477,8 +470,8 @@ namespace EnhancedStreamChat.Chat
                     return;
                 }
 
-                // 使用协程延迟到帧末尾，确保所有布局计算完成
-                StartCoroutine(UpdateMessagePositionsCoroutine());
+                // v3风格：立即更新消息位置，无延迟
+                UpdateMessagePositions();
                 this._updateMessagePositions = false;
             }
             catch (Exception ex)
@@ -488,17 +481,6 @@ namespace EnhancedStreamChat.Chat
             }
         }
         
-        private IEnumerator UpdateMessagePositionsCoroutine()
-        {
-            // 等待帧结束，确保所有布局更新完成
-            yield return _waitForEndOfFrame;
-            
-            // 再次检查状态
-            if (!_disposedValue && _isInitialized)
-            {
-                UpdateMessagePositions();
-            }
-        }
 
         private FloatingScreen _chatScreen;
         private GameObject _chatContainer;
@@ -667,7 +649,6 @@ namespace EnhancedStreamChat.Chat
         //     }
         // }
 
-        private WaitForEndOfFrame _waitForEndOfFrame;
 
 
         private void UpdateMessagePositions()
@@ -1361,11 +1342,11 @@ namespace EnhancedStreamChat.Chat
         public void OnTextMessageReceived(IChatMessage msg)
         {
             Logger.Info($"Received message: {msg.Message}");
-            _ = this.OnTextMessageReceived(msg, DateTime.Now);
+            this.OnTextMessageReceived(msg, DateTime.Now);
             // Logger.Debug($"OnTextMessageReceived: {msg.Message}");
         }
 
-        public async Task OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
+        public void OnTextMessageReceived(IChatMessage msg, DateTime dateTime)
         {
             // Logger.Debug(
             //     $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
@@ -1384,33 +1365,30 @@ namespace EnhancedStreamChat.Chat
                 Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
             }
             
-            // 分别构建主消息和子消息（参考v3的实现）
-            var mainMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Main);
-            var subMessage = await ChatMessageBuilder.BuildMessage(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Sub);
+            // v3风格：使用同步方法立即构建消息
+            var mainMessage = ChatMessageBuilder.BuildMessageSync(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Main);
+            var subMessage = ChatMessageBuilder.BuildMessageSync(msg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Sub);
             
             // Logger.Debug($"Build message end - main: {mainMessage}, sub: {subMessage}");
             if (_textPoolContainer == null)
             {
-                Logger.Warn("_textPoolContainer is null, waiting for it to be initialized.");
+                Logger.Error("[OnTextMessageReceived] Text pool container is null");
+                return;
             }
 
-            // 添加超时保护
-            var startTime = DateTime.UtcNow;
-            var timeout = TimeSpan.FromSeconds(5);
-            while (_textPoolContainer == null)
+            // Logger.Debug($"Create message: main={mainMessage}, sub={subMessage}");
+            // v3风格：在主线程立即创建消息
+            // 主线程检查：通过System.Threading判断是否在主线程
+            if (System.Threading.Thread.CurrentThread.ManagedThreadId == 1)
             {
-                if (DateTime.UtcNow - startTime > timeout)
-                {
-                    Logger.Error("[OnTextMessageReceived] Timeout waiting for text pool container");
-                    return;
-                }
-                await Task.Delay(100);
+                this.CreateMessage(msg, dateTime, mainMessage, subMessage);
             }
-
-            // Logger.Debug($"Create message coroutine: main={mainMessage}, sub={subMessage}");
-            // 在主线程上创建消息，使用 await 确保消息按顺序创建
-            await MainThreadInvoker.InvokeAsync(() => this.CreateMessage(msg, dateTime, mainMessage, subMessage));
-            // Logger.Debug($"Create message coroutine end");
+            else
+            {
+                // 如果不在主线程，使用同步方式切换到主线程
+                MainThreadInvoker.Invoke(() => this.CreateMessage(msg, dateTime, mainMessage, subMessage));
+            }
+            // Logger.Debug($"Create message end");
         }
 
 

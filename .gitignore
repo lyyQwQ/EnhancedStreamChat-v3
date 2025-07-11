@@ -259,3 +259,45 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+
+# Claude 相关文件
+.claude/
+.claude-commands.sh
+
+# 文档和计划文件（保留 README.md）
+ADAPTER_TEST_PLAN.md
+ARCHITECTURE_REFACTORING_PLAN.md
+CHATCORE_COORDINATION_STATUS.md
+CHATMANAGER_MIGRATION_SUMMARY.md
+DEVELOPMENT_TOOLS.md
+GAMEPLAY_TEST_IMPLEMENTATION.md
+IMPLEMENTATION_NOTES.md
+QUICK_REFERENCE.md
+REFACTORING_PROGRESS.md
+REFACTORING_QUICK_SUMMARY.md
+REFACTORING_STATUS_20250114.md
+REFACTORING_TASKS.md
+TECHNICAL_DEBT.md
+ZENJECT_MIGRATION_STATUS.md
+表情显示机制分析报告.md
+
+# 备份文件
+*.backup
+*.bak
+
+# 补丁文件
+*.patch
+
+# 脚本文件
+build.ps1
+check-syntax.sh
+test-core-syntax.sh
+
+# 测试报告
+TestReports/
+
+# 知识库（项目文档）
+知识库/
+
+# 存档文件
+archive/

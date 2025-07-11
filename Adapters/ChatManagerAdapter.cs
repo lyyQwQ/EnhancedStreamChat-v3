@@ -105,9 +105,6 @@ namespace EnhancedStreamChat.Adapters
                 // 使用新的解析器处理消息
                 var parsedMessage = _messageParser.Parse(message.Message, message.Sender);
                 
-                // 将解析后的消息转换为 ChatManager 期望的格式
-                // 注意：当前版本仍然让 ChatManager 处理原始消息
-                // 但我们已经通过新的解析器预处理了消息，为将来的迁移做准备
                 if (parsedMessage != null)
                 {
                     Logger.Log.Info($"Message parsed with {parsedMessage.Segments?.Count ?? 0} segments");
@@ -136,7 +133,6 @@ namespace EnhancedStreamChat.Adapters
                     TestAdapters.LogAdapterState(nameof(ChatManagerAdapter), nameof(OnTextMessageReceived), 
                         $"Emotes count: {parsedMessage.Emotes?.Count ?? 0}, Badges count: {parsedMessage.Badges?.Count ?? 0}");
 #endif
-                    // 未来可以在这里直接使用解析后的消息，绕过旧的处理逻辑
                 }
             }
             catch (Exception ex)

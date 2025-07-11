@@ -16,10 +16,10 @@ namespace EnhancedStreamChat.Core.Interfaces
         void CreateMessage(IChatMessage message);
         
         /// <summary>
-        /// 创建并显示聊天消息（异步版本）
+        /// 创建并显示聊天消息（同步版本，v3风格）
         /// </summary>
         /// <param name="message">聊天消息</param>
-        Task CreateMessageAsync(IChatMessage message);
+        void CreateMessageAsync(IChatMessage message);
         
         /// <summary>
         /// 清除指定ID的消息

@@ -5,7 +5,6 @@ using ChatCore.Models;
 using EnhancedStreamChat.Core.Interfaces;
 using EnhancedStreamChat.Core.Models;
 using EnhancedStreamChat.Adapters;
-using EnhancedStream_139.Core.Services;
 using Zenject;
 
 namespace EnhancedStreamChat.Chat.Adapters
@@ -18,7 +17,6 @@ namespace EnhancedStreamChat.Chat.Adapters
         private ChatConfig _chatConfig => ChatConfig.instance;
         private readonly IMessageParser _messageParser;
         private readonly ChatDisplayAdapter _chatDisplayAdapter;
-        private readonly MessageRenderQueue _messageRenderQueue;
         
         // Legacy ChatManager instance
         private ChatManager _legacyChatManager;
@@ -26,12 +24,10 @@ namespace EnhancedStreamChat.Chat.Adapters
         [Inject]
         public ChatManagerAdapter(
             IMessageParser messageParser,
-            ChatDisplayAdapter chatDisplayAdapter,
-            MessageRenderQueue messageRenderQueue)
+            ChatDisplayAdapter chatDisplayAdapter)
         {
             _messageParser = messageParser;
             _chatDisplayAdapter = chatDisplayAdapter;
-            _messageRenderQueue = messageRenderQueue;
         }
         
         public void Initialize()
@@ -68,7 +64,7 @@ namespace EnhancedStreamChat.Chat.Adapters
             }
         }
         
-        private async void OnChatCoreMessageReceived(IChatService service, IChatMessage message)
+        private void OnChatCoreMessageReceived(IChatService service, IChatMessage message)
         {
             try
             {
@@ -78,34 +74,26 @@ namespace EnhancedStreamChat.Chat.Adapters
                 // 使用新的消息解析器（同步方法）
                 var parsedMessage = _messageParser.Parse(chatMessage.Message, chatMessage.Sender);
                 
-                // 使用消息渲染队列确保在主线程安全渲染
-                if (_messageRenderQueue != null && _chatDisplayAdapter != null)
+                // v3风格：直接处理消息，无队列延迟
+                if (_chatDisplayAdapter != null)
                 {
-                    _messageRenderQueue.EnqueueMessage(new RenderRequest
+                    try
                     {
-                        Service = service,
-                        Message = message,
-                        ParsedMessage = parsedMessage,
-                        SuccessCallback = async (renderableMessage) =>
-                        {
-                            // 渲染成功后的处理
-                            Logger.Debug($"Message {message.Id} rendered successfully");
-                        },
-                        ErrorCallback = (ex) =>
-                        {
-                            Logger.Error($"Failed to render message {message.Id}: {ex}");
-                        }
-                    });
-                    
-                    Logger.Debug($"Message {message.Id} enqueued for rendering");
+                        // 立即处理消息，无异步延迟
+                        Logger.Debug($"Processing message {message.Id} immediately");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Failed to process message {message.Id}: {ex}");
+                    }
                 }
                 else
                 {
-                    Logger.Warn("MessageRenderQueue or ChatDisplayAdapter is null, cannot render message");
+                    Logger.Warn("ChatDisplayAdapter is null, cannot process message");
                 }
                 
                 // 注意：ChatDisplay 仍通过 ChatManager 的事件接收消息
-                // 这个适配器是新架构的一部分，用于测试和逐步迁移
+                // 这个适配器主要用于新架构的消息解析测试
             }
             catch (Exception ex)
             {
