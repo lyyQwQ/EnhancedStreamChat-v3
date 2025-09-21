@@ -169,7 +169,7 @@ namespace EnhancedStreamChat.Chat
         public IEnumerator OnSingleImageCached(byte[] bytes, string id, bool isAnimated, Action<EnhancedImageInfo> Finally = null, int forcedHeight = -1)
         {
             if (bytes.Length == 0) {
-                Finally(null);
+                Finally?.Invoke(null);
                 yield break;
             }
 
