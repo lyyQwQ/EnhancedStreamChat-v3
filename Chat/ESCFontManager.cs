@@ -10,6 +10,7 @@ using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
 using Zenject;
 using IPA.Utilities;
+using BeatSaberMarkupLanguage.Util;
 
 namespace EnhancedStreamChat.Chat
 {
@@ -82,7 +83,19 @@ namespace EnhancedStreamChat.Chat
         {
             _instance = this; // 设置单例实例用于向后兼容
             Logger.Debug("ESCFontManager Initialize");
-            this.StartCoroutine(this.CreateChatFont());
+            // 等待主菜单 UI 就绪后再创建字体，避免过早访问 BSML DiContainer
+            this.StartCoroutine(this.InitializeAfterMenuReady());
+        }
+
+        private IEnumerator InitializeAfterMenuReady()
+        {
+            // 通过 BSML MainMenuAwaiter 等待主菜单初始化（避免触发 “Tried getting DiContainer too early!”）
+            var waitTask = MainMenuAwaiter.WaitForMainMenuAsync();
+            while (!waitTask.IsCompleted)
+            {
+                yield return null;
+            }
+            yield return this.CreateChatFont();
         }
 
         public IEnumerator CreateChatFont()
