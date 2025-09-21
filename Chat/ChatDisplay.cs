@@ -1,6 +1,7 @@
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.FloatingScreen;
 using BeatSaberMarkupLanguage.ViewControllers;
+using BeatSaberMarkupLanguage.Util;
 using BS_Utils.Utilities;
 using ChatCore.Interfaces;
 using ChatCore.Models.Bilibili;
@@ -53,6 +54,7 @@ namespace EnhancedStreamChat.Chat
 
         private bool _isInGame;
         private bool _isInitialized = false;
+        private bool _uiReady = false;
         private bool _isUpdatingLayout = false;
         private bool _updateMessagePositions = false;
         
@@ -178,55 +180,32 @@ namespace EnhancedStreamChat.Chat
             if (cancellationToken.IsCancellationRequested)
                 return;
             
-            // 处理备份消息队列（v3: while (s_backupMessageQueue.TryDequeue(out var msg))）
-            // 检查取消令牌并添加保护
-            if (!cancellationToken.IsCancellationRequested)
-            {
+            // 不在此处处理备份消息：等待主菜单 UI 就绪后再统一处理
+            
+                _isInitialized = true;
+                Logger.Info("[ChatDisplay] Initialization completed; waiting for MainMenu to be ready...");
+
+                // 订阅图片缓存事件，用于图片回填
+                if (ChatImageProvider.instance != null)
+                {
+                    ChatImageProvider.instance.OnImageCached += this.ChatImageProvider_OnImageCached;
+                    Logger.Info("[ChatDisplay] Subscribed to ChatImageProvider.OnImageCached");
+                }
+
+                // 等待主菜单 UI 初始化完成（BSML MainMenuAwaiter）
                 try
                 {
-                    var messagesToProcess = new List<KeyValuePair<DateTime, IChatMessage>>();
-                    while (_backupMessageQueue.TryDequeue(out var msg))
-                    {
-                        messagesToProcess.Add(msg);
-                    }
-                    
-                    Logger.Info($"[ChatDisplay] Processing {messagesToProcess.Count} backup messages");
-                    
-                    foreach (var msg in messagesToProcess)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            Logger.Info("[ChatDisplay] Cancellation requested during backup message processing");
-                            // 将未处理的消息放回队列
-                            _backupMessageQueue.Enqueue(msg);
-                            break;
-                        }
-                        
-                        try
-                        {
-                            this.OnTextMessageReceived(msg.Value, msg.Key);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Error($"[ChatDisplay] Error processing backup message: {ex.Message}");
-                        }
-                    }
+                    await MainMenuAwaiter.WaitForMainMenuAsync();
+                    _uiReady = true;
+                    Logger.Info("[ChatDisplay] UI ready (MainMenuAwaiter)");
+                    await ProcessPendingBackupMessages();
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"[ChatDisplay] Error processing backup message queue: {ex}");
-                }
-            }
-            
-                _isInitialized = true;
-                Logger.Info("[ChatDisplay] Initialization completed");
-                
-                // 延迟处理初始化期间可能收到的消息
-                _ = Task.Run(async () => 
-                {
-                    await Task.Delay(100);
+                    Logger.Warn($"[ChatDisplay] MainMenuAwaiter failed, fallback to scene gate: {ex.Message}");
+                    _uiReady = true;
                     await ProcessPendingBackupMessages();
-                });
+                }
             }
             catch (Exception ex)
             {
@@ -354,6 +333,12 @@ namespace EnhancedStreamChat.Chat
                 {
                     try
                     {
+                        // 取消图片缓存事件订阅
+                        if (ChatImageProvider.instance != null)
+                        {
+                            try { ChatImageProvider.instance.OnImageCached -= this.ChatImageProvider_OnImageCached; } catch { }
+                        }
+
                         // 从 ChatManager 注销
                         if (ChatManager.instance != null && ChatManager.instance._chatDisplay == this)
                         {
@@ -680,7 +665,9 @@ namespace EnhancedStreamChat.Chat
                 Logger.Debug($"[UpdateMessagePositions] Processing {this._messages.Count} messages");
                 
                 float? msgPos = this.ChatHeight / (this.ReverseChatOrder ? 2f : -2f);
-                var messagesArray = this._messages.OrderBy(x => x.ReceivedDate).Reverse().ToArray();
+                // 使用快照并反转，避免每次排序带来的 O(n log n) 开销
+                var messagesArray = this._messages.ToArray();
+                Array.Reverse(messagesArray);
                 
                 foreach (var chatMsg in messagesArray)
                 {
@@ -1352,9 +1339,9 @@ namespace EnhancedStreamChat.Chat
             //     $"Received message: msg.Id: {msg.Id}, msg.IsSystemMessage: {msg.IsSystemMessage}, msg.IsActionMessage: {msg.IsActionMessage}, msg.IsHighlighted: {msg.IsHighlighted}, msg.IsPing: {msg.IsPing}, msg.Message: {msg.Message}, msg.Sender: {msg.Sender}, msg.Channel: {msg.Channel}, msg.Emotes: {msg.Emotes}, msg.Metadata: {msg.Metadata}");
             
             // 检查是否已初始化
-            if (!_isInitialized)
+            if (!_isInitialized || !_uiReady)
             {
-                Logger.Warn($"[OnTextMessageReceived] ChatDisplay not initialized, queueing message: {msg.Message}");
+                Logger.Warn($"[OnTextMessageReceived] ChatDisplay not ready (init={_isInitialized}, uiReady={_uiReady}), queueing: {msg.Message}");
                 _backupMessageQueue.Enqueue(new KeyValuePair<DateTime, IChatMessage>(dateTime, msg));
                 return;
             }
@@ -1465,6 +1452,87 @@ namespace EnhancedStreamChat.Chat
             catch (Exception ex)
             {
                 Logger.Error($"[CreateMessage] Unexpected error: {ex}");
+            }
+        }
+
+        // 图片缓存后回填最近的消息里对应的图片
+        private const int MaxBackfillSearch = 80;
+        private void ChatImageProvider_OnImageCached(string imageId)
+        {
+            if (!_isInitialized || !_uiReady)
+            {
+                return;
+            }
+
+            try
+            {
+                MainThreadInvoker.Invoke(() => RebuildMessagesForImage(imageId));
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"[OnImageCached] Failed to schedule backfill for {imageId}: {ex.Message}");
+            }
+        }
+
+        private void RebuildMessagesForImage(string imageId)
+        {
+            try
+            {
+                var snapshot = _messages.ToArray();
+                var rebuilt = 0;
+                for (int i = snapshot.Length - 1; i >= 0 && rebuilt < MaxBackfillSearch; i--)
+                {
+                    var uiMsg = snapshot[i];
+                    if (uiMsg == null || uiMsg.Text == null)
+                        continue;
+
+                    var chatMsg = uiMsg.Text.ChatMessage;
+                    if (chatMsg == null)
+                        continue;
+
+                    // 判断该消息是否使用了该图片（表情或徽章）
+                    var usesImage = false;
+                    try
+                    {
+                        if (chatMsg.Emotes != null && chatMsg.Emotes.Any(e => e != null && e.Id == imageId))
+                            usesImage = true;
+                        else if (chatMsg.Sender?.Badges != null && chatMsg.Sender.Badges.Any(b => b != null && b.Id == imageId))
+                            usesImage = true;
+                    }
+                    catch { /* ignore */ }
+
+                    if (!usesImage)
+                        continue;
+
+                    // 确保图片注册到字体后再重建
+                    try { ChatMessageBuilder.PrepareImages(chatMsg, ESCFontManager.instance.FontInfo); } catch { }
+
+                    var main = ChatMessageBuilder.BuildMessageSync(chatMsg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Main);
+                    var sub = ChatMessageBuilder.BuildMessageSync(chatMsg, ESCFontManager.instance.FontInfo, BuildMessageTarget.Sub);
+
+                    uiMsg.Text.text = main;
+                    if (!string.IsNullOrEmpty(sub))
+                    {
+                        uiMsg.SubTextEnabled = true;
+                        uiMsg.SubText.text = sub;
+                    }
+                    else
+                    {
+                        uiMsg.SubTextEnabled = false;
+                    }
+                    UpdateMessage(uiMsg, true);
+                    rebuilt++;
+                }
+
+                if (rebuilt > 0)
+                {
+                    _updateMessagePositions = true;
+                    Logger.Info($"[Backfill] Rebuilt {rebuilt} messages for image {imageId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"[Backfill] Error while rebuilding for {imageId}: {ex.Message}");
             }
         }
         

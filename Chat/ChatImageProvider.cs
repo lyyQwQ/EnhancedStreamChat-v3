@@ -23,6 +23,9 @@ namespace EnhancedStreamChat.Chat
 
     public class ChatImageProvider : MonoBehaviour, IInitializable
     {
+        public event Action<string> OnImageCached;
+        private const int MAX_IMAGE_CACHE = 800; // 上限以避免长期运行占用过大
+        private const int MAX_SPRITESHEET_CACHE = 200;
         public enum ESCAnimationType
         {
             NONE,
@@ -282,7 +285,11 @@ namespace EnhancedStreamChat.Chat
                     Height = spriteHeight,
                     AnimControllerData = animControllerData
                 };
-                this.CachedImageInfo.TryAdd(id, ret);
+                if (this.CachedImageInfo.TryAdd(id, ret))
+                {
+                    TrimCachesIfNeeded();
+                    try { OnImageCached?.Invoke(id); } catch (Exception ex) { Logger.Warn($"OnImageCached handler threw: {ex.Message}"); }
+                }
             }
             Finally?.Invoke(ret);
         }
@@ -337,6 +344,7 @@ namespace EnhancedStreamChat.Chat
                     
                     if (success && tex != null) {
                         this._cachedSpriteSheets[uri] = tex;
+                        TrimCachesIfNeeded();
                     }
                     else {
                         Logger.Error($"Failed to load sprite sheet after {maxRetries} attempts");
@@ -368,7 +376,11 @@ namespace EnhancedStreamChat.Chat
                     Height = spriteHeight,
                     AnimControllerData = null
                 };
-                this.CachedImageInfo.TryAdd(id, ret);
+                if (this.CachedImageInfo.TryAdd(id, ret))
+                {
+                    TrimCachesIfNeeded();
+                    try { OnImageCached?.Invoke(id); } catch (Exception ex) { Logger.Warn($"OnImageCached handler threw: {ex.Message}"); }
+                }
             }
             Finally?.Invoke(ret);
         }
@@ -380,6 +392,38 @@ namespace EnhancedStreamChat.Chat
                     GameObject.Destroy(info.Sprite);
                 }
                 CachedImageInfo.Clear();
+            }
+        }
+
+        private void TrimCachesIfNeeded()
+        {
+            // 限制单图缓存大小
+            var over = this.CachedImageInfo.Count - MAX_IMAGE_CACHE;
+            if (over > 0)
+            {
+                foreach (var key in this.CachedImageInfo.Keys.Take(over))
+                {
+                    if (this.CachedImageInfo.TryRemove(key, out var info))
+                    {
+                        if (info?.Sprite != null)
+                        {
+                            GameObject.Destroy(info.Sprite);
+                        }
+                    }
+                }
+            }
+
+            // 限制雪碧图缓存大小
+            over = this._cachedSpriteSheets.Count - MAX_SPRITESHEET_CACHE;
+            if (over > 0)
+            {
+                foreach (var key in this._cachedSpriteSheets.Keys.Take(over))
+                {
+                    if (this._cachedSpriteSheets.TryRemove(key, out var tex) && tex != null)
+                    {
+                        GameObject.Destroy(tex);
+                    }
+                }
             }
         }
     }
