@@ -57,6 +57,10 @@ namespace EnhancedStreamChat.Chat
         private bool _uiReady = false;
         private bool _isUpdatingLayout = false;
         private bool _updateMessagePositions = false;
+        // 重绘节流与快照合并（帧内批处理）
+        private EnhancedTextMeshProUGUIWithBackground[] _frameSnapshot = Array.Empty<EnhancedTextMeshProUGUIWithBackground>();
+        private bool _dirtyContent = false; // 文本/样式变更（需要批量 UpdateMessage）
+        private bool _dirtyLayout = false;  // 布局变更（需要批量 UpdateMessagePositions）
         
         // IChatDisplay 接口实现
         public bool IsReady => _isInitialized && _chatScreen != null;
@@ -435,29 +439,50 @@ namespace EnhancedStreamChat.Chat
         {
             try
             {
-                // 检查是否需要更新消息位置
-                if (!this._updateMessagePositions)
+                // 没有任何脏标志则不处理
+                if (!_dirtyContent && !_dirtyLayout && !this._updateMessagePositions)
                 {
-                    return;
-                }
-                
-                // 检查是否已初始化
-                if (!_isInitialized || _chatScreen == null || _chatContainer == null)
-                {
-                    Logger.Debug("[Update] Chat display not fully initialized, skipping position update");
-                    return;
-                }
-                
-                // 避免在销毁过程中更新
-                if (_disposedValue)
-                {
-                    Logger.Debug("[Update] Chat display is disposed, skipping position update");
                     return;
                 }
 
-                // v3风格：立即更新消息位置，无延迟
-                UpdateMessagePositions();
-                this._updateMessagePositions = false;
+                // 检查是否已初始化，且组件有效
+                if (!_isInitialized || _chatScreen == null || _chatContainer == null || _disposedValue)
+                {
+                    return;
+                }
+
+                // 帧内仅抓取一次快照，复用
+                _frameSnapshot = _messages.ToArray();
+
+                if (_dirtyContent)
+                {
+                    _isUpdatingLayout = true;
+                    try
+                    {
+                        foreach (var msg in _frameSnapshot)
+                        {
+                            if (msg == null || msg.gameObject == null || !msg.gameObject.activeInHierarchy)
+                                continue;
+                            UpdateMessage(msg, setAllDirty: true);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn($"[Update] Error while batch UpdateMessage: {ex.Message}");
+                    }
+                    finally
+                    {
+                        _isUpdatingLayout = false;
+                        _dirtyContent = false;
+                    }
+                }
+
+                if (_dirtyLayout || this._updateMessagePositions)
+                {
+                    UpdateMessagePositions();
+                    _dirtyLayout = false;
+                    this._updateMessagePositions = false;
+                }
             }
             catch (Exception ex)
             {
@@ -776,6 +801,9 @@ namespace EnhancedStreamChat.Chat
                 
                 // 清理旧消息
                 this.ClearOldMessages();
+
+                // 标记本帧需要进行布局更新
+                _dirtyLayout = true;
             }
             catch (Exception ex)
             {
@@ -850,82 +878,14 @@ namespace EnhancedStreamChat.Chat
 
         private void UpdateMessages()
         {
-            // 防止在布局更新期间修改消息
-            if (_isUpdatingLayout)
-            {
-                Logger.Debug("[UpdateMessages] Already updating layout, skipping");
-                return;
-            }
-            
-            // 确保在主线程执行
+            // 改为设置脏标志，由每帧合并处理
             if (System.Threading.Thread.CurrentThread.ManagedThreadId != 1)
             {
-                Logger.Warn("[UpdateMessages] Called from non-main thread, scheduling on main thread");
-                MainThreadInvoker.Invoke(() => UpdateMessages());
+                MainThreadInvoker.Invoke(() => { _dirtyContent = true; _dirtyLayout = true; });
                 return;
             }
-            
-            _isUpdatingLayout = true;
-            try
-            {
-                // 检查关键组件是否存在
-                if (_chatContainer == null || _chatContainer.gameObject == null)
-                {
-                    Logger.Error("[UpdateMessages] Chat container is null or destroyed");
-                    return;
-                }
-                
-                // 创建消息数组副本，避免在迭代时集合被修改
-                var messages = this._messages.ToArray();
-                Logger.Debug($"[UpdateMessages] Processing {messages.Length} messages");
-                
-                foreach (var msg in messages)
-                {
-                    try
-                    {
-                        // 增强的空值和有效性检查
-                        if (msg == null)
-                        {
-                            Logger.Debug("[UpdateMessages] Skipping null message");
-                            continue;
-                        }
-                        
-                        if (msg.gameObject == null)
-                        {
-                            Logger.Debug("[UpdateMessages] Skipping message with null gameObject");
-                            continue;
-                        }
-                        
-                        // 检查组件是否被销毁
-                        if (msg.transform == null || msg.transform.parent == null)
-                        {
-                            Logger.Debug("[UpdateMessages] Skipping message with invalid transform");
-                            continue;
-                        }
-                        
-                        if (!msg.gameObject.activeInHierarchy)
-                        {
-                            Logger.Debug("[UpdateMessages] Skipping inactive message");
-                            continue;
-                        }
-                        
-                        this.UpdateMessage(msg, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"[UpdateMessages] Error updating individual message: {ex.Message}");
-                    }
-                }
-                this._updateMessagePositions = true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"[UpdateMessages] Unexpected error: {ex}");
-            }
-            finally
-            {
-                _isUpdatingLayout = false;
-            }
+            _dirtyContent = true;
+            _dirtyLayout = true;
         }
 
         private void UpdateMessage(EnhancedTextMeshProUGUIWithBackground msg, bool setAllDirty = false)
