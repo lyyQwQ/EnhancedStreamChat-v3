@@ -42,6 +42,10 @@ namespace EnhancedStreamChat.Chat
             var pendingEmoteDownloads = new HashSet<string>();
 
             foreach (var emote in msg.Emotes) {
+                if (string.IsNullOrEmpty(emote.Uri)) {
+                    Logger.Warn($"Emote {emote.Name} has empty URI, skipping cache.");
+                    continue;
+                }
                 // Logger.Debug($"Processing emote: {emote.Name}, ID: {emote.Id}, URL: {emote.Uri}");
                 if (string.IsNullOrEmpty(emote.Id) || pendingEmoteDownloads.Contains(emote.Id)) {
                     Logger.Warn($"Emote {emote.Name} was missing from the emote dict! The request to {emote.Uri} may have timed out?");
@@ -111,6 +115,10 @@ namespace EnhancedStreamChat.Chat
                 }
 
                 Logger.Debug("Badges: ID: " + badge.Id + " NAME: " + badge.Name + " URL: " + badge.Uri);
+                if (string.IsNullOrEmpty(badge.Uri)) {
+                    Logger.Warn($"Badge {badge.Name} has empty URI, skipping cache.");
+                    continue;
+                }
                 if (!font.CharacterLookupTable.ContainsKey(badge.Id)) {
                     // Logger.Debug($"characterLookupTable not contains badge {badge.Id}, characterLookupTable: {font.CharacterLookupTable}");
                     pendingEmoteDownloads.Add(badge.Id);
@@ -131,7 +139,18 @@ namespace EnhancedStreamChat.Chat
                 }
             }
 
-            // Wait on all the resources to be ready
+            // 等待资源准备：避免在主线程阻塞，防止卡死加载
+            if (tasks.Count == 0)
+            {
+                return true;
+            }
+
+            if (System.Threading.Thread.CurrentThread.ManagedThreadId == 1)
+            {
+                // 在主线程上不阻塞等待，依赖回填机制在资源就绪后重建
+                return true;
+            }
+
             return Task.WaitAll(tasks.ToArray(), 15000);
         }
 
