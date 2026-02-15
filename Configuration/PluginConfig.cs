@@ -19,6 +19,8 @@ namespace EnhancedStreamChat.Configuration
         }
 
         public virtual bool PreCacheAnimatedEmotes { get; set; } = true;
+        public virtual bool KeepHistoryOnSoftRestart { get; set; } = true;
+        public virtual int MaxHistoryOnSoftRestart { get; set; } = 120;
         public virtual string SystemFontName { get; set; } = "Segoe UI";
         [UseConverter(typeof(ColorConverterWithAlpha))]
         public virtual Color BackgroundColor { get; set; } = ((Color)(Vector4.one * 0.3f)).ColorWithAlpha(1f);

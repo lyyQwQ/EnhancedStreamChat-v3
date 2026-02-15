@@ -96,6 +96,9 @@ namespace EnhancedStreamChat.Chat
             else if (e.PropertyName == nameof(this.ReverseChatOrder)) {
                 this._chatConfig.ReverseChatOrder = this.ReverseChatOrder;
             }
+            else if (e.PropertyName == nameof(this.KeepHistoryOnSoftRestart)) {
+                this._chatConfig.KeepHistoryOnSoftRestart = this.KeepHistoryOnSoftRestart;
+            }
             else if (e.PropertyName == nameof(this.SyncOrientation)) {
                 this._chatConfig.SyncOrientation = this.SyncOrientation;
                 if (this._chatConfig.SyncOrientation) {
@@ -367,6 +370,14 @@ namespace EnhancedStreamChat.Chat
             }
         }
 
+        private bool _keepHistoryOnSoftRestart;
+        [UIValue("keep-history-on-soft-restart")]
+        public bool KeepHistoryOnSoftRestart
+        {
+            get => this._keepHistoryOnSoftRestart;
+            set => this.SetProperty(ref this._keepHistoryOnSoftRestart, value);
+        }
+
         /// <summary>説明 を取得、設定</summary>
         private bool _reconnectEnable = true;
         [UIValue("re-connect-enable")]
@@ -468,6 +479,7 @@ namespace EnhancedStreamChat.Chat
             this.HighlightColor = this._chatConfig.HighlightColor;
             this.PingColor = this._chatConfig.PingColor;
             this.ReverseChatOrder = this._chatConfig.ReverseChatOrder;
+            this.KeepHistoryOnSoftRestart = this._chatConfig.KeepHistoryOnSoftRestart;
             this.SyncOrientation = this._chatConfig.SyncOrientation;
             if (this._isInGame) {
                 this.ChatPosition = this._chatConfig.Song_ChatPosition;

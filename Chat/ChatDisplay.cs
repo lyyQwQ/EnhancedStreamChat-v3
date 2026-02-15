@@ -13,6 +13,7 @@ using SiraUtil.Zenject;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -68,6 +69,7 @@ namespace EnhancedStreamChat.Chat
             this._catCoreManager.OnChatConnected += this.CatCoreManager_OnChatConnected;
             this._catCoreManager.OnJoinChannel += this.CatCoreManager_OnJoinChannel;
             this._catCoreManager.OnLeaveChannel += this.CatCoreManager_OnLeaveChannel;
+            this._catCoreManager.OnTextMessageReceived += this.CatCoreManager_OnTextMessageReceived;
             this._catCoreManager.OnTwitchTextMessageReceived += this.CatCoreManager_OnTwitchTextMessageReceived;
             this._catCoreManager.OnMessageDeleted += this.OnCatCoreManager_OnMessageDeleted;
             this._catCoreManager.OnChatCleared += this.OnCatCoreManager_OnChatCleared;
@@ -102,8 +104,11 @@ namespace EnhancedStreamChat.Chat
 
         public async Task OnTextMessageReceived(IESCChatMessage msg, DateTime dateTime)
         {
-            var main = await this._chatMessageBuilder.BuildMessage(msg, this._fontManager.FontInfo, BuildMessageTarget.Main);
-            var sub = await this._chatMessageBuilder.BuildMessage(msg, this._fontManager.FontInfo, BuildMessageTarget.Sub);
+            if (!await this._chatMessageBuilder.PrepareImages(msg, this._fontManager.FontInfo)) {
+                Logger.Warn($"Failed to prepare some/all images for msg \"{msg.Message}\"!");
+            }
+            var main = await this._chatMessageBuilder.BuildMessage(msg, this._fontManager.FontInfo, BuildMessageTarget.Main, false);
+            var sub = await this._chatMessageBuilder.BuildMessage(msg, this._fontManager.FontInfo, BuildMessageTarget.Sub, false);
             await MainThreadInvoker.Invoke(() => this.CreateMessage(msg, dateTime, main, sub));
         }
 
@@ -248,7 +253,9 @@ namespace EnhancedStreamChat.Chat
             // TODO: Remove later on
             //float msgPos =  (ReverseChatOrder ?  ChatHeight : 0);
             float? msgPos = this.ChatHeight / (this.ReverseChatOrder ? 2f : -2f);
-            foreach (var chatMsg in this._messages.OrderBy(x => x.ReceivedDate).Reverse()) {
+            var orderedMessages = this._messages.ToArray();
+            for (var i = orderedMessages.Length - 1; i >= 0; i--) {
+                var chatMsg = orderedMessages[i];
                 if (!chatMsg) {
                     continue;
                 }
@@ -428,6 +435,15 @@ namespace EnhancedStreamChat.Chat
             _ = this.OnTextMessageReceived(new ESCChatMessage(arg2), DateTime.Now);
         }
 
+        private void CatCoreManager_OnTextMessageReceived(CatCore.Services.Multiplexer.MultiplexedPlatformService arg1, CatCore.Services.Multiplexer.MultiplexedMessage arg2)
+        {
+            if (arg1?.Underlying is CatCore.Services.Twitch.Interfaces.ITwitchService) {
+                return;
+            }
+            var isBilibili = arg1?.Underlying?.GetType().Namespace?.Contains("Bilibili") == true;
+            _ = this.OnTextMessageReceived(new MultiplexedESCChatMessage(arg2, isBilibili), DateTime.Now);
+        }
+
         private void OnCatCoreManager_OnMessageDeleted(CatCore.Services.Multiplexer.MultiplexedPlatformService arg1, CatCore.Services.Multiplexer.MultiplexedChannel arg2, string arg3)
         {
             this.OnMessageCleared(arg3);
@@ -478,6 +494,7 @@ namespace EnhancedStreamChat.Chat
         private static readonly string s_game = "GameCore";
         private static readonly int s_reconnectDelay = 500;
         private readonly SemaphoreSlim _connectSemaphore = new SemaphoreSlim(1, 1);
+        private static bool s_hasBeenInitialized = false;
 
         private GameObject _chatContainer;
         private GameObject _rootGameObject;
@@ -504,18 +521,30 @@ namespace EnhancedStreamChat.Chat
                         this._catCoreManager.OnChatConnected -= this.CatCoreManager_OnChatConnected;
                         this._catCoreManager.OnJoinChannel -= this.CatCoreManager_OnJoinChannel;
                         this._catCoreManager.OnLeaveChannel -= this.CatCoreManager_OnLeaveChannel;
+                        this._catCoreManager.OnTextMessageReceived -= this.CatCoreManager_OnTextMessageReceived;
                         this._catCoreManager.OnTwitchTextMessageReceived -= this.CatCoreManager_OnTwitchTextMessageReceived;
                         this._catCoreManager.OnMessageDeleted -= this.OnCatCoreManager_OnMessageDeleted;
                         this._catCoreManager.OnChatCleared -= this.OnCatCoreManager_OnChatCleared;
                         this._catCoreManager.OnFollow -= this.OnCatCoreManager_OnFollow;
                         this._catCoreManager.OnRewardRedeemed -= this.OnCatCoreManager_OnRewardRedeemed;
-                        this.StopAllCoroutines();
+                        try {
+                            this.StopAllCoroutines();
+                        }
+                        catch (NullReferenceException) {
+                        }
+                        catch (MissingReferenceException) {
+                        }
                         while (this._messages.TryDequeue(out var msg)) {
                             if (msg) {
                                 msg.RemoveReciver(this);
                             }
-                            if (msg.Text.ChatMessage != null) {
-                                s_backupMessageQueue.Enqueue(new KeyValuePair<DateTime, IESCChatMessage>(msg.ReceivedDate, msg.Text.ChatMessage));
+                            if (msg.Text.ChatMessage != null && this._chatConfig.KeepHistoryOnSoftRestart) {
+                                while (this._chatConfig.MaxHistoryOnSoftRestart > 0 && s_backupMessageQueue.Count >= this._chatConfig.MaxHistoryOnSoftRestart) {
+                                    _ = s_backupMessageQueue.TryDequeue(out _);
+                                }
+                                if (this._chatConfig.MaxHistoryOnSoftRestart != 0) {
+                                    s_backupMessageQueue.Enqueue(new KeyValuePair<DateTime, IESCChatMessage>(msg.ReceivedDate, msg.Text.ChatMessage));
+                                }
                             }
                             this._textPoolContaner?.Despawn(msg);
                         }
@@ -553,6 +582,10 @@ namespace EnhancedStreamChat.Chat
         #region // Unity message
         protected void Awake()
         {
+            if (s_hasBeenInitialized && !this._chatConfig.KeepHistoryOnSoftRestart) {
+                while (s_backupMessageQueue.TryDequeue(out _)) { }
+            }
+            s_hasBeenInitialized = true;
             DontDestroyOnLoad(this.gameObject);
         }
 
@@ -563,6 +596,44 @@ namespace EnhancedStreamChat.Chat
             }
             this.UpdateMessagePositions();
             this._updateMessagePositions = false;
+        }
+
+        private sealed class MultiplexedESCChatMessage : IESCChatMessage
+        {
+            public string Id { get; }
+            public bool IsSystemMessage { get; }
+            public bool IsActionMessage { get; }
+            public bool IsMentioned { get; }
+            public bool IsHighlighted { get; }
+            public string Message { get; }
+            public string SubMessage { get; }
+            public CatCore.Models.Shared.IChatUser Sender { get; }
+            public ReadOnlyCollection<CatCore.Models.Shared.IChatEmote> Emotes { get; }
+            public ReadOnlyDictionary<string, string> Metadata { get; }
+
+            public MultiplexedESCChatMessage(CatCore.Services.Multiplexer.MultiplexedMessage message, bool isBilibili)
+            {
+                this.Id = message.Id;
+                this.IsSystemMessage = message.IsSystemMessage;
+                this.IsActionMessage = message.IsActionMessage;
+                this.IsMentioned = message.IsMentioned;
+                this.IsHighlighted = false;
+                this.Message = message.Message;
+                this.SubMessage = string.Empty;
+                this.Sender = message.Sender;
+                this.Emotes = message.Emotes ?? new ReadOnlyCollection<CatCore.Models.Shared.IChatEmote>(Array.Empty<CatCore.Models.Shared.IChatEmote>());
+
+                var metadata = new Dictionary<string, string>(StringComparer.Ordinal);
+                if (message.Metadata != null) {
+                    foreach (var kv in message.Metadata) {
+                        metadata[kv.Key] = kv.Value;
+                    }
+                }
+                if (isBilibili) {
+                    metadata["platform"] = "bilibili";
+                }
+                this.Metadata = new ReadOnlyDictionary<string, string>(metadata);
+            }
         }
         #endregion
     }

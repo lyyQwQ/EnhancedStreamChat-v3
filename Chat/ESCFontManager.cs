@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
@@ -91,7 +92,10 @@ namespace EnhancedStreamChat.Chat
             var fontName = this._pluginConfig.SystemFontName;
             TMP_FontAsset? asset = null;
             AssetBundle? bundle = null;
-            foreach (var filename in Directory.EnumerateFiles(MainFontPath, "*.assets", SearchOption.TopDirectoryOnly)) {
+            var bundledMainFonts = Directory.EnumerateFiles(MainFontPath, "*.assets", SearchOption.TopDirectoryOnly)
+                .OrderBy(path => Path.GetFileName(path).Contains("sourcehansanscn", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase);
+            foreach (var filename in bundledMainFonts) {
                 using (var fs = File.OpenRead(filename)) {
                     bundle = AssetBundle.LoadFromStream(fs);
                 }
@@ -113,7 +117,7 @@ namespace EnhancedStreamChat.Chat
                 foreach (var fontFile in Directory.EnumerateFiles(FontPath, "*", SearchOption.TopDirectoryOnly)) {
                     try {
                         var font = new Font(fontFile);
-                        font.RequestCharactersInTexture(JPAll.JPText);
+                        font.RequestCharactersInTexture(ExtraCharacters.CNText);
                         font.name = Path.GetFileNameWithoutExtension(fontFile);
                         if (font.name.ToLower() == fontName.ToLower()) {
                             asset = TMP_FontAsset.CreateFontAsset(font, 90, 6, GlyphRenderMode.SDFAA, 8192, 8192);

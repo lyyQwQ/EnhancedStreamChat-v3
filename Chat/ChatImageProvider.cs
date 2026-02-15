@@ -4,8 +4,10 @@ using EnhancedStreamChat.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -42,6 +44,10 @@ namespace EnhancedStreamChat.Chat
         private readonly MemoryPoolContainer<EnhancedImageInfo> _imageInfoContaner;
         private static readonly byte[] s_animattedGIF89aPattern = Encoding.ASCII.GetBytes("GIF89a");
         private static readonly byte[] s_animattedGIF87aPattern = Encoding.ASCII.GetBytes("GIF87a");
+        private const int s_maxConcurrentDownloads = 6;
+        private const string s_bilibiliImageUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+        private const string s_bilibiliImageReferer = "https://www.bilibili.com/";
+        private readonly SemaphoreSlim _downloadSemaphore = new SemaphoreSlim(s_maxConcurrentDownloads, s_maxConcurrentDownloads);
 
         //private readonly ConcurrentDictionary<string, Texture2D> _cachedSpriteSheets = new ConcurrentDictionary<string, Texture2D>();
         /// <summary>
@@ -61,52 +67,133 @@ namespace EnhancedStreamChat.Chat
                 yield break;
             }
             uri = uri.Replace(@"static/dark/3.0", @"default/dark/3.0");
-            if (!isRetry && this._activeDownloads.TryGetValue(uri, out var activeDownload)) {
-                Logger.Info($"Request already active for {uri}");
-                activeDownload.Finally -= Finally;
-                activeDownload.Finally += Finally;
-                yield return new WaitUntil(() => activeDownload.IsCompleted);
+            uri = UpgradeToHttpsIfNeeded(uri);
+            ActiveDownload activeDownload;
+            if (!isRetry) {
+                if (this.TryJoinActiveDownload(uri, Finally, out activeDownload)) {
+                    yield return new WaitUntil(() => activeDownload.IsCompleted);
+                    yield break;
+                }
+
+                activeDownload = new ActiveDownload() {
+                    Finally = Finally,
+                };
+
+                if (!this._activeDownloads.TryAdd(uri, activeDownload)) {
+                    if (this.TryJoinActiveDownload(uri, Finally, out activeDownload)) {
+                        yield return new WaitUntil(() => activeDownload.IsCompleted);
+                        yield break;
+                    }
+
+                    Logger.Error($"Failed to start or join active download for {uri}.");
+                    Finally?.Invoke(new byte[0]);
+                    yield break;
+                }
+            }
+            else if (!this._activeDownloads.TryGetValue(uri, out activeDownload)) {
+                activeDownload = new ActiveDownload();
+                _ = this._activeDownloads.TryAdd(uri, activeDownload);
+            }
+
+            var waitTask = this._downloadSemaphore.WaitAsync();
+            yield return new WaitUntil(() => waitTask.IsCompleted);
+            if (waitTask.IsFaulted || waitTask.IsCanceled) {
+                Logger.Error($"Failed to acquire download slot for {uri}.");
+                this.CompleteActiveDownload(uri, activeDownload, new byte[0]);
                 yield break;
             }
-            using (var wr = UnityWebRequest.Get(uri)) {
-                activeDownload = new ActiveDownload()
-                {
-                    Finally = Finally,
-                    Request = wr
-                };
-                _ = this._activeDownloads.TryAdd(uri, activeDownload);
 
-                yield return wr.SendWebRequest();
-                switch (wr.result) {
-                    case UnityWebRequest.Result.InProgress:
-                        Logger.Error($"Why?");
-                        yield break;
-                    case UnityWebRequest.Result.Success:
-                        break;
-                    case UnityWebRequest.Result.ConnectionError:
-                    case UnityWebRequest.Result.DataProcessingError:
-                        if (!isRetry) {
-                            Logger.Error($"A network error occurred during request to {uri}. Retrying in 3 seconds... {wr.error}");
-                            yield return new WaitForSeconds(3);
-                            _ = SharedCoroutineStarter.Instance.StartCoroutine(this.DownloadContent(uri, Finally, true));
+            try {
+                using (var wr = UnityWebRequest.Get(uri)) {
+                    if (this.IsBilibiliImageHost(uri)) {
+                        wr.SetRequestHeader("User-Agent", s_bilibiliImageUserAgent);
+                        wr.SetRequestHeader("Referer", s_bilibiliImageReferer);
+                    }
+
+                    activeDownload.Request = wr;
+
+                    yield return wr.SendWebRequest();
+                    switch (wr.result) {
+                        case UnityWebRequest.Result.InProgress:
+                            Logger.Error($"Unexpected in-progress state after send for {uri}.");
+                            this.CompleteActiveDownload(uri, activeDownload, new byte[0]);
                             yield break;
-                        }
-                        activeDownload.Finally?.Invoke(new byte[0]);
-                        _ = this._activeDownloads.TryRemove(uri, out var d2);
-                        yield break;
-                    case UnityWebRequest.Result.ProtocolError:
-                    default:
-                        // Failed to download due to http error, don't retry
-                        Logger.Error($"An http error occurred during request to {uri}. Aborting! {wr.error}");
-                        activeDownload.Finally?.Invoke(new byte[0]);
-                        _ = this._activeDownloads.TryRemove(uri, out var d1);
-                        yield break;
+                        case UnityWebRequest.Result.Success:
+                            break;
+                        case UnityWebRequest.Result.ConnectionError:
+                        case UnityWebRequest.Result.DataProcessingError:
+                            if (!isRetry) {
+                                Logger.Error($"A network error occurred during request to {uri}. Retrying in 3 seconds... {wr.error}");
+                                yield return new WaitForSeconds(3);
+                                _ = SharedCoroutineStarter.Instance.StartCoroutine(this.DownloadContent(uri, null, true));
+                                yield break;
+                            }
+
+                            this.CompleteActiveDownload(uri, activeDownload, new byte[0]);
+                            yield break;
+                        case UnityWebRequest.Result.ProtocolError:
+                        default:
+                            // Failed to download due to http error, don't retry
+                            Logger.Error($"An http error occurred during request to {uri}. Aborting! {wr.error}");
+                            this.CompleteActiveDownload(uri, activeDownload, new byte[0]);
+                            yield break;
+                    }
+
+                    this.CompleteActiveDownload(uri, activeDownload, wr.downloadHandler.data);
                 }
-                var data = wr.downloadHandler.data;
-                activeDownload.Finally?.Invoke(data);
-                activeDownload.IsCompleted = true;
-                _ = this._activeDownloads.TryRemove(uri, out var d3);
             }
+            finally {
+                this._downloadSemaphore.Release();
+            }
+        }
+
+        private bool TryJoinActiveDownload(string uri, Action<byte[]> callback, out ActiveDownload activeDownload)
+        {
+            if (this._activeDownloads.TryGetValue(uri, out activeDownload)) {
+                Logger.Info($"Request already active for {uri}");
+                if (callback != null) {
+                    activeDownload.Finally -= callback;
+                    activeDownload.Finally += callback;
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string UpgradeToHttpsIfNeeded(string uri)
+        {
+            if (string.IsNullOrWhiteSpace(uri) || !uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) {
+                return uri;
+            }
+
+            if (Uri.TryCreate(uri, UriKind.Absolute, out var parsedUri)
+                && (string.Equals(parsedUri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(parsedUri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase))) {
+                return uri;
+            }
+
+            return $"https://{uri.Substring("http://".Length)}";
+        }
+
+        private bool IsBilibiliImageHost(string uri)
+        {
+            if (!Uri.TryCreate(uri, UriKind.Absolute, out var parsedUri)) {
+                return false;
+            }
+
+            var host = parsedUri.Host;
+            return host.EndsWith(".bilibili.com", StringComparison.OrdinalIgnoreCase)
+                || host.EndsWith(".hdslb.com", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(host, "bilibili.com", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(host, "hdslb.com", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void CompleteActiveDownload(string uri, ActiveDownload activeDownload, byte[] bytes)
+        {
+            activeDownload.IsCompleted = true;
+            activeDownload.Finally?.Invoke(bytes);
+            _ = this._activeDownloads.TryRemove(uri, out _);
         }
 
         public IEnumerator PrecacheAnimatedImage(string uri, string id, int forcedHeight = -1)
@@ -137,8 +224,8 @@ namespace EnhancedStreamChat.Chat
 
         public IEnumerator OnSingleImageCached(byte[] bytes, string id, ESCAnimationType animatedType, Action<EnhancedImageInfo> Finally = null, int forcedHeight = -1)
         {
-            if (bytes.Length == 0) {
-                Finally(null);
+            if (bytes == null || bytes.Length == 0) {
+                Finally?.Invoke(null);
                 yield break;
             }
 
@@ -204,9 +291,10 @@ namespace EnhancedStreamChat.Chat
                     break;
             }
             var ret = this._imageInfoContaner.Spawn();
+            EnhancedImageInfo finalInfo = null;
             if (sprite != null) {
                 if (forcedHeight != -1) {
-                    this.SetImageHeight(ref spriteWidth, ref spriteHeight, forcedHeight);
+                    this.SetImageHeight(ref spriteHeight, ref spriteWidth, forcedHeight);
                 }
                 ret.ImageId = id;
                 ret.Sprite = sprite;
@@ -214,17 +302,55 @@ namespace EnhancedStreamChat.Chat
                 ret.Height = spriteHeight;
                 ret.AnimControllerData = animControllerData;
                 _ = this.CachedImageInfo.TryAdd(id, ret);
+                finalInfo = ret;
             }
             else {
                 this._imageInfoContaner.Despawn(ret);
             }
-            Finally?.Invoke(ret);
+            Finally?.Invoke(finalInfo);
         }
         internal void ClearCache()
         {
             if (this.CachedImageInfo.Count > 0) {
+                var textureRefCounts = new Dictionary<int, int>();
                 foreach (var info in this.CachedImageInfo.Values) {
-                    GameObject.Destroy(info.Sprite);
+                    var texture = info?.Sprite?.texture;
+                    if (texture == null) {
+                        continue;
+                    }
+
+                    var textureId = texture.GetInstanceID();
+                    _ = textureRefCounts.TryGetValue(textureId, out var refCount);
+                    textureRefCounts[textureId] = refCount + 1;
+                }
+
+                var destroyedTextureIds = new HashSet<int>();
+                foreach (var info in this.CachedImageInfo.Values) {
+                    if (info == null) {
+                        continue;
+                    }
+
+                    var sprite = info.Sprite;
+                    var texture = sprite?.texture;
+                    var textureId = texture?.GetInstanceID();
+                    var isSharedAnimationTexture = info.AnimControllerData != null;
+                    var isSharedTexture = textureId != null
+                        && textureRefCounts.TryGetValue(textureId.Value, out var textureRefCount)
+                        && textureRefCount > 1;
+
+                    if (sprite != null && !isSharedAnimationTexture) {
+                        GameObject.Destroy(sprite);
+                    }
+
+                    if (texture != null && !isSharedAnimationTexture && !isSharedTexture && destroyedTextureIds.Add(texture.GetInstanceID())) {
+                        GameObject.Destroy(texture);
+                    }
+
+                    info.ImageId = null;
+                    info.Sprite = null;
+                    info.Width = 0;
+                    info.Height = 0;
+                    info.AnimControllerData = null;
                     this._imageInfoContaner.Despawn(info);
                 }
                 this.CachedImageInfo.Clear();

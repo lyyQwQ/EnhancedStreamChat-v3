@@ -20,6 +20,7 @@ namespace EnhancedStreamChat.Graphics
 
         private const uint UNICODE_USER_THARD_AREA_MINIMUM_VALUE = 0x00100000;
         private const uint UNICODE_USER_THARD_AREA_MAXIMUM_VALUE = 0x0010FFFD;
+        private const float ImageGlyphAdvanceScale = 0.7f;
 
         public EnhancedFontInfo(TMP_FontAsset font)
         {
@@ -71,7 +72,7 @@ namespace EnhancedStreamChat.Graphics
 #if DEBUG
                     Logger.Debug($"Unicode : 0x{next:X8}");
 #endif
-                    this.Font.characterLookupTable.Add(next, new TMP_Character(next, this.Font, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width), new GlyphRect(0, 0, 0, 0))));
+                    this.Font.characterLookupTable.Add(next, new TMP_Character(next, this.Font, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width * ImageGlyphAdvanceScale), new GlyphRect(0, 0, 0, 0))));
                     _ = this.CharacterLookupTable.TryAdd(imageInfo.ImageId, next);
                     _ = this.ImageInfoLookupTable.TryAdd(next, imageInfo);
                     replaceCharacter = next;
