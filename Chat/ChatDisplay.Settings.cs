@@ -432,9 +432,11 @@ namespace EnhancedStreamChat.Chat
             try {
                 this.ReconnectEnable = false;
                 await Task.Delay(s_reconnectDelay);
+                this.BeginConnectionAttempt(ConnectionAttemptKind.ManualReconnect);
                 await this._catCoreManager.IrcStart();
             }
             catch (System.Exception e) {
+                this.ShowConnectionFailureNotice(ConnectionAttemptKind.ManualReconnect);
                 Logger.Error(e);
             }
             finally {

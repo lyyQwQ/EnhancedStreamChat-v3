@@ -66,7 +66,6 @@ namespace EnhancedStreamChat.Chat
             }
             this._chatConfig.OnConfigChanged += this.Instance_OnConfigChanged;
             SceneManager.activeSceneChanged += this.SceneManager_activeSceneChanged;
-            this._catCoreManager.OnChatConnected += this.CatCoreManager_OnChatConnected;
             this._catCoreManager.OnJoinChannel += this.CatCoreManager_OnJoinChannel;
             this._catCoreManager.OnLeaveChannel += this.CatCoreManager_OnLeaveChannel;
             this._catCoreManager.OnTextMessageReceived += this.CatCoreManager_OnTextMessageReceived;
@@ -75,6 +74,7 @@ namespace EnhancedStreamChat.Chat
             this._catCoreManager.OnChatCleared += this.OnCatCoreManager_OnChatCleared;
             this._catCoreManager.OnFollow += this.OnCatCoreManager_OnFollow;
             this._catCoreManager.OnRewardRedeemed += this.OnCatCoreManager_OnRewardRedeemed;
+            this.ReplayOrArmInitialConnectionAttempt();
         }
 
         public void OnMessageCleared(string messageId)
@@ -400,34 +400,24 @@ namespace EnhancedStreamChat.Chat
             });
         }
 
-        private void CatCoreManager_OnChatConnected(CatCore.Services.Multiplexer.MultiplexedPlatformService obj)
-        {
-            var mes = new ESCChatMessage(Guid.NewGuid().ToString(), $"Success connected service. {obj.GetType().Name}")
-            {
-                IsSystemMessage = true,
-                IsHighlighted = false,
-            };
-            _ = this.OnTextMessageReceived(mes, DateTime.Now);
-        }
-
         private void CatCoreManager_OnJoinChannel(CatCore.Services.Multiplexer.MultiplexedPlatformService arg1, CatCore.Services.Multiplexer.MultiplexedChannel arg2)
         {
-            var mes = new ESCChatMessage(Guid.NewGuid().ToString(), $"[{arg2.Name}] Success joining channel {arg2.Id}")
-            {
-                IsSystemMessage = true,
-                IsHighlighted = false,
-            };
-            _ = this.OnTextMessageReceived(mes, DateTime.Now);
+            var allowRepeatForSameRoom = this.HasPendingConnectionAttempt();
+            this.CompleteConnectionAttempt();
+            this.ShowConnectionSuccessNotice(arg2, allowRepeatForSameRoom);
         }
 
         private void CatCoreManager_OnLeaveChannel(CatCore.Services.Multiplexer.MultiplexedPlatformService arg1, CatCore.Services.Multiplexer.MultiplexedChannel arg2)
         {
-            var mes = new ESCChatMessage(Guid.NewGuid().ToString(), $"[{arg2.Name}] Success leaved channel {arg2.Id}")
-            {
-                IsSystemMessage = true,
-                IsHighlighted = false,
-            };
-            _ = this.OnTextMessageReceived(mes, DateTime.Now);
+            if (arg2 == null) {
+                return;
+            }
+
+            var message = string.IsNullOrWhiteSpace(arg2.Name) || string.Equals(arg2.Name, arg2.Id, StringComparison.Ordinal)
+                ? $"已断开房间 {arg2.Id}"
+                : $"[{arg2.Name}] 已断开房间 {arg2.Id}";
+
+            this.ShowSystemMessage(message, false);
         }
 
         private void CatCoreManager_OnTwitchTextMessageReceived(CatCore.Services.Twitch.Interfaces.ITwitchService arg1, CatCore.Models.Twitch.IRC.TwitchMessage arg2)
@@ -473,9 +463,128 @@ namespace EnhancedStreamChat.Chat
             };
             _ = this.OnTextMessageReceived(mes, DateTime.Now);
         }
+
+        private void ReplayOrArmInitialConnectionAttempt()
+        {
+            if (this._catCoreManager.TryGetLastJoinedChannel(out var channel)) {
+                this.ShowConnectionSuccessNotice(channel);
+                return;
+            }
+
+            if (this._catCoreManager.TryGetDefaultChannel(out _)) {
+                this.BeginConnectionAttempt(ConnectionAttemptKind.InitialConnect);
+            }
+        }
+
+        private void BeginConnectionAttempt(ConnectionAttemptKind attemptKind)
+        {
+            this.CancelConnectionAttempt();
+
+            var timeoutSource = new CancellationTokenSource();
+            this._connectionAttemptTimeoutSource = timeoutSource;
+            _ = this.WatchConnectionAttemptAsync(attemptKind, timeoutSource.Token);
+        }
+
+        private async Task WatchConnectionAttemptAsync(ConnectionAttemptKind attemptKind, CancellationToken token)
+        {
+            try {
+                await Task.Delay(s_connectionNoticeTimeout, token);
+            }
+            catch (TaskCanceledException) {
+                return;
+            }
+
+            if (token.IsCancellationRequested || this._disposedValue) {
+                return;
+            }
+
+            this.ShowConnectionFailureNotice(attemptKind);
+        }
+
+        private void CompleteConnectionAttempt()
+        {
+            this.CancelConnectionAttempt();
+        }
+
+        private bool HasPendingConnectionAttempt()
+        {
+            return this._connectionAttemptTimeoutSource != null;
+        }
+
+        private void CancelConnectionAttempt()
+        {
+            if (this._connectionAttemptTimeoutSource == null) {
+                return;
+            }
+
+            try {
+                this._connectionAttemptTimeoutSource.Cancel();
+            }
+            catch (ObjectDisposedException) {
+            }
+            finally {
+                this._connectionAttemptTimeoutSource.Dispose();
+                this._connectionAttemptTimeoutSource = null;
+            }
+        }
+
+        private void ShowConnectionSuccessNotice(CatCore.Services.Multiplexer.MultiplexedChannel channel, bool allowRepeatForSameRoom = false)
+        {
+            if (channel == null) {
+                return;
+            }
+
+            var noticeKey = $"{channel.Id}|{channel.Name}";
+            var nowUtc = DateTime.UtcNow;
+            if (string.Equals(this._lastConnectionSuccessNoticeKey, noticeKey, StringComparison.Ordinal)) {
+                if (!allowRepeatForSameRoom) {
+                    return;
+                }
+
+                if (nowUtc - this._lastConnectionSuccessNoticeAtUtc <= s_connectionNoticeDuplicateWindow) {
+                    return;
+                }
+            }
+
+            this._lastConnectionSuccessNoticeKey = noticeKey;
+            this._lastConnectionSuccessNoticeAtUtc = nowUtc;
+
+            var message = string.IsNullOrWhiteSpace(channel.Name) || string.Equals(channel.Name, channel.Id, StringComparison.Ordinal)
+                ? $"成功连接至房间 {channel.Id}"
+                : $"[{channel.Name}] 成功连接至房间 {channel.Id}";
+
+            this.ShowSystemMessage(message, false);
+        }
+
+        private void ShowConnectionFailureNotice(ConnectionAttemptKind attemptKind)
+        {
+            this.CancelConnectionAttempt();
+
+            var message = attemptKind == ConnectionAttemptKind.InitialConnect
+                ? "连接房间失败，请检查房间号或登录状态"
+                : "重连房间失败，请稍后重试";
+
+            this.ShowSystemMessage(message, true);
+        }
+
+        private void ShowSystemMessage(string message, bool highlighted)
+        {
+            var mes = new ESCChatMessage(Guid.NewGuid().ToString(), message)
+            {
+                IsSystemMessage = true,
+                IsHighlighted = highlighted,
+            };
+            _ = this.OnTextMessageReceived(mes, DateTime.Now);
+        }
         #endregion
         //ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*
         #region // メンバ変数
+        private enum ConnectionAttemptKind
+        {
+            InitialConnect,
+            ManualReconnect,
+        }
+
         private readonly ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground> _messages = new ConcurrentQueue<EnhancedTextMeshProUGUIWithBackground>();
         private PluginConfig _chatConfig;
         private bool _isInGame;
@@ -493,8 +602,13 @@ namespace EnhancedStreamChat.Chat
         private static readonly string s_menu = "MainMenu";
         private static readonly string s_game = "GameCore";
         private static readonly int s_reconnectDelay = 500;
+        private static readonly TimeSpan s_connectionNoticeTimeout = TimeSpan.FromSeconds(12);
+        private static readonly TimeSpan s_connectionNoticeDuplicateWindow = TimeSpan.FromSeconds(2);
         private readonly SemaphoreSlim _connectSemaphore = new SemaphoreSlim(1, 1);
         private static bool s_hasBeenInitialized = false;
+        private CancellationTokenSource _connectionAttemptTimeoutSource;
+        private string _lastConnectionSuccessNoticeKey;
+        private DateTime _lastConnectionSuccessNoticeAtUtc = DateTime.MinValue;
 
         private GameObject _chatContainer;
         private GameObject _rootGameObject;
@@ -515,10 +629,10 @@ namespace EnhancedStreamChat.Chat
             if (!this._disposedValue) {
                 if (disposing) {
                     try {
+                        this.CancelConnectionAttempt();
                         this._connectSemaphore.Dispose();
                         this._chatConfig.OnConfigChanged -= this.Instance_OnConfigChanged;
                         SceneManager.activeSceneChanged -= this.SceneManager_activeSceneChanged;
-                        this._catCoreManager.OnChatConnected -= this.CatCoreManager_OnChatConnected;
                         this._catCoreManager.OnJoinChannel -= this.CatCoreManager_OnJoinChannel;
                         this._catCoreManager.OnLeaveChannel -= this.CatCoreManager_OnLeaveChannel;
                         this._catCoreManager.OnTextMessageReceived -= this.CatCoreManager_OnTextMessageReceived;

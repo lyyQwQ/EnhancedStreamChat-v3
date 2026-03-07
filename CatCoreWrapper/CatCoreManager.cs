@@ -1,8 +1,10 @@
 ﻿using CatCore;
 using CatCore.Logging;
+using CatCore.Models.Bilibili;
 using CatCore.Models.Twitch.IRC;
 using CatCore.Models.Twitch.PubSub.Responses;
 using CatCore.Models.Twitch.PubSub.Responses.ChannelPointsChannelV1;
+using CatCore.Services.Bilibili.Interfaces;
 using CatCore.Services.Multiplexer;
 using CatCore.Services.Twitch;
 using CatCore.Services.Twitch.Interfaces;
@@ -51,7 +53,11 @@ namespace EnhancedStreamChat.CatCoreWrapper
             if (this._instance == null) {
                 return;
             }
+            lock (this._channelStateLock) {
+                this._lastJoinedChannel = null;
+            }
             this._chatServiceMultiplexer = this._instance.RunAllServices();
+            this._bilibiliPlatformService = this._chatServiceMultiplexer.GetBilibiliPlatformService();
             this._twitchPratformService = this._chatServiceMultiplexer.GetTwitchPlatformService();
             this._twitchIrcService = typeof(TwitchService).GetField("_twitchIrcService", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(this._twitchPratformService);
             this._twitchPubSubServiceManager = this._twitchPratformService.GetPubSubService();
@@ -99,6 +105,32 @@ namespace EnhancedStreamChat.CatCoreWrapper
             var task = this._pubsubstop?.Invoke(instance, new object[] { "Forced to go close" });
             return task as Task ?? Task.CompletedTask;
         }
+
+        public bool TryGetLastJoinedChannel(out MultiplexedChannel channel)
+        {
+            lock (this._channelStateLock) {
+                channel = this._lastJoinedChannel == null
+                    ? null
+                    : (MultiplexedChannel)this._lastJoinedChannel.Clone();
+                return channel != null;
+            }
+        }
+
+        public bool TryGetDefaultChannel(out MultiplexedChannel channel)
+        {
+            if (this._bilibiliPlatformService?.DefaultChannel != null) {
+                channel = MultiplexedChannel.From<BilibiliChannel, BilibiliMessage>(this._bilibiliPlatformService.DefaultChannel);
+                return true;
+            }
+
+            if (this._twitchPratformService?.DefaultChannel != null) {
+                channel = MultiplexedChannel.From<CatCore.Models.Twitch.TwitchChannel, TwitchMessage>(this._twitchPratformService.DefaultChannel);
+                return true;
+            }
+
+            channel = null;
+            return false;
+        }
         #endregion
         //ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*
         #region // プライベートメソッド
@@ -118,6 +150,9 @@ namespace EnhancedStreamChat.CatCoreWrapper
 
         private void ChatServiceMultiplexerOnJoinChannel(MultiplexedPlatformService arg1, MultiplexedChannel arg2)
         {
+            lock (this._channelStateLock) {
+                this._lastJoinedChannel = arg2 == null ? null : (MultiplexedChannel)arg2.Clone();
+            }
             this.OnJoinChannel?.Invoke(arg1, arg2);
         }
         private void ChatServiceMultiplexer_OnChatCleared(MultiplexedPlatformService arg1, MultiplexedChannel arg2, string arg3)
@@ -137,6 +172,11 @@ namespace EnhancedStreamChat.CatCoreWrapper
 
         private void ChatServiceMultiplexerOnLeaveChannel(MultiplexedPlatformService arg1, MultiplexedChannel arg2)
         {
+            lock (this._channelStateLock) {
+                if (this._lastJoinedChannel != null && arg2 != null && string.Equals(this._lastJoinedChannel.Id, arg2.Id, StringComparison.Ordinal)) {
+                    this._lastJoinedChannel = null;
+                }
+            }
             this.OnLeaveChannel?.Invoke(arg1, arg2);
         }
 
@@ -175,9 +215,12 @@ namespace EnhancedStreamChat.CatCoreWrapper
         #region // メンバ変数
         private readonly CatCoreInstance _instance;
         private ChatServiceMultiplexer _chatServiceMultiplexer;
+        private IBilibiliService _bilibiliPlatformService;
         private ITwitchService _twitchPratformService;
         private ITwitchPubSubServiceManager _twitchPubSubServiceManager;
         private bool _disposedValue;
+        private readonly object _channelStateLock = new object();
+        private MultiplexedChannel _lastJoinedChannel;
         private object _twitchIrcService;
         private readonly MethodInfo _ircstart = Type.GetType("CatCore.Services.Twitch.TwitchIrcService, CatCore").GetMethod("CatCore.Services.Twitch.Interfaces.ITwitchIrcService.Start", BindingFlags.NonPublic | BindingFlags.Instance);
         private readonly MethodInfo _ircstop = Type.GetType("CatCore.Services.Twitch.TwitchIrcService, CatCore").GetMethod("CatCore.Services.Twitch.Interfaces.ITwitchIrcService.Stop", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -209,6 +252,10 @@ namespace EnhancedStreamChat.CatCoreWrapper
                     this._twitchPubSubServiceManager.OnRewardRedeemed -= this.OnTwitchPubSubServiceManager_OnRewardRedeemed;
 
                     this._twitchPratformService.OnTextMessageReceived -= this.OnTwitchPratformService_OnTextMessageReceived;
+
+                    lock (this._channelStateLock) {
+                        this._lastJoinedChannel = null;
+                    }
                 }
                 this._disposedValue = true;
             }

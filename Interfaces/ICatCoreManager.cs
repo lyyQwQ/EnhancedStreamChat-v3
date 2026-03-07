@@ -22,6 +22,9 @@ namespace EnhancedStreamChat.Interfaces
         event Action<MultiplexedPlatformService, MultiplexedMessage> OnTextMessageReceived;
         event Action<ITwitchService, TwitchMessage> OnTwitchTextMessageReceived;
 
+        bool TryGetLastJoinedChannel(out MultiplexedChannel channel);
+        bool TryGetDefaultChannel(out MultiplexedChannel channel);
+
         void RunService();
         void LaunchWebPortal(bool shouldLaunchPortal = true);
         Task IrcStart();

@@ -34,6 +34,21 @@ namespace EnhancedStreamChat.Chat
             return text.Substring(0, max) + "...(truncated)";
         }
 
+#if BADGE_DEBUG
+        private static DateTime s_nextTask14LogUtc = DateTime.MinValue;
+
+        private static bool ShouldLogTask14Debug()
+        {
+            var now = DateTime.UtcNow;
+            if (now < s_nextTask14LogUtc) {
+                return false;
+            }
+
+            s_nextTask14LogUtc = now.AddMinutes(1);
+            return true;
+        }
+#endif
+
         public ChatMessageBuilder(ChatImageProvider chatImageProvider)
         {
             this._chatImageProvider = chatImageProvider;
@@ -124,9 +139,11 @@ namespace EnhancedStreamChat.Chat
             }
             // Wait on all the resources to be ready
             var result = await Task.WhenAll(tasks);
-            if (metadataImages.Count > 0) {
+            #if BADGE_DEBUG
+            if (metadataImages.Count > 0 && ShouldLogTask14Debug()) {
                 Logger.Debug($"BILI_METADATA_IMAGE_PREPARE msg={msg.Id} requested={metadataImages.Count} registered={metadataRegisteredCount}");
             }
+            #endif
             return result.All(x => x != null);
         }
 
@@ -138,11 +155,14 @@ namespace EnhancedStreamChat.Chat
                     //return msg.Message;
                 }
                 var badges = new Stack<EnhancedImageInfo>();
+                var isBilibiliMessage = msg.Metadata.TryGetValue("platform", out var platform) && platform == "bilibili";
                 var prefixImageIds = new List<string>();
+                var senderBadgeImageIds = new List<string>();
+                var metadataPrefixImageIds = new List<string>();
                 var avatarPrefixImageIds = new List<string>();
                 if (msg.Sender is IChatUserWithBadges userWithBadges) {
                     foreach (var badge in userWithBadges.Badges) {
-                        prefixImageIds.Add(badge.Id);
+                        senderBadgeImageIds.Add(badge.Id);
                     }
                 }
                 foreach (var metadataImage in this.GetMetadataImages(msg)) {
@@ -154,10 +174,32 @@ namespace EnhancedStreamChat.Chat
                         avatarPrefixImageIds.Add(metadataImage.Id);
                         continue;
                     }
-                    prefixImageIds.Add(metadataImage.Id);
+                    // Bilibili level/honor icons are tagged as "tag"; keep them in prefix with badges.
+                    var isBadgeKind = string.Equals(metadataImage.Kind, "badge", StringComparison.OrdinalIgnoreCase);
+                    var isTagKind = string.Equals(metadataImage.Kind, "tag", StringComparison.OrdinalIgnoreCase);
+                    if (!isBadgeKind && !isTagKind) {
+                        continue;
+                    }
+                    metadataPrefixImageIds.Add(metadataImage.Id);
                 }
-                if (avatarPrefixImageIds.Count > 0) {
-                    prefixImageIds.InsertRange(0, avatarPrefixImageIds);
+
+                if (isBilibiliMessage) {
+                    prefixImageIds.AddRange(avatarPrefixImageIds);
+                    prefixImageIds.AddRange(metadataPrefixImageIds);
+                    prefixImageIds.AddRange(senderBadgeImageIds);
+
+                    if (prefixImageIds.Any(IsBroadcasterPrefixImageId)) {
+                        prefixImageIds = prefixImageIds
+                            .Where(imageId => IsAvatarPrefixImageId(imageId) || IsBroadcasterPrefixImageId(imageId))
+                            .ToList();
+                    }
+                }
+                else {
+                    prefixImageIds.AddRange(senderBadgeImageIds);
+                    prefixImageIds.AddRange(metadataPrefixImageIds);
+                    if (avatarPrefixImageIds.Count > 0) {
+                        prefixImageIds.InsertRange(0, avatarPrefixImageIds);
+                    }
                 }
                 foreach (var imageId in prefixImageIds) {
                     if (!this._chatImageProvider.CachedImageInfo.TryGetValue(imageId, out var badgeInfo)) {
@@ -166,9 +208,11 @@ namespace EnhancedStreamChat.Chat
                     }
                     badges.Push(badgeInfo);
                 }
-                var isBilibiliMessage = msg.Metadata.TryGetValue("platform", out var platform) && platform == "bilibili";
                 var sb = buildMessage == BuildMessageTarget.Main ? new StringBuilder(msg.Message) : new StringBuilder(msg.SubMessage); // Replace all instances of < with a zero-width non-breaking character
-                var shouldTask14Log = isBilibiliMessage && buildMessage == BuildMessageTarget.Main;
+                var shouldTask14Log = false;
+                #if BADGE_DEBUG
+                shouldTask14Log = isBilibiliMessage && buildMessage == BuildMessageTarget.Main && ShouldLogTask14Debug();
+                #endif
                 foreach (var emote in msg.Emotes) {
                     if (emote is TwitchEmote twitchEmote && 0 < twitchEmote.Bits) {
                         continue;
@@ -237,9 +281,9 @@ namespace EnhancedStreamChat.Chat
                     _ = sb.Append("</color>");
                 }
                 else {
-                    var displayNameForTask14 = msg.Sender?.DisplayName ?? string.Empty;
-                    var containsMedalLink = displayNameForTask14.Contains("<link=medal_", StringComparison.Ordinal);
                     if (shouldTask14Log) {
+                        var displayNameForTask14 = msg.Sender?.DisplayName ?? string.Empty;
+                        var containsMedalLink = displayNameForTask14.Contains("<link=medal_", StringComparison.Ordinal);
                         #if BADGE_DEBUG
                         Logger.Info($"[TASK14DBG][ESC-BUILD] BeforeNameInsert msgId={msg.Id} displayName=\"{TruncateForTask14Debug(displayNameForTask14)}\" containsMedalLink={containsMedalLink}");
                         #endif
@@ -306,6 +350,18 @@ namespace EnhancedStreamChat.Chat
                 Logger.Error($"An exception occurred in ChatMessageBuilder while parsing msg with {msg.Emotes.Count} emotes. Msg: \"{msg.Message}\". {ex}");
             }
             return msg.Message;
+        }
+
+        private static bool IsAvatarPrefixImageId(string imageId)
+        {
+            return !string.IsNullOrEmpty(imageId)
+                && imageId.StartsWith("Bili_avatar_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsBroadcasterPrefixImageId(string imageId)
+        {
+            return !string.IsNullOrEmpty(imageId)
+                && imageId.IndexOf("_broadcaster_", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private List<MetadataImageResource> GetMetadataImages(IESCChatMessage msg)

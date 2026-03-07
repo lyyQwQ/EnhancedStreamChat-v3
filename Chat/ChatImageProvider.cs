@@ -46,7 +46,6 @@ namespace EnhancedStreamChat.Chat
         private static readonly byte[] s_animattedGIF87aPattern = Encoding.ASCII.GetBytes("GIF87a");
         private const int s_maxConcurrentDownloads = 6;
         private const string s_bilibiliImageUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-        private const string s_bilibiliImageReferer = "https://www.bilibili.com/";
         private readonly SemaphoreSlim _downloadSemaphore = new SemaphoreSlim(s_maxConcurrentDownloads, s_maxConcurrentDownloads);
 
         //private readonly ConcurrentDictionary<string, Texture2D> _cachedSpriteSheets = new ConcurrentDictionary<string, Texture2D>();
@@ -67,7 +66,7 @@ namespace EnhancedStreamChat.Chat
                 yield break;
             }
             uri = uri.Replace(@"static/dark/3.0", @"default/dark/3.0");
-            uri = UpgradeToHttpsIfNeeded(uri);
+            uri = NormalizeImageUri(uri);
             ActiveDownload activeDownload;
             if (!isRetry) {
                 if (this.TryJoinActiveDownload(uri, Finally, out activeDownload)) {
@@ -107,7 +106,6 @@ namespace EnhancedStreamChat.Chat
                 using (var wr = UnityWebRequest.Get(uri)) {
                     if (this.IsBilibiliImageHost(uri)) {
                         wr.SetRequestHeader("User-Agent", s_bilibiliImageUserAgent);
-                        wr.SetRequestHeader("Referer", s_bilibiliImageReferer);
                     }
 
                     activeDownload.Request = wr;
@@ -161,9 +159,27 @@ namespace EnhancedStreamChat.Chat
             return false;
         }
 
+        private string NormalizeImageUri(string uri)
+        {
+            uri = UpgradeToHttpsIfNeeded(uri);
+            if (this.IsBilibiliImageHost(uri)) {
+                uri = StripBilibiliProcessingSuffix(uri);
+            }
+
+            return uri;
+        }
+
         private static string UpgradeToHttpsIfNeeded(string uri)
         {
-            if (string.IsNullOrWhiteSpace(uri) || !uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) {
+            if (string.IsNullOrWhiteSpace(uri)) {
+                return uri;
+            }
+
+            if (uri.StartsWith("//", StringComparison.Ordinal)) {
+                return $"https:{uri}";
+            }
+
+            if (!uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) {
                 return uri;
             }
 
@@ -174,6 +190,27 @@ namespace EnhancedStreamChat.Chat
             }
 
             return $"https://{uri.Substring("http://".Length)}";
+        }
+
+        private static string StripBilibiliProcessingSuffix(string uri)
+        {
+            if (string.IsNullOrWhiteSpace(uri)) {
+                return uri;
+            }
+
+            var lastSlashIndex = uri.LastIndexOf('/');
+            var processingMarkerIndex = uri.LastIndexOf('@');
+            if (processingMarkerIndex <= lastSlashIndex) {
+                return uri;
+            }
+
+            var suffix = uri.Substring(processingMarkerIndex + 1);
+            if (suffix.IndexOf("webp", StringComparison.OrdinalIgnoreCase) < 0
+                && suffix.IndexOf("avif", StringComparison.OrdinalIgnoreCase) < 0) {
+                return uri;
+            }
+
+            return uri.Substring(0, processingMarkerIndex);
         }
 
         private bool IsBilibiliImageHost(string uri)
@@ -267,6 +304,11 @@ namespace EnhancedStreamChat.Chat
                     else {
                         try {
                             sprite = GraphicUtils.LoadSpriteRaw(bytes);
+                            if (sprite?.texture == null) {
+                                Logger.Warn($"Failed to decode image bytes for {id}. type={animatedType} bytes={bytes.Length} format={DescribeImageFormat(bytes)}");
+                                sprite = null;
+                                break;
+                            }
                             spriteWidth = sprite.texture.width;
                             spriteHeight = sprite.texture.height;
                         }
@@ -281,6 +323,11 @@ namespace EnhancedStreamChat.Chat
                 default:
                     try {
                         sprite = GraphicUtils.LoadSpriteRaw(bytes);
+                        if (sprite?.texture == null) {
+                            Logger.Warn($"Failed to decode image bytes for {id}. type={animatedType} bytes={bytes.Length} format={DescribeImageFormat(bytes)}");
+                            sprite = null;
+                            break;
+                        }
                         spriteWidth = sprite.texture.width;
                         spriteHeight = sprite.texture.height;
                     }
@@ -308,6 +355,46 @@ namespace EnhancedStreamChat.Chat
                 this._imageInfoContaner.Despawn(ret);
             }
             Finally?.Invoke(finalInfo);
+        }
+
+        private static string DescribeImageFormat(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length < 4) {
+                return "unknown";
+            }
+
+            if (bytes.Length >= 8
+                && bytes[0] == 0x89
+                && bytes[1] == 0x50
+                && bytes[2] == 0x4E
+                && bytes[3] == 0x47) {
+                return "png";
+            }
+
+            if (bytes[0] == 0xFF && bytes[1] == 0xD8) {
+                return "jpeg";
+            }
+
+            if (bytes.Length >= 6
+                && bytes[0] == 0x47
+                && bytes[1] == 0x49
+                && bytes[2] == 0x46) {
+                return "gif";
+            }
+
+            if (bytes.Length >= 12
+                && bytes[0] == 0x52
+                && bytes[1] == 0x49
+                && bytes[2] == 0x46
+                && bytes[3] == 0x46
+                && bytes[8] == 0x57
+                && bytes[9] == 0x45
+                && bytes[10] == 0x42
+                && bytes[11] == 0x50) {
+                return "webp";
+            }
+
+            return "unknown";
         }
         internal void ClearCache()
         {

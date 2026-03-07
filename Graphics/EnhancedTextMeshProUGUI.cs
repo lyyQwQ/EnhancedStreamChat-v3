@@ -30,14 +30,11 @@ namespace EnhancedStreamChat.Graphics
         private static readonly ProfilerMarker BadgeRebuildProfilerMarker = new ProfilerMarker("ESC.BadgeRebuild");
 
 #if DEBUG
-        private const int BadgePerfSampleBatchSize = 100;
-        private readonly Stopwatch _badgeRebuildStopwatch = new Stopwatch();
-        private readonly List<long> _badgeRebuildDurationsUs = new List<long>(BadgePerfSampleBatchSize);
-        private int _badgeRebuildSampleCount;
-        private float _badgeGcSampleTimer;
-        private long _lastGcTotalMemory;
-        private int _lastGen0CollectionCount;
-        private bool _hasGcBaseline;
+        private static readonly BadgePerfAggregator s_badgePerfAggregator = new BadgePerfAggregator();
+#endif
+
+#if BADGE_DEBUG
+        private static long s_nextTask14DebugLogTicks;
 #endif
 
         private static readonly object s_avatarMaskLock = new object();
@@ -175,59 +172,29 @@ namespace EnhancedStreamChat.Graphics
             }
         }
 
-#if DEBUG
-        private void TryLogBadgePerfSampleBatch()
-        {
-            if (this._badgeRebuildSampleCount < BadgePerfSampleBatchSize || this._badgeRebuildDurationsUs.Count <= 0) {
-                return;
-            }
-
-            long total = 0;
-            for (var i = 0; i < this._badgeRebuildDurationsUs.Count; i++) {
-                total += this._badgeRebuildDurationsUs[i];
-            }
-
-            this._badgeRebuildDurationsUs.Sort();
-            var count = this._badgeRebuildDurationsUs.Count;
-            var max = this._badgeRebuildDurationsUs[count - 1];
-            var p95Index = (int)Math.Ceiling(count * 0.95d) - 1;
-            if (p95Index < 0) {
-                p95Index = 0;
-            }
-            if (p95Index >= count) {
-                p95Index = count - 1;
-            }
-
-            var avg = (double)total / count;
-            var p95 = this._badgeRebuildDurationsUs[p95Index];
-            Logger.Debug($"[BadgePerf] samples={count} avg={avg:F2}us p95={p95}us max={max}us");
-
-            this._badgeRebuildDurationsUs.Clear();
-            this._badgeRebuildSampleCount = 0;
-        }
-#endif
-
         public override void Rebuild(CanvasUpdate update)
         {
             switch (update) {
                 case CanvasUpdate.LatePreRender:
                     _ = MainThreadInvoker.Invoke(() =>
                     {
-                        var textSnapshot = this.text ?? string.Empty;
-                        if (textSnapshot.Length > 80) {
-                            textSnapshot = textSnapshot.Substring(0, 80) + "...";
-                        }
-                        textSnapshot = textSnapshot.Replace("\r", "\\r").Replace("\n", "\\n");
-                        var linkCount = this.textInfo?.linkCount ?? -1;
                         #if BADGE_DEBUG
-                        Logger.Info("[TASK14DBG][ESC-REBUILD] " + $"Rebuild LatePreRender start textPrefix={textSnapshot} linkCount={linkCount}");
+                        if (ShouldLogTask14Debug()) {
+                            var textSnapshot = this.text ?? string.Empty;
+                            if (textSnapshot.Length > 80) {
+                                textSnapshot = textSnapshot.Substring(0, 80) + "...";
+                            }
+                            textSnapshot = textSnapshot.Replace("\r", "\\r").Replace("\n", "\\n");
+                            var linkCount = this.textInfo?.linkCount ?? -1;
+                            Logger.Info("[TASK14DBG][ESC-REBUILD] " + $"Rebuild LatePreRender start textPrefix={textSnapshot} linkCount={linkCount}");
+                        }
                         #endif
 
                         this.ClearImages();
-                        using (BadgeRebuildProfilerMarker.Auto()) {
 #if DEBUG
-                            this._badgeRebuildStopwatch.Restart();
+                        var rebuildStartTicks = Stopwatch.GetTimestamp();
 #endif
+                        using (BadgeRebuildProfilerMarker.Auto()) {
                             for (var i = 0; i < this.textInfo.characterCount; i++) {
                             var c = this.textInfo.characterInfo[i];
                             if (!c.isVisible || string.IsNullOrEmpty(this.text) || c.index >= this.text.Length) {
@@ -292,14 +259,11 @@ namespace EnhancedStreamChat.Graphics
                                 this.DespawnImage(img);
                             }
                         }
-#if DEBUG
-                            this._badgeRebuildStopwatch.Stop();
-                            var elapsedMicroseconds = (this._badgeRebuildStopwatch.ElapsedTicks * 1000000L) / Stopwatch.Frequency;
-                            this._badgeRebuildDurationsUs.Add(elapsedMicroseconds);
-                            this._badgeRebuildSampleCount++;
-                            this.TryLogBadgePerfSampleBatch();
-#endif
                         }
+#if DEBUG
+                        var rebuildElapsedMicroseconds = ((Stopwatch.GetTimestamp() - rebuildStartTicks) * 1000000L) / Stopwatch.Frequency;
+                        s_badgePerfAggregator.RecordRebuildSample(rebuildElapsedMicroseconds);
+#endif
                         this._rebuiled = true;
                     });
                     break;
@@ -334,36 +298,172 @@ namespace EnhancedStreamChat.Graphics
             }
 
 #if DEBUG
-            var frameDt = Time.unscaledDeltaTime;
-            if (frameDt > 0.01667f) {
-                Logger.Debug($"[BadgeFrameSpike] dtMs={(frameDt * 1000f):F2}");
-            }
-
-            this._badgeGcSampleTimer += frameDt;
-            if (this._badgeGcSampleTimer < 1f) {
-                return;
-            }
-
-            this._badgeGcSampleTimer = 0f;
-            var totalMemory = GC.GetTotalMemory(false);
-            var gen0CollectionCount = GC.CollectionCount(0);
-            if (!this._hasGcBaseline) {
-                this._lastGcTotalMemory = totalMemory;
-                this._lastGen0CollectionCount = gen0CollectionCount;
-                this._hasGcBaseline = true;
-                return;
-            }
-
-            var memoryDelta = totalMemory - this._lastGcTotalMemory;
-            var gen0Delta = gen0CollectionCount - this._lastGen0CollectionCount;
-            if (gen0Delta > 0 || Math.Abs(memoryDelta) >= 262144L) {
-                Logger.Debug($"[BadgeGC] totalMemKB={totalMemory / 1024L} deltaKB={memoryDelta / 1024L} gen0Delta={gen0Delta}");
-            }
-
-            this._lastGcTotalMemory = totalMemory;
-            this._lastGen0CollectionCount = gen0CollectionCount;
+            s_badgePerfAggregator.RecordFrameSample(Time.frameCount, Time.unscaledDeltaTime);
 #endif
         }
+
+#if DEBUG
+        private sealed class BadgePerfAggregator
+        {
+            private static readonly long FlushIntervalTicks = Stopwatch.Frequency * 60;
+            private static readonly long[] FrameHistogramUpperBoundsUs = { 16667, 20000, 25000, 33333, 50000, 100000, 250000, 500000, 1000000, 2000000, long.MaxValue };
+            private static readonly long[] RebuildHistogramUpperBoundsUs = { 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, long.MaxValue };
+
+            private readonly long[] _frameHistogram = new long[FrameHistogramUpperBoundsUs.Length];
+            private readonly long[] _rebuildHistogram = new long[RebuildHistogramUpperBoundsUs.Length];
+
+            private int _lastFrameCount = -1;
+            private long _nextFlushTicks = Stopwatch.GetTimestamp() + FlushIntervalTicks;
+
+            private long _frameSampleCount;
+            private long _frameTotalUs;
+            private long _frameMaxUs;
+            private long _frameSpikeCount;
+
+            private long _rebuildSampleCount;
+            private long _rebuildTotalUs;
+            private long _rebuildMaxUs;
+
+            private bool _hasGcBaseline;
+            private long _lastGcTotalMemory;
+            private int _lastGen0CollectionCount;
+            private int _lastGen1CollectionCount;
+            private int _lastGen2CollectionCount;
+
+            public void RecordFrameSample(int frameCount, float frameDeltaTime)
+            {
+                if (frameCount == this._lastFrameCount) {
+                    return;
+                }
+
+                this._lastFrameCount = frameCount;
+                var frameUs = (long)Math.Max(0f, frameDeltaTime * 1000000f);
+                this._frameSampleCount++;
+                this._frameTotalUs += frameUs;
+                if (frameUs > this._frameMaxUs) {
+                    this._frameMaxUs = frameUs;
+                }
+                if (frameUs > 16667) {
+                    this._frameSpikeCount++;
+                }
+
+                this._frameHistogram[GetHistogramBucket(FrameHistogramUpperBoundsUs, frameUs)]++;
+                this.TryFlushIfNeeded();
+            }
+
+            public void RecordRebuildSample(long rebuildUs)
+            {
+                var clampedUs = Math.Max(0L, rebuildUs);
+                this._rebuildSampleCount++;
+                this._rebuildTotalUs += clampedUs;
+                if (clampedUs > this._rebuildMaxUs) {
+                    this._rebuildMaxUs = clampedUs;
+                }
+
+                this._rebuildHistogram[GetHistogramBucket(RebuildHistogramUpperBoundsUs, clampedUs)]++;
+                this.TryFlushIfNeeded();
+            }
+
+            private void TryFlushIfNeeded()
+            {
+                var now = Stopwatch.GetTimestamp();
+                if (now < this._nextFlushTicks) {
+                    return;
+                }
+
+                this._nextFlushTicks = now + FlushIntervalTicks;
+
+                var totalMemory = GC.GetTotalMemory(false);
+                var gen0CollectionCount = GC.CollectionCount(0);
+                var gen1CollectionCount = GC.CollectionCount(1);
+                var gen2CollectionCount = GC.CollectionCount(2);
+
+                long memoryDeltaBytes = 0;
+                var gen0Delta = 0;
+                var gen1Delta = 0;
+                var gen2Delta = 0;
+
+                if (this._hasGcBaseline) {
+                    memoryDeltaBytes = totalMemory - this._lastGcTotalMemory;
+                    gen0Delta = gen0CollectionCount - this._lastGen0CollectionCount;
+                    gen1Delta = gen1CollectionCount - this._lastGen1CollectionCount;
+                    gen2Delta = gen2CollectionCount - this._lastGen2CollectionCount;
+                }
+                else {
+                    this._hasGcBaseline = true;
+                }
+
+                this._lastGcTotalMemory = totalMemory;
+                this._lastGen0CollectionCount = gen0CollectionCount;
+                this._lastGen1CollectionCount = gen1CollectionCount;
+                this._lastGen2CollectionCount = gen2CollectionCount;
+
+                var frameAvgMs = this._frameSampleCount > 0 ? (this._frameTotalUs / (double)this._frameSampleCount) / 1000d : 0d;
+                var frameP95Ms = GetP95FromHistogram(this._frameHistogram, FrameHistogramUpperBoundsUs, this._frameSampleCount) / 1000d;
+                var frameMaxMs = this._frameMaxUs / 1000d;
+
+                var rebuildAvgUs = this._rebuildSampleCount > 0 ? this._rebuildTotalUs / (double)this._rebuildSampleCount : 0d;
+                var rebuildP95Us = GetP95FromHistogram(this._rebuildHistogram, RebuildHistogramUpperBoundsUs, this._rebuildSampleCount);
+
+                Logger.Info(
+                    $"[BadgePerfAgg/60s] frameSamples={this._frameSampleCount} frameAvgMs={frameAvgMs:F2} frameP95Ms={frameP95Ms:F2} frameMaxMs={frameMaxMs:F2} " +
+                    $"frameSpikeCount={this._frameSpikeCount} rebuildSamples={this._rebuildSampleCount} rebuildAvgUs={rebuildAvgUs:F2} rebuildP95Us={rebuildP95Us} " +
+                    $"rebuildMaxUs={this._rebuildMaxUs} gcDeltaKB={memoryDeltaBytes / 1024L} gen0Delta={gen0Delta} gen1Delta={gen1Delta} gen2Delta={gen2Delta}");
+
+                this._frameSampleCount = 0;
+                this._frameTotalUs = 0;
+                this._frameMaxUs = 0;
+                this._frameSpikeCount = 0;
+                this._rebuildSampleCount = 0;
+                this._rebuildTotalUs = 0;
+                this._rebuildMaxUs = 0;
+                Array.Clear(this._frameHistogram, 0, this._frameHistogram.Length);
+                Array.Clear(this._rebuildHistogram, 0, this._rebuildHistogram.Length);
+            }
+
+            private static int GetHistogramBucket(long[] bounds, long value)
+            {
+                for (var i = 0; i < bounds.Length; i++) {
+                    if (value <= bounds[i]) {
+                        return i;
+                    }
+                }
+
+                return bounds.Length - 1;
+            }
+
+            private static long GetP95FromHistogram(long[] histogram, long[] bounds, long totalCount)
+            {
+                if (totalCount <= 0) {
+                    return 0;
+                }
+
+                var threshold = (long)Math.Ceiling(totalCount * 0.95d);
+                long cumulative = 0;
+                for (var i = 0; i < histogram.Length; i++) {
+                    cumulative += histogram[i];
+                    if (cumulative >= threshold) {
+                        return bounds[i];
+                    }
+                }
+
+                return bounds[bounds.Length - 1];
+            }
+        }
+#endif
+
+#if BADGE_DEBUG
+        private static bool ShouldLogTask14Debug()
+        {
+            var now = Stopwatch.GetTimestamp();
+            if (now < s_nextTask14DebugLogTicks) {
+                return false;
+            }
+
+            s_nextTask14DebugLogTicks = now + (Stopwatch.Frequency * 60);
+            return true;
+        }
+#endif
 
         public class Factory : PlaceholderFactory<EnhancedTextMeshProUGUI>
         {
