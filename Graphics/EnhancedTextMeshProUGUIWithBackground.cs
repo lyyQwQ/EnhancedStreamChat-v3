@@ -144,8 +144,10 @@ namespace EnhancedStreamChat.Graphics
 
                 item.Text = item._factory.Create();
                 item.Text.AddReciver(item);
+                item.Text.enabled = false;
                 item.SubText = item._factory.Create();
                 item.SubText.AddReciver(item);
+                item.SubText.enabled = false;
 
                 item._accent = new GameObject().AddComponent<ImageView>();
                 item._accent.raycastTarget = false;
@@ -185,7 +187,9 @@ namespace EnhancedStreamChat.Graphics
             protected override void Reinitialize(EnhancedTextMeshProUGUIWithBackground msg)
             {
                 base.Reinitialize(msg);
+                msg.Text.enabled = true;
                 msg.Text.autoSizeTextContainer = false;
+                msg.SubText.enabled = false;
                 msg.SubText.enableWordWrapping = true;
                 msg.SubText.autoSizeTextContainer = false;
                 (msg.transform as RectTransform).pivot = new Vector2(0.5f, 0);
@@ -200,9 +204,11 @@ namespace EnhancedStreamChat.Graphics
                 msg.HighlightEnabled = false;
                 msg.AccentEnabled = false;
                 msg.SubTextEnabled = false;
+                msg.Text.enabled = false;
                 msg.Text.text = "";
                 msg.Text.ChatMessage = null;
                 msg.Text.SetAllDirty();
+                msg.SubText.enabled = false;
                 msg.SubText.text = "";
                 msg.SubText.ChatMessage = null;
                 msg.SubText.SetAllDirty();

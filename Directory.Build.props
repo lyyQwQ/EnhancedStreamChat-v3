@@ -8,7 +8,12 @@
 	<ItemGroup>
 		<OutputCopy Include="$(TargetPath)" OutputPath="Plugins\$(TargetName).dll" />
 		<OutputCopy Include="$(TargetDir)$(TargetName).pdb" OutputPath="Plugins\$(TargetName).pdb" />
-		<OutputCopy Include="FontAssets\sourcehansanscn-medium sdf.assets" OutputPath="UserData\FontAssets\Main\sourcehansanscn-medium sdf.assets" />
-		<OutputCopy Include="FontAssets\mplus-1c-medium sdf.assets" OutputPath="UserData\FontAssets\Main\mplus-1c-medium sdf.assets" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(BeatSaberGameVersion)' == '1.40.8'">
+		<OutputCopy Include="FontAssets\1408\sourcehansanscn-medium sdf.assets" OutputPath="UserData\FontAssets\Main\sourcehansanscn-medium sdf.assets" />
+		<OutputCopy Include="FontAssets\1408\mplus-1c-medium sdf.assets" OutputPath="UserData\FontAssets\Main\mplus-1c-medium sdf.assets" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(BeatSaberGameVersion)' == '1.42.3'">
+		<OutputCopy Include="FontAssets\1423\SourceHanSansCN-Medium.ttf" OutputPath="UserData\ESC\SourceHanSansCN-Medium.ttf" />
 	</ItemGroup>
 </Project>

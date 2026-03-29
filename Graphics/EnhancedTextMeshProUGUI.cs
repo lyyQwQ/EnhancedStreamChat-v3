@@ -1,6 +1,7 @@
 using EnhancedStreamChat.Chat;
 using EnhancedStreamChat.Interfaces;
 using EnhancedStreamChat.Utilities;
+using BeatSaberMarkupLanguage;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -39,6 +40,7 @@ namespace EnhancedStreamChat.Graphics
 
         private static readonly object s_avatarMaskLock = new object();
         private static Sprite s_avatarCircleMaskSprite;
+        private static TMP_FontAsset s_bootstrapFont;
 
         public void Constract(EnhancedImage.Pool image, ESCFontManager fontManager)
         {
@@ -50,6 +52,26 @@ namespace EnhancedStreamChat.Graphics
         {
             base.Awake();
             this.raycastTarget = false;
+            if (!this.font) {
+                this.font = GetBootstrapFont();
+            }
+        }
+
+        private static TMP_FontAsset GetBootstrapFont()
+        {
+            if (s_bootstrapFont) {
+                return s_bootstrapFont;
+            }
+
+            s_bootstrapFont = BeatSaberUI.MainTextFont != null ? BeatSaberUI.MainTextFont : TMP_Settings.defaultFontAsset;
+            if (s_bootstrapFont) {
+                return s_bootstrapFont;
+            }
+
+            s_bootstrapFont = Resources.FindObjectsOfTypeAll<TMP_FontAsset>()
+                .FirstOrDefault(font => font != null && (font.atlasTexture != null || (font.atlasTextures != null && font.atlasTextures.Any(texture => texture != null))));
+
+            return s_bootstrapFont;
         }
 
         private static Sprite GetOrCreateAvatarCircleMaskSprite()

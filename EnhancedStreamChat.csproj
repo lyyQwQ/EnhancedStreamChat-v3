@@ -11,6 +11,13 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <DebugType>embedded</DebugType>
     <AssemblySearchPath>$(ReferencePath)</AssemblySearchPath>
+    <BeatSaberGameVersion Condition="'$(BeatSaberGameVersion)' == ''">1.40.8</BeatSaberGameVersion>
+    <SelectedManifestPath>manifest.1408.json</SelectedManifestPath>
+    <SelectedManifestPath Condition="'$(BeatSaberGameVersion)' == '1.42.3'">manifest.1423.json</SelectedManifestPath>
+    <ManifestPath>$(SelectedManifestPath)</ManifestPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BeatSaberGameVersion)' == '1.42.3'">
+    <DefineConstants>$(DefineConstants);BS_1423</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>full</DebugType>
@@ -149,7 +156,7 @@
     <None Include="EnhancedStreamChat.csproj.user" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="manifest.json" />
+    <EmbeddedResource Include="$(SelectedManifestPath)" LogicalName="$(AssemblyName).manifest.json" />
     <EmbeddedResource Include="Chat\ChatDisplay.bsml" />
     <EmbeddedResource Include="Resources\Settings.png" />
     <EmbeddedResource Include="Resources\PizzaDog.jpg" />
@@ -160,4 +167,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  <Target Name="ValidateBeatSaberGameVersion" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(BeatSaberGameVersion)' != '1.40.8' AND '$(BeatSaberGameVersion)' != '1.42.3'" Text="BeatSaberGameVersion must be 1.40.8 or 1.42.3." />
+  </Target>
 </Project>
