@@ -19,8 +19,19 @@ namespace EnhancedStreamChat.Chat
     {
         private readonly ChatImageProvider _chatImageProvider;
         private static readonly ConcurrentDictionary<string, Color> s_senderColor = new ConcurrentDictionary<string, Color>();
+#if BS_1423
+        private const string CompactPrefixSeparator = "<space=0.04em>";
+        private const string CompactPrefixIconTighten = "<space=0.02em>";
+        private const string CompactMetadataPairTighten = "<space=-0.16em>";
+        private const string CompactMetadataToNameSeparator = "<space=0.14em>";
+        private const float BadgeNameSeparatorBaseAspectRatio = 1.60f;
+        private const float BadgeNameSeparatorBaseEm = 0.14f;
+        private const float BadgeNameSeparatorPerAspectRatio = 0.38f;
+        private const float BadgeNameSeparatorMaxBonusEm = 0.48f;
+#else
         private const string CompactPrefixSeparator = "<space=-0.14em>";
         private const string CompactPrefixIconTighten = "<space=-0.10em>";
+#endif
         private readonly System.Random _random = new System.Random(Environment.TickCount);
 
         private static string TruncateForTask14Debug(string text, int max = 180)
@@ -318,6 +329,7 @@ namespace EnhancedStreamChat.Chat
                     }
                     var parsedBadge = new HashSet<string>();
                     var insertedPrefixIcon = false;
+                    string previousFrontImageId = null;
                     while (badges.Count > 0) {
                         // Insert all prefix images (Twitch badges + metadata images)
                         var badge = badges.Pop();
@@ -327,10 +339,12 @@ namespace EnhancedStreamChat.Chat
                         _ = parsedBadge.Add(badge.ImageId);
                         if (font.TryGetCharacter(badge.ImageId, out var character)) {
                             // Keep icon group compact; only the first inserted icon keeps a small separator before username.
-                            _ = sb.Insert(0, insertedPrefixIcon
-                                ? $"{char.ConvertFromUtf32((int)character)}{CompactPrefixIconTighten}"
-                                : $"{char.ConvertFromUtf32((int)character)}{CompactPrefixSeparator}");
+                            var spacingMarkup = insertedPrefixIcon
+                                ? GetPrefixSpacingMarkup(badge.ImageId, previousFrontImageId)
+                                : GetPrefixToNameSpacingMarkup(badge);
+                            _ = sb.Insert(0, $"{char.ConvertFromUtf32((int)character)}{spacingMarkup}");
                             insertedPrefixIcon = true;
+                            previousFrontImageId = badge.ImageId;
                         }
                         else {
                             Logger.Warn("Undefind badge");
@@ -362,6 +376,47 @@ namespace EnhancedStreamChat.Chat
         {
             return !string.IsNullOrEmpty(imageId)
                 && imageId.IndexOf("_broadcaster_", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsBilibiliMetadataPrefixImageId(string imageId)
+        {
+            return !string.IsNullOrEmpty(imageId)
+                && imageId.StartsWith("Bili_", StringComparison.OrdinalIgnoreCase)
+                && !IsAvatarPrefixImageId(imageId);
+        }
+
+        private static string GetPrefixSpacingMarkup(string currentImageId, string nextImageId)
+        {
+#if BS_1423
+            if (IsBilibiliMetadataPrefixImageId(currentImageId) && IsBilibiliMetadataPrefixImageId(nextImageId)) {
+                return CompactMetadataPairTighten;
+            }
+#endif
+            return CompactPrefixIconTighten;
+        }
+
+        private static string GetPrefixToNameSpacingMarkup(EnhancedImageInfo currentImageInfo)
+        {
+#if BS_1423
+            var currentImageId = currentImageInfo?.ImageId;
+            if (!string.IsNullOrEmpty(currentImageId)
+                && currentImageId.StartsWith("Bili_badge_", StringComparison.OrdinalIgnoreCase)
+                && currentImageInfo.Height > 0
+                && currentImageInfo.Width > 0) {
+                var aspectRatio = (float)currentImageInfo.Width / currentImageInfo.Height;
+                var extraEm = Math.Max(0f, aspectRatio - BadgeNameSeparatorBaseAspectRatio) * BadgeNameSeparatorPerAspectRatio;
+                if (extraEm > BadgeNameSeparatorMaxBonusEm) {
+                    extraEm = BadgeNameSeparatorMaxBonusEm;
+                }
+
+                return $"<space={(BadgeNameSeparatorBaseEm + extraEm).ToString("0.###", CultureInfo.InvariantCulture)}em>";
+            }
+
+            if (IsBilibiliMetadataPrefixImageId(currentImageId)) {
+                return CompactMetadataToNameSeparator;
+            }
+#endif
+            return CompactPrefixSeparator;
         }
 
         private List<MetadataImageResource> GetMetadataImages(IESCChatMessage msg)

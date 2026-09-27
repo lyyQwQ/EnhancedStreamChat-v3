@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+using System;
+using System.Collections.Concurrent;
 using TMPro;
 using UnityEngine.TextCore;
 
@@ -21,6 +22,18 @@ namespace EnhancedStreamChat.Graphics
         private const uint UNICODE_USER_THARD_AREA_MINIMUM_VALUE = 0x00100000;
         private const uint UNICODE_USER_THARD_AREA_MAXIMUM_VALUE = 0x0010FFFD;
         private const float ImageGlyphAdvanceScale = 0.7f;
+#if BS_1423
+        private const float AvatarGlyphAdvanceScale = 1.18f;
+        private const float MetadataGlyphAdvanceScale = 0.90f;
+        private const float BroadcasterGlyphAdvanceScale = 0.94f;
+        private const float BilibiliBadgeBaseAspectRatio = 1.6f;
+        private const float BilibiliBadgeAdvancePerAspectRatio = 0.22f;
+        private const float BilibiliBadgeAdvanceMaxBonus = 0.24f;
+#else
+        private const float AvatarGlyphAdvanceScale = 0.9f;
+        private const float MetadataGlyphAdvanceScale = 0.82f;
+        private const float BroadcasterGlyphAdvanceScale = 0.86f;
+#endif
 
         public EnhancedFontInfo(TMP_FontAsset font)
         {
@@ -72,7 +85,7 @@ namespace EnhancedStreamChat.Graphics
 #if DEBUG
                     Logger.Debug($"Unicode : 0x{next:X8}");
 #endif
-                    this.Font.characterLookupTable.Add(next, new TMP_Character(next, this.Font, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width * ImageGlyphAdvanceScale), new GlyphRect(0, 0, 0, 0))));
+                    this.Font.characterLookupTable.Add(next, new TMP_Character(next, this.Font, new Glyph(next, new GlyphMetrics(0, 0, 0, 0, imageInfo.Width * GetImageGlyphAdvanceScale(imageInfo)), new GlyphRect(0, 0, 0, 0))));
                     _ = this.CharacterLookupTable.TryAdd(imageInfo.ImageId, next);
                     _ = this.ImageInfoLookupTable.TryAdd(next, imageInfo);
                     replaceCharacter = next;
@@ -97,5 +110,50 @@ namespace EnhancedStreamChat.Graphics
                 return this.ImageInfoLookupTable.TryRemove(unregisteredCharacter, out var unregisteredImageInfo);
             }
         }
+
+        private static float GetImageGlyphAdvanceScale(EnhancedImageInfo imageInfo)
+        {
+            var imageId = imageInfo?.ImageId;
+            if (string.IsNullOrEmpty(imageId)) {
+                return ImageGlyphAdvanceScale;
+            }
+
+            if (imageId.StartsWith("Bili_avatar_", StringComparison.OrdinalIgnoreCase)) {
+                return AvatarGlyphAdvanceScale;
+            }
+
+            if (imageId.IndexOf("_broadcaster_", StringComparison.OrdinalIgnoreCase) >= 0) {
+                return BroadcasterGlyphAdvanceScale;
+            }
+
+#if BS_1423
+            if (imageId.StartsWith("Bili_badge_", StringComparison.OrdinalIgnoreCase)) {
+                return GetBilibiliBadgeAdvanceScale(imageInfo);
+            }
+#endif
+
+            if (imageId.StartsWith("Bili_", StringComparison.OrdinalIgnoreCase)) {
+                return MetadataGlyphAdvanceScale;
+            }
+
+            return ImageGlyphAdvanceScale;
+        }
+
+#if BS_1423
+        private static float GetBilibiliBadgeAdvanceScale(EnhancedImageInfo imageInfo)
+        {
+            if (imageInfo == null || imageInfo.Height <= 0 || imageInfo.Width <= 0) {
+                return MetadataGlyphAdvanceScale;
+            }
+
+            var aspectRatio = (float)imageInfo.Width / imageInfo.Height;
+            var aspectBonus = Math.Max(0f, aspectRatio - BilibiliBadgeBaseAspectRatio) * BilibiliBadgeAdvancePerAspectRatio;
+            if (aspectBonus > BilibiliBadgeAdvanceMaxBonus) {
+                aspectBonus = BilibiliBadgeAdvanceMaxBonus;
+            }
+
+            return MetadataGlyphAdvanceScale + aspectBonus;
+        }
+#endif
     }
 }

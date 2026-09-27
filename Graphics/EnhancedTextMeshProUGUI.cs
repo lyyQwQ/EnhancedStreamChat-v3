@@ -26,6 +26,12 @@ namespace EnhancedStreamChat.Graphics
         public ILazyCopyHashSet<ILatePreRenderRebuildReciver> LazyCopyHashSet => this._recivers;
 
         private const string BilibiliAvatarImageIdPrefix = "Bili_avatar_";
+        private const float DefaultImageScaleMultiplier = 1.08f;
+        private const float DefaultImageVerticalOffsetFactor = 0.558f;
+        private const float MetadataImageScaleMultiplier = 0.92f;
+        private const float MetadataImageBaselineOffsetFactor = 0.18f;
+        private const float BroadcasterImageScaleMultiplier = 0.88f;
+        private const float BroadcasterImageBaselineOffsetFactor = 0.28f;
         private readonly Dictionary<EnhancedImage, RectTransform> _avatarMaskWrappersByImage = new Dictionary<EnhancedImage, RectTransform>();
         private readonly Stack<RectTransform> _avatarMaskWrapperPool = new Stack<RectTransform>();
         private static readonly ProfilerMarker BadgeRebuildProfilerMarker = new ProfilerMarker("ESC.BadgeRebuild");
@@ -168,6 +174,46 @@ namespace EnhancedStreamChat.Graphics
             return imageInfo?.ImageId?.StartsWith(BilibiliAvatarImageIdPrefix, StringComparison.Ordinal) == true;
         }
 
+        private static bool IsBroadcasterPrefixImage(EnhancedImageInfo imageInfo)
+        {
+            return imageInfo?.ImageId?.IndexOf("_broadcaster_", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private bool IsBilibiliMetadataImage(EnhancedImageInfo imageInfo)
+        {
+            var imageId = imageInfo?.ImageId;
+            return !string.IsNullOrEmpty(imageId)
+                && imageId.StartsWith("Bili_", StringComparison.OrdinalIgnoreCase)
+                && !this.IsBilibiliAvatar(imageInfo);
+        }
+
+        private static ImageLayoutMetrics GetImageLayoutMetrics(EnhancedImageInfo imageInfo, bool isAvatar, bool isMetadata, bool isBroadcaster)
+        {
+            if (isAvatar) {
+                return new ImageLayoutMetrics(DefaultImageScaleMultiplier, DefaultImageVerticalOffsetFactor, useBaselinePosition: false);
+            }
+
+            if (isBroadcaster) {
+                return new ImageLayoutMetrics(BroadcasterImageScaleMultiplier, BroadcasterImageBaselineOffsetFactor, useBaselinePosition: true);
+            }
+
+            if (isMetadata) {
+                return new ImageLayoutMetrics(MetadataImageScaleMultiplier, MetadataImageBaselineOffsetFactor, useBaselinePosition: true);
+            }
+
+            return new ImageLayoutMetrics(DefaultImageScaleMultiplier, DefaultImageVerticalOffsetFactor, useBaselinePosition: false);
+        }
+
+        private static Vector3 GetImageLocalPosition(TMP_CharacterInfo characterInfo, EnhancedImageInfo imageInfo, float scaledFontFactor, ImageLayoutMetrics metrics)
+        {
+            var scaledHeight = imageInfo.Height * scaledFontFactor * metrics.ScaleMultiplier;
+            if (metrics.UseBaselinePosition) {
+                return new Vector3(characterInfo.origin, characterInfo.baseLine - (scaledHeight * metrics.VerticalOffsetFactor), 0f);
+            }
+
+            return characterInfo.topLeft - new Vector3(0f, imageInfo.Height * scaledFontFactor * metrics.VerticalOffsetFactor / 2f);
+        }
+
         private void DespawnImage(EnhancedImage img)
         {
             if (img == null) {
@@ -240,15 +286,20 @@ namespace EnhancedStreamChat.Graphics
                             try {
                                 var fontScale = 0.010f * this.fontSize;
                                 var isAvatar = this.IsBilibiliAvatar(imageInfo);
+                                var isBroadcaster = IsBroadcasterPrefixImage(imageInfo);
+                                var isMetadata = this.IsBilibiliMetadataImage(imageInfo);
+                                var layoutMetrics = GetImageLayoutMetrics(imageInfo, isAvatar, isMetadata, isBroadcaster);
+                                var scaledFontFactor = fontScale * layoutMetrics.ScaleMultiplier;
+                                var imageLocalPosition = GetImageLocalPosition(c, imageInfo, fontScale, layoutMetrics);
 
                                 if (isAvatar) {
                                     var wrapper = this.RentAvatarMaskWrapper();
                                     this._avatarMaskWrappersByImage[img] = wrapper;
 
                                     wrapper.SetParent(this.rectTransform, false);
-                                    wrapper.localScale = new Vector3(fontScale * 1.08f, fontScale * 1.08f, fontScale * 1.08f);
+                                    wrapper.localScale = new Vector3(scaledFontFactor, scaledFontFactor, scaledFontFactor);
                                     wrapper.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
-                                    wrapper.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * fontScale * 0.558f / 2);
+                                    wrapper.localPosition = imageLocalPosition;
                                     wrapper.localRotation = Quaternion.identity;
 
                                     img.rectTransform.SetParent(wrapper, false);
@@ -259,9 +310,9 @@ namespace EnhancedStreamChat.Graphics
                                 }
                                 else {
                                     img.rectTransform.SetParent(this.rectTransform, false);
-                                    img.rectTransform.localScale = new Vector3(fontScale * 1.08f, fontScale * 1.08f, fontScale * 1.08f);
+                                    img.rectTransform.localScale = new Vector3(scaledFontFactor, scaledFontFactor, scaledFontFactor);
                                     img.rectTransform.sizeDelta = new Vector2(imageInfo.Width, imageInfo.Height);
-                                    img.rectTransform.localPosition = c.topLeft - new Vector3(0, imageInfo.Height * fontScale * 0.558f / 2);
+                                    img.rectTransform.localPosition = imageLocalPosition;
                                     img.rectTransform.localRotation = Quaternion.identity;
                                 }
 
@@ -489,6 +540,20 @@ namespace EnhancedStreamChat.Graphics
 
         public class Factory : PlaceholderFactory<EnhancedTextMeshProUGUI>
         {
+        }
+
+        private readonly struct ImageLayoutMetrics
+        {
+            public float ScaleMultiplier { get; }
+            public float VerticalOffsetFactor { get; }
+            public bool UseBaselinePosition { get; }
+
+            public ImageLayoutMetrics(float scaleMultiplier, float verticalOffsetFactor, bool useBaselinePosition)
+            {
+                ScaleMultiplier = scaleMultiplier;
+                VerticalOffsetFactor = verticalOffsetFactor;
+                UseBaselinePosition = useBaselinePosition;
+            }
         }
     }
 }
