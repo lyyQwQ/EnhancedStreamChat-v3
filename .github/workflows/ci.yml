@@ -91,8 +91,9 @@ jobs:
       - name: Stage current CatCore
         shell: pwsh
         run: |
-          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\Artifact\Libs\CatCore.dll" Refs/Libs/CatCore.dll -Force
-          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\Artifact\Libs\CatCore.xml" Refs/Libs/CatCore.xml -Force
+          # ILRepack 产物用于运行时发布；插件编译引用未合并程序集，避免把合并依赖的框架元数据带入 Roslyn。
+          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\CatCore.dll" Refs/Libs/CatCore.dll -Force
+          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\CatCore.xml" Refs/Libs/CatCore.xml -Force
 
       - name: Restore dependencies
         run: dotnet restore EnhancedStreamChat.sln -p:BeatSaberDir=${{ github.workspace }}\Refs
