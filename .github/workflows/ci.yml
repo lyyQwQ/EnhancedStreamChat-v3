@@ -53,6 +53,7 @@ jobs:
           project-path: EnhancedStreamChat.csproj
           project-configuration: Release
           path: ${{ github.workspace }}\Refs
+          additional-dependencies: '{"BeatSaberMarkupLanguage":"^1.12.3","BS Utils":"^1.14.2","CatCore":"^1.1.0","SiraUtil":"^3.1.12","CameraUtils":"^1.0.7"}'
 
       - name: Restore dependencies
         run: dotnet restore EnhancedStreamChat.sln -p:BeatSaberDir=${{ github.workspace }}\Refs
