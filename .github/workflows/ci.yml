@@ -63,7 +63,9 @@ jobs:
           path: catcore
 
       - name: Build current CatCore
-        run: dotnet build catcore/CatCore/CatCore.csproj --configuration Release --nologo
+        run: |
+          dotnet restore catcore/CatCore.sln
+          dotnet build catcore/CatCore/CatCore.csproj --configuration Release --no-restore --nologo
 
       - name: Stage current CatCore
         shell: pwsh
