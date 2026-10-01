@@ -1,0 +1,84 @@
+name: Build EnhancedStreamChat
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '**.props'
+      - '**.json'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '**.props'
+      - '**.json'
+      - '.github/workflows/ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build BS ${{ matrix.game-version }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - game-version: 1.40.8
+            manifest: manifest.1408.json
+          - game-version: 1.44.1
+            manifest: manifest.1441.json
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Download stripped game references
+        env:
+          SIRA_SERVER_CODE: ${{ secrets.SIRA_SERVER_CODE }}
+          GAME_VERSION: ${{ matrix.game-version }}
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIRA_SERVER_CODE)) {
+            throw 'Repository secret SIRA_SERVER_CODE is required to download Beat Saber references.'
+          }
+          $manifest = Get-Content '${{ github.workspace }}/${{ matrix.manifest }}' -Raw | ConvertFrom-Json
+          if ($manifest.gameVersion -ne $env:GAME_VERSION) {
+            throw "Manifest game version '$($manifest.gameVersion)' does not match '$env:GAME_VERSION'."
+          }
+          New-Item -ItemType Directory -Force '${{ github.workspace }}/Refs' | Out-Null
+          $zip = '${{ runner.temp }}/beatsaber-refs.zip'
+          $uri = "https://cdn.project-sira.tech/gate?code=$([uri]::EscapeDataString($env:SIRA_SERVER_CODE))&id=$env:GAME_VERSION"
+          Invoke-WebRequest -Uri $uri -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath '${{ github.workspace }}/Refs' -Force
+
+      - name: Restore dependencies
+        run: dotnet restore EnhancedStreamChat.sln -p:BeatSaberDir=${{ github.workspace }}/Refs
+
+      - name: Build
+        run: >-
+          dotnet build EnhancedStreamChat.sln
+          --configuration Release
+          --no-restore
+          -p:BeatSaberGameVersion=${{ matrix.game-version }}
+          -p:BeatSaberDir=${{ github.workspace }}/Refs
+          -p:GameDirectory=${{ github.workspace }}/artifacts
+          -p:ArtifactDestination=${{ github.workspace }}/artifacts
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EnhancedStreamChat-bs${{ matrix.game-version }}
+          path: |
+            artifacts/Plugins/EnhancedStreamChat.dll
+            artifacts/Plugins/EnhancedStreamChat.pdb
+            artifacts/UserData/**
