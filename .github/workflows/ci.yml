@@ -92,8 +92,9 @@ jobs:
         shell: pwsh
         run: |
           # 合并版用于运行时发布；编译引用使用同源码的未合并程序集，避免重复框架成员。
-          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\CatCore.dll" Refs/Libs/CatCore.dll -Force
-          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\CatCore.xml" Refs/Libs/CatCore.xml -Force
+          $catCoreOutput = "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0"
+          Copy-Item "$catCoreOutput\*.dll" Refs/Libs -Force
+          Copy-Item "$catCoreOutput\CatCore.xml" Refs/Libs/CatCore.xml -Force
 
       - name: Remove conflicting netstandard facade
         shell: pwsh
