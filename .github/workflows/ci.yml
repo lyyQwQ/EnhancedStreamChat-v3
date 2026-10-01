@@ -62,21 +62,26 @@ jobs:
           ref: main
           path: catcore
 
+      - name: Move CatCore checkout outside project tree
+        shell: pwsh
+        run: |
+          Move-Item catcore "$env:RUNNER_TEMP\catcore" -Force
+
       - name: Build current CatCore
         shell: pwsh
         run: |
-          dotnet restore catcore/CatCore.sln
+          dotnet restore "$env:RUNNER_TEMP\catcore\CatCore.sln"
           $ilRepack = Get-ChildItem "$env:USERPROFILE\.nuget\packages\ilrepack" -Recurse -Filter ILRepack.exe | Sort-Object FullName -Descending | Select-Object -First 1
           if ($null -eq $ilRepack) {
             throw 'ILRepack.exe was not restored for CatCore.'
           }
-          dotnet build catcore/CatCore/CatCore.csproj --configuration Release --no-restore --nologo "-p:ILRepack=$($ilRepack.FullName)"
+          dotnet build "$env:RUNNER_TEMP\catcore\CatCore\CatCore.csproj" --configuration Release --no-restore --nologo "-p:ILRepack=$($ilRepack.FullName)"
 
       - name: Stage current CatCore
         shell: pwsh
         run: |
-          Copy-Item catcore/CatCore/bin/Release/netstandard2.0/Artifact/Libs/CatCore.dll Refs/Libs/CatCore.dll -Force
-          Copy-Item catcore/CatCore/bin/Release/netstandard2.0/Artifact/Libs/CatCore.xml Refs/Libs/CatCore.xml -Force
+          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\Artifact\Libs\CatCore.dll" Refs/Libs/CatCore.dll -Force
+          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\Artifact\Libs\CatCore.xml" Refs/Libs/CatCore.xml -Force
 
       - name: Restore dependencies
         run: dotnet restore EnhancedStreamChat.sln -p:BeatSaberDir=${{ github.workspace }}\Refs
