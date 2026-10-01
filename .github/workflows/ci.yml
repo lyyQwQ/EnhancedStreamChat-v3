@@ -105,6 +105,7 @@ jobs:
           @(
             'Refs\Beat Saber_Data\Managed\netstandard.dll'
             'Refs\Libs\netstandard.dll'
+            'Refs\Beat Saber_Data\Managed\System.Runtime.dll'
           ) | ForEach-Object {
             if (Test-Path $_) {
               Move-Item $_ (Join-Path $disabledRoot ([IO.Path]::GetFileName($_))) -Force
