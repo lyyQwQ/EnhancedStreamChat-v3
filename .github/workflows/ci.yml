@@ -37,7 +37,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 8.0.202
 
       - name: Initialize Beat Saber references
         uses: beat-forge/init-beatsaber@v1
@@ -53,7 +53,23 @@ jobs:
           project-path: EnhancedStreamChat.csproj
           project-configuration: Release
           path: ${{ github.workspace }}\Refs
-          additional-dependencies: '{"BeatSaberMarkupLanguage":"^1.12.3","BS Utils":"^1.14.2","CatCore":"^1.1.0","SiraUtil":"^3.1.12","CameraUtils":"^1.0.7"}'
+          additional-dependencies: '{"BeatSaberMarkupLanguage":"^1.12.3","BS Utils":"^1.14.2","SiraUtil":"^3.1.12","CameraUtils":"^1.0.7"}'
+
+      - name: Checkout current CatCore
+        uses: actions/checkout@v4
+        with:
+          repository: lyyQwQ/CatCore
+          ref: main
+          path: catcore
+
+      - name: Build current CatCore
+        run: dotnet build catcore/CatCore/CatCore.csproj --configuration Release --nologo
+
+      - name: Stage current CatCore
+        shell: pwsh
+        run: |
+          Copy-Item catcore/CatCore/bin/Release/netstandard2.0/Artifact/Libs/CatCore.dll Refs/Libs/CatCore.dll -Force
+          Copy-Item catcore/CatCore/bin/Release/netstandard2.0/Artifact/Libs/CatCore.xml Refs/Libs/CatCore.xml -Force
 
       - name: Restore dependencies
         run: dotnet restore EnhancedStreamChat.sln -p:BeatSaberDir=${{ github.workspace }}\Refs
