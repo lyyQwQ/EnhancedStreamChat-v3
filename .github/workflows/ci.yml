@@ -99,17 +99,22 @@ jobs:
       - name: Remove conflicting netstandard facade
         shell: pwsh
         run: |
-          # 1.40.8 的 stripped 引用在 Managed 和 Libs 各带一个 facade，都会干扰 net48 编译器的框架成员解析。
+          # 1.40.8 的 stripped 引用可能在多个目录放置 facade，会干扰 net48 编译器的框架成员解析。
           $disabledRoot = Join-Path $env:RUNNER_TEMP 'disabled-netstandard'
           New-Item -ItemType Directory -Path $disabledRoot -Force | Out-Null
-          @(
-            'Refs\Beat Saber_Data\Managed\netstandard.dll'
-            'Refs\Libs\netstandard.dll'
-            'Refs\Beat Saber_Data\Managed\System.Runtime.dll'
-          ) | ForEach-Object {
-            if (Test-Path $_) {
-              Move-Item $_ (Join-Path $disabledRoot ([IO.Path]::GetFileName($_))) -Force
-            }
+          $facades = Get-ChildItem Refs -Recurse -File | Where-Object {
+            $_.Name -in @('netstandard.dll', 'System.Runtime.dll')
+          }
+          foreach ($facade in $facades) {
+            $destination = Join-Path $disabledRoot ([Guid]::NewGuid().ToString() + '-' + $facade.Name)
+            Move-Item $facade.FullName $destination -Force
+            Write-Host "Disabled facade: $($facade.FullName)"
+          }
+          $remaining = Get-ChildItem Refs -Recurse -File | Where-Object {
+            $_.Name -in @('netstandard.dll', 'System.Runtime.dll')
+          }
+          if ($remaining) {
+            throw "Conflicting framework facades remain: $($remaining.FullName -join ', ')"
           }
 
       - name: Restore dependencies
