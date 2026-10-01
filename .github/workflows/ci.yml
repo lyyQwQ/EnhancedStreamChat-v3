@@ -39,6 +39,17 @@ jobs:
         with:
           dotnet-version: 8.0.202
 
+      - name: Pin plugin build SDK
+        shell: pwsh
+        run: |
+          $globalJson = Get-Content global.json -Raw | ConvertFrom-Json
+          $globalJson.sdk.version = '8.0.202'
+          $globalJson.sdk.rollForward = 'disable'
+          $globalJson | ConvertTo-Json -Depth 5 | Set-Content global.json
+          if ((dotnet --version) -ne '8.0.202') {
+            throw "Expected .NET SDK 8.0.202, found $(dotnet --version)."
+          }
+
       - name: Initialize Beat Saber references
         uses: beat-forge/init-beatsaber@v1
         with:
