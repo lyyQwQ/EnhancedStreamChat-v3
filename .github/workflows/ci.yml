@@ -91,8 +91,9 @@ jobs:
       - name: Stage current CatCore
         shell: pwsh
         run: |
-          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\Artifact\Libs\CatCore.dll" Refs/Libs/CatCore.dll -Force
-          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\Artifact\Libs\CatCore.xml" Refs/Libs/CatCore.xml -Force
+          # 合并版用于运行时发布；编译引用使用同源码的未合并程序集，避免重复框架成员。
+          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\CatCore.dll" Refs/Libs/CatCore.dll -Force
+          Copy-Item "$env:RUNNER_TEMP\catcore\CatCore\bin\Release\netstandard2.0\CatCore.xml" Refs/Libs/CatCore.xml -Force
 
       - name: Remove conflicting netstandard facade
         shell: pwsh
