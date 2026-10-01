@@ -63,9 +63,14 @@ jobs:
           path: catcore
 
       - name: Build current CatCore
+        shell: pwsh
         run: |
           dotnet restore catcore/CatCore.sln
-          dotnet build catcore/CatCore/CatCore.csproj --configuration Release --no-restore --nologo
+          $ilRepack = Get-ChildItem "$env:USERPROFILE\.nuget\packages\ilrepack" -Recurse -Filter ILRepack.exe | Sort-Object FullName -Descending | Select-Object -First 1
+          if ($null -eq $ilRepack) {
+            throw 'ILRepack.exe was not restored for CatCore.'
+          }
+          dotnet build catcore/CatCore/CatCore.csproj --configuration Release --no-restore --nologo "-p:ILRepack=$($ilRepack.FullName)"
 
       - name: Stage current CatCore
         shell: pwsh
