@@ -99,9 +99,16 @@ jobs:
       - name: Remove conflicting netstandard facade
         shell: pwsh
         run: |
-          $netstandard = 'Refs\Beat Saber_Data\Managed\netstandard.dll'
-          if (Test-Path $netstandard) {
-            Move-Item $netstandard "$env:RUNNER_TEMP\netstandard.dll.disabled" -Force
+          # 1.40.8 的 stripped 引用在 Managed 和 Libs 各带一个 facade，都会干扰 net48 编译器的框架成员解析。
+          $disabledRoot = Join-Path $env:RUNNER_TEMP 'disabled-netstandard'
+          New-Item -ItemType Directory -Path $disabledRoot -Force | Out-Null
+          @(
+            'Refs\Beat Saber_Data\Managed\netstandard.dll'
+            'Refs\Libs\netstandard.dll'
+          ) | ForEach-Object {
+            if (Test-Path $_) {
+              Move-Item $_ (Join-Path $disabledRoot ([IO.Path]::GetFileName($_))) -Force
+            }
           }
 
       - name: Restore dependencies
