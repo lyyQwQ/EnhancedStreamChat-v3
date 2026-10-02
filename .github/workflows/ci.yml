@@ -105,6 +105,7 @@ jobs:
           $disabledRoot = Join-Path $env:RUNNER_TEMP 'disabled-netstandard'
           New-Item -ItemType Directory -Path $disabledRoot -Force | Out-Null
           $conflictingAssemblies = @(
+            'mscorlib.dll',
             'netstandard.dll',
             'System.Runtime.dll',
             'System.Windows.Forms.dll',
