@@ -1,6 +1,5 @@
 using BeatSaberMarkupLanguage;
 using System.Linq;
-using System.Reflection;
 using TMPro;
 using UnityEngine;
 
@@ -8,8 +7,6 @@ namespace EnhancedStreamChat.Utilities
 {
     public static class BeatSaberUtils
     {
-        private static readonly FieldInfo s_tmpAssetMaterialField = typeof(TMP_Asset).GetField("m_Material", BindingFlags.Instance | BindingFlags.NonPublic);
-        private static readonly FieldInfo s_tmpAssetMaterialHashCodeField = typeof(TMP_Asset).GetField("m_MaterialHashCode", BindingFlags.Instance | BindingFlags.NonPublic);
         private static Material s_noGlow;
         public static Material UINoGlowMaterial => s_noGlow ??= Resources.FindObjectsOfTypeAll<Material>().Where(m => m.name == "UINoGlow").FirstOrDefault();
 
@@ -26,12 +23,13 @@ namespace EnhancedStreamChat.Utilities
 
         public static Material GetTMPFontMaterial(TMP_FontAsset font)
         {
-            if (!font || s_tmpAssetMaterialField == null) {
+            if (!font) {
                 return null;
             }
 
             try {
-                return s_tmpAssetMaterialField.GetValue(font) as Material;
+                var material = font.material;
+                return material;
             }
             catch {
                 return null;
@@ -63,7 +61,7 @@ namespace EnhancedStreamChat.Utilities
             var mainTexture = font == null
                 ? null
                 : font.atlasTexture ?? font.atlasTextures?.FirstOrDefault(texture => texture != null);
-            if (font == null || referenceMaterial == null || mainTexture == null || s_tmpAssetMaterialField == null) {
+            if (font == null || referenceMaterial == null || mainTexture == null) {
                 return null;
             }
 
@@ -73,10 +71,7 @@ namespace EnhancedStreamChat.Utilities
                     name = font.name + " Material"
                 };
                 material.SetTexture("_MainTex", mainTexture);
-                s_tmpAssetMaterialField.SetValue(font, material);
-                if (s_tmpAssetMaterialHashCodeField != null) {
-                    s_tmpAssetMaterialHashCodeField.SetValue(font, TMP_TextUtilities.GetSimpleHashCode(material.name));
-                }
+                font.material = material;
                 return material;
             }
             catch {

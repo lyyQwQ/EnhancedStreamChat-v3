@@ -7,7 +7,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
@@ -27,9 +26,6 @@ namespace EnhancedStreamChat.Chat
         private const string PreferredSourceHanFontAssetName = "SourceHanSansCN-Medium SDF";
 #endif
         private readonly List<AssetBundle> _loadedFontBundles = new List<AssetBundle>();
-        // 1.42.3 读取旧版 TMP 字体 bundle 时，主 atlas 字段可能为空，只在初始化阶段补一次。
-        private static readonly FieldInfo AtlasTextureField = typeof(TMP_FontAsset).GetField("m_AtlasTexture", BindingFlags.Instance | BindingFlags.NonPublic);
-        private static readonly FieldInfo LegacyAtlasField = typeof(TMP_FontAsset).GetField("atlas", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         private PluginConfig _pluginConfig;
 
         [Inject]
@@ -235,6 +231,7 @@ namespace EnhancedStreamChat.Chat
             if (this.MainFont != null) {
                 this.FontInfo = new EnhancedFontInfo(this.MainFont);
             }
+            Logger.Info($"ESC font initialization completed with main font '{this.MainFont?.name ?? "<none>"}' and {this._fallbackFonts.Count} fallback fonts.");
             this.IsInitialized = true;
         }
 
@@ -412,8 +409,6 @@ namespace EnhancedStreamChat.Chat
             }
 
             asset.atlasTextures = atlasTextures;
-            AtlasTextureField?.SetValue(asset, atlasTextures[0]);
-            LegacyAtlasField?.SetValue(asset, atlasTextures[0]);
             var material = BeatSaberUtils.EnsureTMPFontMaterial(asset);
             if (material != null && material.mainTexture == null) {
                 material.mainTexture = atlasTextures[0];
