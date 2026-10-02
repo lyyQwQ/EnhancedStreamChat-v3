@@ -112,7 +112,8 @@ jobs:
             'System.Net.Http.dll'
           )
           $facades = Get-ChildItem Refs -Recurse -File | Where-Object {
-            $_.Name -in $conflictingAssemblies
+            $_.Name -in $conflictingAssemblies -or
+            $_.FullName -like '*\Beat Saber_Data\Managed\System*.dll'
           }
           foreach ($facade in $facades) {
             $destination = Join-Path $disabledRoot ([Guid]::NewGuid().ToString() + '-' + $facade.Name)
@@ -120,7 +121,8 @@ jobs:
             Write-Host "Disabled facade: $($facade.FullName)"
           }
           $remaining = Get-ChildItem Refs -Recurse -File | Where-Object {
-            $_.Name -in $conflictingAssemblies
+            $_.Name -in $conflictingAssemblies -or
+            $_.FullName -like '*\Beat Saber_Data\Managed\System*.dll'
           }
           if ($remaining) {
             throw "Conflicting framework facades remain: $($remaining.FullName -join ', ')"
